@@ -8,7 +8,6 @@
   <!-- Chart.js (pie). App falls back to a table if CDN fails. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
   <style>
-    /* Prevent layout shift on mobile address bar show/hide */
     html, body { height: 100%; }
   </style>
 </head>
@@ -93,6 +92,7 @@
         <option value="distilgpt2">DistilGPT-2 (82M, ~70–80MB)</option>
         <option value="smollm2">SmolLM2-135M-Instruct (quantized ~175MB)</option>
         <option value="t5">T5-small (60M, ~200–240MB)</option>
+        <option value="mobilebert">MobileBERT (fill-mask, ~50–70MB)</option>
       </select>
 
       <div id="modelInfo" class="text-xs text-yellow-400 mb-3 hidden"></div>
@@ -127,7 +127,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.33</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.34</footer>
 
   <script type="module">
     // Elements
@@ -174,11 +174,11 @@
 
     // AI state
     let generator = null;
-    let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
+    let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5' | 'mobilebert'
     let activeModelId = null;          // HF repo id
-    let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 1500000;        // 25 minutes
-    const BASE_GEN_TIMEOUT = 15000;    // 15s base
+    let activeTask = null;             // 'text-generation' | 'text2text-generation' | 'fill-mask'
+    const TIMEOUT_MS = 1500000;        // 25 minutes (download)
+    const BASE_GEN_TIMEOUT = 15000;    // 15s base (inference)
     let logBusy = false;
 
     // Model config
@@ -203,8 +203,18 @@
         note: '~200–240MB first load',
         badge: 'T5-small',
         opts: {}
+      },
+      mobilebert: {
+        id: 'google/mobilebert-uncased',
+        task: 'fill-mask',
+        note: 'fill-mask, ~50–70MB (quantized)',
+        badge: 'MobileBERT (MLM)',
+        opts: {}
       }
     };
+
+    // ---- Chart color palette (cycles if more slices than colors) ----
+    const PALETTE = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'];
 
     // Utils
     const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','&':'&amp;'}[c]));
@@ -273,6 +283,9 @@
       chartEmpty.classList.toggle('hidden', !isEmpty);
       if (isEmpty) return;
 
+      // Colors from palette (cycle if needed)
+      const colors = labels.map((_, i) => PALETTE[i % PALETTE.length]);
+
       if (!window.Chart) {
         chartCanvas.parentElement.classList.add('hidden');
         chartFallback.classList.remove('hidden');
@@ -287,15 +300,26 @@
       if (activityChart) {
         activityChart.data.labels = labels;
         activityChart.data.datasets[0].data = data;
+        activityChart.data.datasets[0].backgroundColor = colors;
         activityChart.update();
         return;
       }
       activityChart = new Chart(ctx, {
         type: 'doughnut',
-        data: { labels, datasets: [{ data, borderWidth: 0 }] },
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: colors,
+            borderWidth: 0
+          }]
+        },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { color: '#e5e7eb' } } }
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#e5e7eb' } }
+          }
         }
       });
     }
@@ -368,7 +392,7 @@
 
     function renderLogs(list = logs) {
       logDiv.innerHTML = '';
-      list.forEach((l, idx) => {
+      list.forEach((l) => {
         const isThinking = l.status === 'thinking';
         const isFail = l.status === 'fail';
         const border = isThinking ? 'border-yellow-400' : isFail ? 'border-red-400' : 'border-green-400';
@@ -445,9 +469,8 @@
     }
     let untrap = () => {};
 
-    // Load AI model (multi-attempt + device fallback)
+    // Load AI model
     async function importTransformers() {
-      // Primary (jsDelivr). Keep it simple/reliable; show clear error if it fails.
       return await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
     }
     async function loadModel() {
@@ -476,7 +499,7 @@
               }
             }
           };
-          // Attempt 1 uses WebGPU if available; later attempts force CPU for reliability
+          // Attempt 1 uses WebGPU if available; later attempts force CPU
           opts.device = (i === 0 && navigator.gpu) ? 'webgpu' : 'cpu';
           Object.assign(opts, cfg.opts);
 
@@ -500,29 +523,57 @@
       return null;
     }
 
-    // Prompt
+    // Prompt builders
     function buildPrompt(activity) {
       const ask = `Give 2–4 short, specific, encouraging sentences about: "${activity}". Focus on momentum, next tiny step, and consistency.`;
-      return activeTask === 'text2text-generation'
-        ? ask
-        : `You are a concise wellbeing coach. ${ask}`;
+      if (activeTask === 'text2text-generation') return ask;
+      if (activeTask === 'text-generation')     return `You are a concise wellbeing coach. ${ask}`;
+      return ''; // fill-mask handled separately
+    }
+    function buildMaskTemplate(activity) {
+      // MobileBERT (MLM): single [MASK] token template
+      return `${activity}: Stay [MASK] and take one small step now.`;
     }
 
     async function aiCoachFeedback(activity) {
-      const input = buildPrompt(activity);
-      const cores = navigator.hardwareConcurrency || 4;
-      const GEN_MS = Math.min(30000, Math.max(12000, cores < 4 ? 20000 : BASE_GEN_TIMEOUT));
-      try {
-        const out = await Promise.race([
-          generator(input, { max_new_tokens: 80 }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_MS))
-        ]);
-        let txt = out?.[0]?.generated_text || '';
-        if (txt.startsWith(input)) txt = txt.slice(input.length);
-        return limitSentences(txt.trim(), 4) || 'Keep it up!';
-      } catch (e) {
-        console.error('AI feedback fail:', e);
-        return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
+      if (activeTask === 'fill-mask') {
+        // MobileBERT path
+        try {
+          const input = buildMaskTemplate(activity);
+          const out = await Promise.race([
+            generator(input, { top_k: 5 }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), 12000))
+          ]);
+          const top = Array.isArray(out) ? out[0] : null;
+          let first = top?.sequence || input.replace('[MASK]', 'focused');
+          first = first.replace(/\s+/g, ' ').trim();
+          const extra = [
+            ruleFeedback(activity),
+            'Aim for just 2–5 minutes to get moving.',
+            'Tiny steps compound — you’ve got this.'
+          ];
+          return limitSentences(`${first} ${extra.join(' ')}`, 4);
+        } catch (e) {
+          console.error('MobileBERT fail:', e);
+          return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
+        }
+      } else {
+        // Generative models
+        const input = buildPrompt(activity);
+        const cores = navigator.hardwareConcurrency || 4;
+        const GEN_MS = Math.min(30000, Math.max(12000, cores < 4 ? 20000 : BASE_GEN_TIMEOUT));
+        try {
+          const out = await Promise.race([
+            generator(input, { max_new_tokens: 80 }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_MS))
+          ]);
+          let txt = out?.[0]?.generated_text || '';
+          if (txt.startsWith(input)) txt = txt.slice(input.length);
+          return limitSentences(txt.trim(), 4) || 'Keep it up!';
+        } catch (e) {
+          console.error('AI feedback fail:', e);
+          return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
+        }
       }
     }
 
@@ -568,7 +619,7 @@
         if ('caches' in window) {
           const names = await caches.keys();
           for (const n of names) {
-            if (/transformers|huggingface|hf|onnx|model/i.test(n) || true) {
+            if (/transformers|huggingface|hf|onnx|model/i.test(n)) {
               await caches.delete(n); cleared = true;
             }
           }
@@ -655,7 +706,7 @@
 
         const aiOn = aiToggle.checked;
 
-        // Direct rule-based when AI is off or generator missing
+        // Rule-based path
         if (!aiOn || !generator) {
           const entry = {
             activity: act,
@@ -671,7 +722,7 @@
           return;
         }
 
-        // AI path: show thinking, then replace
+        // AI path
         const entry = {
           activity: act,
           time: new Date().toLocaleString(),
@@ -708,8 +759,7 @@
     // Init
     function init() {
       renderActivities();
-      applyFilterAndSort(); // renders logs + chart with current filters
-      // hide chart if empty on first load handled by applyFilterAndSort
+      applyFilterAndSort();
     }
     init();
   </script>
