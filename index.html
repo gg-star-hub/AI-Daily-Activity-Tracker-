@@ -6,20 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+<body class="bg-gray-900 text-white min-h-screen flex flex-col relative">
   <header class="p-4 text-center text-xl font-bold bg-gray-800">AI Daily Activity Tracker</header>
   <main class="flex-1 p-4 overflow-y-auto" id="log"></main>
 
-  <div class="fixed bottom-4 right-4 space-y-2 flex flex-col">
-    <button id="fabBtn" aria-label="Log Activity" class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full shadow">➕</button>
-    <button id="clearBtn" aria-label="Clear Logs" class="bg-red-500 hover:bg-red-600 text-white p-4 rounded-full shadow">🗑️</button>
-    <button id="manageBtn" aria-label="Manage Activities" class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow">⚙️</button>
+  <div class="fixed bottom-4 right-4 space-y-3 flex flex-col">
+    <button id="fabBtn" aria-label="Log Activity" class="bg-blue-500 hover:bg-blue-600 text-white p-5 md:p-4 rounded-full shadow">➕</button>
+    <button id="clearBtn" aria-label="Clear Logs" class="bg-red-500 hover:bg-red-600 text-white p-5 md:p-4 rounded-full shadow">🗑️</button>
+    <button id="manageBtn" aria-label="Manage Activities" class="bg-green-500 hover:bg-green-600 text-white p-5 md:p-4 rounded-full shadow">⚙️</button>
   </div>
 
-  <div id="logModal" role="dialog" aria-labelledby="logModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-    <div class="bg-gray-800 p-6 rounded shadow-lg w-80">
+  <div id="logModal" role="dialog" aria-labelledby="logModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-800 p-6 rounded shadow-lg w-full max-w-sm mx-auto">
       <h2 id="logModalTitle" class="text-lg font-bold mb-4">Log Activity</h2>
-      <select id="activitySelect" class="w-full mb-4 p-2 bg-gray-700 rounded"></select>
+      <select id="activitySelect" class="w-full mb-4 p-3 bg-gray-700 rounded"></select>
       <label class="flex items-center space-x-2 mb-4">
         <input type="checkbox" id="aiToggle" class="form-checkbox"> <span>Enable AI Coach</span>
       </label>
@@ -28,21 +28,23 @@
         <p id="spinnerText" class="text-sm text-gray-300 mt-1">Preparing AI Coach (~66MB)</p>
       </div>
       <div class="flex justify-end space-x-2">
-        <button id="cancelLog" class="px-4 py-2 bg-gray-600 rounded">Cancel</button>
-        <button id="logBtn" class="px-4 py-2 bg-blue-500 rounded">Log</button>
+        <button id="cancelLog" class="px-4 py-2 bg-gray-600 rounded w-1/2">Cancel</button>
+        <button id="logBtn" class="px-4 py-2 bg-blue-500 rounded w-1/2">Log</button>
       </div>
     </div>
   </div>
 
-  <div id="manageModal" role="dialog" aria-labelledby="manageModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-    <div class="bg-gray-800 p-6 rounded shadow-lg w-80">
+  <div id="manageModal" role="dialog" aria-labelledby="manageModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
+    <div class="bg-gray-800 p-6 rounded shadow-lg w-full max-w-sm mx-auto">
       <h2 id="manageModalTitle" class="text-lg font-bold mb-4">Manage Activities</h2>
       <ul id="activityList" class="mb-4"></ul>
-      <input id="newActivityInput" class="w-full p-2 mb-2 bg-gray-700 rounded" placeholder="New activity">
+      <input id="newActivityInput" class="w-full p-3 mb-2 bg-gray-700 rounded" placeholder="New activity">
       <button id="addActivityBtn" class="w-full px-4 py-2 bg-green-500 rounded">Add Activity</button>
       <div class="flex justify-end mt-4"><button id="closeManage" class="px-4 py-2 bg-gray-600 rounded">Close</button></div>
     </div>
   </div>
+
+  <footer class="absolute bottom-2 left-2 text-xs text-gray-500">Testversion 0.17</footer>
 
 <script>
 const log = document.getElementById("log");
@@ -82,7 +84,7 @@ function renderLogs(){
     let border="border-green-400", title="AI Coach says"; 
     if(e.status==="thinking"){border="border-yellow-400"; title="🤖 Thinking...";}
     else if(e.status==="fail"){border="border-red-400"; title="AI Coach error";}
-    div.className=`bg-gray-800 p-2 rounded border-l-4 ${border} mb-2`;
+    div.className=`bg-gray-800 p-3 rounded border-l-4 ${border} mb-3`;
     div.innerHTML=`<p class="text-xs text-gray-400">${e.time} — ${e.activity}</p><p class="font-semibold">${title}</p><p class="text-sm">${e.feedback}</p>`;
     log.appendChild(div);
   });
@@ -106,7 +108,6 @@ function ruleFeedback(act){
     "Chores":"Keeping order reduces stress."
   }[act]||"Keep going!";
 }
-
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 
 document.getElementById("fabBtn").onclick=()=>logModal.classList.remove("hidden");
