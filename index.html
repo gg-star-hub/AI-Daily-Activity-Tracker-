@@ -108,10 +108,10 @@
 
     async function aiCoachFeedback(activity) {
       if (!generator) return ruleFeedback(activity);
-      const prompt = `I just did the activity: ${activity}. As a motivational life coach, give me 1 short, positive sentence encouraging me about this activity. Mention "${activity}" clearly.`;
+      const prompt = `I just did the activity: ${activity}. As a motivational life coach, give me up to 4 short positive sentences encouraging me. Mention "${activity}" clearly at least once.`;
       try {
         const output = await generator(prompt, {
-          max_new_tokens: 40,
+          max_new_tokens: 100,
           temperature: 0.8,
           do_sample: true
         });
@@ -142,13 +142,16 @@
       logDiv.innerHTML = "";
       logs.forEach((e,i) => {
         const row = document.createElement("div");
-        row.className = "flex flex-col bg-gray-700 p-2 rounded space-y-1 shadow";
+        row.className = "flex flex-col bg-gray-700 p-3 rounded space-y-2 shadow";
         row.innerHTML = `
-          <div class="flex justify-between">
-            <span>${e.time} → <b>${e.activity}</b></span>
+          <div class="flex justify-between items-center">
+            <span>📝 ${e.time} → <b>${e.activity}</b></span>
             <button class="delete-log bg-red-500 px-2 rounded text-xs" data-index="${i}">✕</button>
           </div>
-          <div class="text-xs text-green-400">🤖 Coach: ${e.feedback}</div>
+          <div class="bg-gray-800 p-2 rounded border-l-4 border-green-400">
+            <p class="text-green-400 font-semibold mb-1">🤖 AI Coach says:</p>
+            <p class="text-sm text-gray-200 leading-snug">${e.feedback}</p>
+          </div>
         `;
         logDiv.appendChild(row);
       });
