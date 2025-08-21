@@ -5,7 +5,7 @@
   <title>AI Daily Activity Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js for the activity pie/doughnut chart -->
+  <!-- Chart.js for pie chart (graceful fallback if unavailable) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
@@ -24,15 +24,22 @@
       <div class="flex items-center justify-center">
         <canvas id="activityChart" aria-label="Activity breakdown chart" role="img" style="max-height:300px; width:100%"></canvas>
       </div>
+      <div id="chartFallback" class="hidden text-sm mt-3"></div>
       <p id="chartEmpty" class="text-xs text-gray-400 mt-3 hidden">No logs yet. Log some activities to see the chart.</p>
     </section>
   </main>
 
-  <!-- Floating buttons -->
+  <!-- Floating buttons (right) -->
   <div class="fixed bottom-4 right-4 space-y-2">
     <button id="fabBtn" class="bg-green-600 hover:bg-green-700 p-4 rounded-full shadow text-xl" aria-label="Log activity">➕</button>
     <button id="clearBtn" class="bg-red-600 hover:bg-red-700 p-4 rounded-full shadow" aria-label="Clear logs">🗑️</button>
     <button id="manageBtn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-full shadow" aria-label="Manage activities">⚙️</button>
+  </div>
+
+  <!-- Floating buttons (left) – exports -->
+  <div class="fixed bottom-4 left-4 space-y-2">
+    <button id="exportJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as JSON">Export JSON</button>
+    <button id="exportCsvBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as CSV">Export CSV</button>
   </div>
 
   <!-- Log Modal -->
@@ -92,7 +99,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.31</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.32</footer>
 
   <script type="module">
     // Elements
@@ -120,6 +127,9 @@
     const chartSection = document.getElementById('chartSection');
     const chartEmpty = document.getElementById('chartEmpty');
     const chartCanvas = document.getElementById('activityChart');
+    const chartFallback = document.getElementById('chartFallback');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    const exportCsvBtn  = document.getElementById('exportCsvBtn');
 
     // Data
     const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
@@ -132,7 +142,7 @@
     let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
     let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 1500000;        // 25 minutes (5x previous)
+    const TIMEOUT_MS = 1500000;        // 25 minutes (kept long by request)
     const BASE_GEN_TIMEOUT = 15000;    // base 15s generation
     let logBusy = false;
 
@@ -150,7 +160,7 @@
         task: 'text-generation',
         note: 'quantized ONNX ~175MB (bnb4)',
         badge: 'SmolLM2-135M (quantized)',
-        opts: { dtype: 'bnb4' } // request quantized weights if available
+        opts: { dtype: 'bnb4' }
       },
       t5: {
         id: 'Xenova/t5-small',
@@ -188,14 +198,14 @@
       }
     }
 
-    // Fallback messages
+    // Fallback phrases (guaranteed present)
     function ruleFeedback(a) {
       const m = {
         Eat:'🍽️ Good to stay nourished!', Sleep:'😴 Rest is essential.', Work:'💼 Keep focused!',
         Exercise:'🏃 Great energy boost.', Study:'📚 Knowledge is power.', Commute:'🚌 Time well spent traveling.',
         Socialize:'🤝 Stay connected.', Relax:'🧘 Calm and balanced.', Shop:'🛒 Don’t overspend!', Cook:'👩‍🍳 Healthy eating starts here.'
       };
-      return m[a] || 'Keep it up!';
+      return m[a] || 'Great job — keep the momentum going!';
     }
 
     // Activity chart
@@ -205,17 +215,38 @@
       for (const l of logs) counts[l.activity] = (counts[l.activity] || 0) + 1;
       return counts;
     }
+    function renderCountsTable(counts) {
+      const total = Object.values(counts).reduce((a,b)=>a+b,0);
+      const rows = Object.entries(counts)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([k,v]) => `<tr><td class="pr-4 py-1">${sanitize(k)}</td><td class="text-right py-1">${v}</td><td class="text-right text-gray-300 py-1">${((v/total)*100).toFixed(1)}%</td></tr>`)
+        .join('');
+      chartFallback.innerHTML = `
+        <div class="rounded border border-gray-700 p-3">
+          <div class="text-xs text-gray-400 mb-2">Chart unavailable — showing table.</div>
+          <table class="text-sm w-full"><tbody>${rows}</tbody></table>
+        </div>`;
+    }
     function updateChart() {
       const counts = getActivityCounts();
       const labels = Object.keys(counts);
       const data = Object.values(counts);
 
-      // Toggle empty state
       const isEmpty = data.length === 0;
       chartSection.classList.toggle('hidden', isEmpty);
       chartEmpty.classList.toggle('hidden', !isEmpty);
-
       if (isEmpty) return;
+
+      // If Chart.js missing -> fallback table
+      if (!window.Chart) {
+        chartCanvas.parentElement.classList.add('hidden');
+        chartFallback.classList.remove('hidden');
+        renderCountsTable(counts);
+        return;
+      } else {
+        chartCanvas.parentElement.classList.remove('hidden');
+        chartFallback.classList.add('hidden');
+      }
 
       const ctx = chartCanvas.getContext('2d');
       if (activityChart) {
@@ -230,6 +261,7 @@
           labels,
           datasets: [{
             data,
+            // let Chart.js pick theme-friendly defaults; border off for a clean look
             borderWidth: 0
           }]
         },
@@ -403,8 +435,28 @@
       }
     }
 
+    // Exports
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      URL.revokeObjectURL(url); a.remove();
+    }
+    exportJsonBtn.onclick = () => {
+      const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json;charset=utf-8' });
+      downloadBlob(blob, 'activity_logs.json');
+    };
+    exportCsvBtn.onclick = () => {
+      const rows = [['Time','Activity','Model','Status','Feedback'], ...logs.map(l => [l.time, l.activity, l.model||'', l.status||'', l.feedback||''])];
+      const csv = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      downloadBlob(blob, 'activity_logs.csv');
+    };
+
     // Events
-    fabBtn.onclick = () => { logModal.classList.remove('hidden'); untrap = trapFocus(logModal); };
+    const openLog = () => { logModal.classList.remove('hidden'); untrap = trapFocus(logModal); };
+    fabBtn.onclick = openLog;
     manageBtn.onclick = () => { manageModal.classList.remove('hidden'); untrap = trapFocus(manageModal); };
     closeLog.onclick = () => { logModal.classList.add('hidden'); untrap(); };
     backBtn.onclick = () => { manageModal.classList.add('hidden'); untrap(); };
@@ -509,7 +561,6 @@
       renderActivities();
       renderLogs();
       updateChart();
-      // hide chart if empty on first load
       const hasData = logs.length > 0;
       chartSection.classList.toggle('hidden', !hasData);
       chartEmpty.classList.toggle('hidden', hasData);
