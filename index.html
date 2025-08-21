@@ -143,13 +143,22 @@
       logs.forEach((e,i) => {
         const row = document.createElement("div");
         row.className = "flex flex-col bg-gray-700 p-3 rounded space-y-2 shadow";
+        let borderColor = "border-green-400";
+        let titleColor = "text-green-400";
+        if (e.feedback.startsWith("⚠️")) {
+          borderColor = "border-red-400";
+          titleColor = "text-red-400";
+        } else if (e.feedback.includes("thinking")) {
+          borderColor = "border-yellow-400 animate-pulse";
+          titleColor = "text-yellow-400";
+        }
         row.innerHTML = `
           <div class="flex justify-between items-center">
             <span>📝 ${e.time} → <b>${e.activity}</b></span>
             <button class="delete-log bg-red-500 px-2 rounded text-xs" data-index="${i}">✕</button>
           </div>
-          <div class="bg-gray-800 p-2 rounded border-l-4 ${e.feedback.startsWith("⚠️") ? "border-red-400" : "border-green-400"}">
-            <p class="font-semibold mb-1 ${e.feedback.startsWith("⚠️") ? "text-red-400" : "text-green-400"}">🤖 AI Coach says:</p>
+          <div class="bg-gray-800 p-2 rounded border-l-4 ${borderColor}">
+            <p class="font-semibold mb-1 ${titleColor}">🤖 AI Coach says:</p>
             <p class="text-sm text-gray-200 leading-snug">${e.feedback}</p>
           </div>
         `;
@@ -190,7 +199,6 @@
     logBtn.addEventListener("click", async ()=>{
       const act = activitySelect.value;
 
-      // temporary "thinking" banner
       const entry = {
         activity: act,
         time: new Date().toLocaleString(),
