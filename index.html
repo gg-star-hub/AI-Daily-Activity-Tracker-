@@ -51,13 +51,13 @@
   <!-- Spinner -->
   <div id="spinner" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow">
     <div class="font-semibold" id="spinnerText">Downloading AI Coach…</div>
-    <div class="w-44 bg-gray-300 h-2 mt-1 rounded">
+    <div class="w-48 bg-gray-300 h-2 mt-1 rounded">
       <div id="progressBar" class="bg-green-700 h-2 rounded" style="width:0%"></div>
     </div>
     <div class="text-xs mt-1 opacity-80">~70–80MB first load, then cached</div>
   </div>
 
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.23</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.24</footer>
 
   <script type="module">
     // Elements
@@ -87,11 +87,7 @@
     let generator = null;
 
     // Utils
-    function sanitize(str) {
-      return String(str).replace(/[<>"'&]/g, c => ({
-        "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#x27;", "&":"&amp;"
-      }[c]));
-    }
+    const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({ "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#x27;", "&":"&amp;" }[c]));
     function safeSave(key, val) {
       try { localStorage.setItem(key, JSON.stringify(val)); }
       catch {
@@ -106,16 +102,9 @@
     }
     function ruleFeedback(a) {
       const m = {
-        Eat:"🍽️ Good to stay nourished!",
-        Sleep:"😴 Rest is essential.",
-        Work:"💼 Keep focused!",
-        Exercise:"🏃 Great energy boost.",
-        Study:"📚 Knowledge is power.",
-        Commute:"🚌 Time well spent traveling.",
-        Socialize:"🤝 Stay connected.",
-        Relax:"🧘 Calm and balanced.",
-        Shop:"🛒 Don’t overspend!",
-        Cook:"👩‍🍳 Healthy eating starts here."
+        Eat:"🍽️ Good to stay nourished!", Sleep:"😴 Rest is essential.", Work:"💼 Keep focused!",
+        Exercise:"🏃 Great energy boost.", Study:"📚 Knowledge is power.", Commute:"🚌 Time well spent traveling.",
+        Socialize:"🤝 Stay connected.", Relax:"🧘 Calm and balanced.", Shop:"🛒 Don’t overspend!", Cook:"👩‍🍳 Healthy eating starts here."
       };
       return m[a] || "Keep it up!";
     }
@@ -163,7 +152,7 @@
       });
     }
 
-    // AI loader (updated to @huggingface/transformers v3)
+    // AI loader (v3, WebGPU optional)
     async function loadModel(retries=3) {
       if (!navigator.onLine) { alert("⚠️ Offline. AI Coach needs internet."); aiToggle.checked = false; return null; }
       if (!window.WebAssembly) { alert("⚠️ Browser lacks WebAssembly. Use Chrome/Firefox/Edge."); aiToggle.checked = false; return null; }
@@ -173,19 +162,21 @@
       progressBar.style.width = "0%";
 
       try {
-        // 👉 New package home & version
         const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2");
-        const gen = await Promise.race([
-          pipeline("text-generation","Xenova/distilgpt2",{
-            progress_callback: (p) => {
-              if (p && p.total) {
-                const pct = Math.floor((p.loaded/p.total) * 100);
-                progressBar.style.width = pct + "%";
-                spinnerText.textContent = `Downloading… ${pct}%`;
-              }
+        const pipelineOpts = {
+          progress_callback: (p) => {
+            if (p && p.loaded && p.total) {
+              const pct = Math.floor((p.loaded / p.total) * 100);
+              progressBar.style.width = pct + "%";
+              spinnerText.textContent = `Downloading… ${pct}%`;
             }
-          }),
-          new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")), 60000)) // 60s for slower networks
+          }
+        };
+        if (navigator.gpu) pipelineOpts.device = "webgpu"; // optional speed-up
+
+        const gen = await Promise.race([
+          pipeline("text-generation", "Xenova/distilgpt2", pipelineOpts),
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")), 120000)) // 120s
         ]);
         spinnerText.textContent = "✅ AI Coach ready (cached)";
         return gen;
@@ -196,7 +187,7 @@
         aiToggle.checked = false;
         return null;
       } finally {
-        setTimeout(()=>spinner.classList.add("hidden"), 300);
+        setTimeout(() => spinner.classList.add("hidden"), 300);
       }
     }
 
@@ -219,6 +210,8 @@
     // Events
     fabBtn.onclick = () => { logModal.classList.remove("hidden"); };
     manageBtn.onclick = () => { manageModal.classList.remove("hidden"); };
+    document.getElementById("closeLog").onclick = () => logModal.classList.add("hidden");
+    document.getElementById("closeManage").onclick = () => manageModal.classList.add("hidden");
     clearBtn.onclick = () => {
       if (confirm("Clear all logs?")) {
         logs = [];
@@ -226,6 +219,7 @@
         renderLogs();
       }
     };
+    // Close on ESC / outside
     document.addEventListener("keydown", e => {
       if (e.key === "Escape") { logModal.classList.add("hidden"); manageModal.classList.add("hidden"); }
     });
@@ -234,24 +228,19 @@
       if (e.target === manageModal) manageModal.classList.add("hidden");
     });
 
-    document.getElementById("closeLog").onclick = () => logModal.classList.add("hidden");
-    document.getElementById("closeManage").onclick = () => manageModal.classList.add("hidden");
-
     addActivityBtn.onclick = () => {
       const val = newActivityInput.value.trim();
       if (!val) { alert("Enter activity."); return; }
       if (activities.includes(val)) { alert("Activity exists."); return; }
       activities.push(val);
       safeSave(STORAGE_KEYS.ACTIVITIES, activities);
-      renderActivities();
       newActivityInput.value = "";
+      renderActivities();
     };
 
     aiToggle.onchange = async () => {
       if (aiToggle.checked && !generator) {
-        console.log("Loading AI Coach…");
         generator = await loadModel();
-        if (generator) console.log("AI Coach loaded");
       }
     };
 
