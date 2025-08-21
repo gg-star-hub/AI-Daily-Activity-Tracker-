@@ -17,22 +17,6 @@
     AI Daily Activity Tracker
   </header>
 
-  <!-- Toolbar: search/filter/sort -->
-  <section class="px-4 pt-3">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-      <input id="searchInput" class="w-full p-2 rounded text-black" placeholder="Search feedback or activity…" aria-label="Search logs" />
-      <select id="filterActivity" class="w-full p-2 rounded text-black" aria-label="Filter by activity">
-        <option value="">All activities</option>
-      </select>
-      <select id="sortSelect" class="w-full p-2 rounded text-black" aria-label="Sort logs">
-        <option value="timeDesc">Newest first</option>
-        <option value="timeAsc">Oldest first</option>
-        <option value="activityAsc">Activity A→Z</option>
-        <option value="activityDesc">Activity Z→A</option>
-      </select>
-    </div>
-  </section>
-
   <!-- Logs -->
   <main class="flex-1 p-4 overflow-y-auto">
     <div id="log" class="space-y-3" aria-live="polite"></div>
@@ -49,28 +33,57 @@
   </main>
 
   <!-- Floating buttons (right) -->
-  <div class="fixed bottom-4 right-4 space-y-2">
+  <div class="fixed bottom-4 right-4 space-y-2 z-40">
     <button id="fabBtn" class="bg-green-600 hover:bg-green-700 p-4 rounded-full shadow text-xl" aria-label="Log activity">➕</button>
     <button id="clearBtn" class="bg-red-600 hover:bg-red-700 p-4 rounded-full shadow" aria-label="Clear logs">🗑️</button>
     <button id="manageBtn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-full shadow" aria-label="Manage activities">⚙️</button>
   </div>
 
-  <!-- Floating buttons (left) – exports & cache -->
-  <div class="fixed bottom-4 left-4 space-y-2">
-    <div class="flex gap-2">
-      <button id="exportJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as JSON">Export JSON</button>
-      <button id="exportCsvBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as CSV">Export CSV</button>
-      <button id="importJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Import logs from JSON">Import</button>
-      <input id="importFile" type="file" accept="application/json" class="hidden" />
-    </div>
-    <div class="flex gap-2">
-      <button id="retryLoadBtn" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded shadow text-xs" aria-label="Retry AI model load">Retry AI Load</button>
-      <button id="clearAICacheBtn" class="bg-amber-700 hover:bg-amber-600 px-3 py-2 rounded shadow text-xs" aria-label="Clear AI cache">Clear AI cache</button>
+  <!-- Tools FAB (left) -->
+  <div class="fixed bottom-4 left-4 z-50">
+    <button id="toolsFab" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-full shadow text-xl" aria-label="Open tools panel">☰</button>
+
+    <!-- Tools Panel -->
+    <div id="toolsPanel" class="hidden absolute bottom-16 left-0 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-semibold text-sm">Tools</h3>
+        <button id="closeTools" class="text-gray-300 hover:text-white" aria-label="Close tools">✖</button>
+      </div>
+
+      <!-- Search / Filter / Sort -->
+      <div class="space-y-2 mb-3">
+        <input id="searchInput" class="w-full p-2 rounded text-black" placeholder="Search feedback or activity…" aria-label="Search logs" />
+        <select id="filterActivity" class="w-full p-2 rounded text-black" aria-label="Filter by activity">
+          <option value="">All activities</option>
+        </select>
+        <select id="sortSelect" class="w-full p-2 rounded text-black" aria-label="Sort logs">
+          <option value="timeDesc">Newest first</option>
+          <option value="timeAsc">Oldest first</option>
+          <option value="activityAsc">Activity A→Z</option>
+          <option value="activityDesc">Activity Z→A</option>
+        </select>
+      </div>
+
+      <hr class="border-gray-700 my-3" />
+
+      <!-- Export / Import -->
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <button id="exportJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as JSON">Export JSON</button>
+        <button id="exportCsvBtn"  class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as CSV">Export CSV</button>
+        <button id="importJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs col-span-2" aria-label="Import logs from JSON">Import</button>
+        <input id="importFile" type="file" accept="application/json" class="hidden" />
+      </div>
+
+      <!-- AI cache / retry -->
+      <div class="grid grid-cols-2 gap-2">
+        <button id="retryLoadBtn" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded shadow text-xs" aria-label="Retry AI model load">Retry AI Load</button>
+        <button id="clearAICacheBtn" class="bg-amber-700 hover:bg-amber-600 px-3 py-2 rounded shadow text-xs" aria-label="Clear AI cache">Clear AI cache</button>
+      </div>
     </div>
   </div>
 
   <!-- Log Modal -->
-  <div id="logModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="logTitle">
+  <div id="logModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="logTitle">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
       <h2 id="logTitle" class="text-lg font-bold mb-3">Log Activity</h2>
 
@@ -105,7 +118,7 @@
   </div>
 
   <!-- Manage Modal -->
-  <div id="manageModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
+  <div id="manageModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
       <h2 id="manageTitle" class="text-lg font-bold mb-3">Manage Activities</h2>
       <input id="newActivityInput" type="text" placeholder="New activity" class="w-full p-2 text-black rounded mb-2" />
@@ -117,7 +130,7 @@
 
   <!-- Spinner / progress -->
   <div id="spinner"
-       class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow text-sm"
+       class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow text-sm z-50"
        role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
     <div id="spinnerText" class="font-semibold">Downloading AI Coach…</div>
     <div class="w-52 bg-gray-300 h-2 mt-1 rounded">
@@ -127,7 +140,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.34</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.35</footer>
 
   <script type="module">
     // Elements
@@ -156,12 +169,20 @@
     const chartEmpty = document.getElementById('chartEmpty');
     const chartCanvas = document.getElementById('activityChart');
     const chartFallback = document.getElementById('chartFallback');
+
+    // Tools panel elements
+    const toolsFab = document.getElementById('toolsFab');
+    const toolsPanel = document.getElementById('toolsPanel');
+    const closeTools = document.getElementById('closeTools');
+
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     const exportCsvBtn  = document.getElementById('exportCsvBtn');
     const importJsonBtn = document.getElementById('importJsonBtn');
     const importFile    = document.getElementById('importFile');
     const retryLoadBtn  = document.getElementById('retryLoadBtn');
     const clearAICacheBtn = document.getElementById('clearAICacheBtn');
+
+    // Search/filters now live in Tools Panel
     const searchInput   = document.getElementById('searchInput');
     const filterActivity = document.getElementById('filterActivity');
     const sortSelect    = document.getElementById('sortSelect');
@@ -361,7 +382,7 @@
       if (current && activities.includes(current)) activitySelect.value = current;
       else activitySelect.selectedIndex = 0;
 
-      // Filter dropdown
+      // Filter dropdown (in tools panel)
       filterActivity.innerHTML = '<option value="">All activities</option>';
       activities.forEach(a => {
         const opt = document.createElement('option');
@@ -382,6 +403,7 @@
           activities.splice(i,1);
           safeSave(STORAGE_KEYS.ACTIVITIES, activities);
           renderActivities();
+          applyFilterAndSort();
         };
         delBtn.onkeydown = (e) => {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); delBtn.click(); }
@@ -649,6 +671,22 @@
       }
     };
 
+    // Tools Panel interactions
+    toolsFab.onclick = (e) => {
+      e.stopPropagation();
+      toolsPanel.classList.toggle('hidden');
+    };
+    closeTools.onclick = () => toolsPanel.classList.add('hidden');
+    window.addEventListener('click', (e) => {
+      // Close tools if clicking outside of the panel and not on the FAB
+      if (!toolsPanel.contains(e.target) && e.target !== toolsFab) {
+        toolsPanel.classList.add('hidden');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') toolsPanel.classList.add('hidden');
+    });
+
     // Events: open/close modals
     const openLog = () => { logModal.classList.remove('hidden'); untrap = trapFocus(logModal); };
     fabBtn.onclick = openLog;
@@ -656,7 +694,7 @@
     closeLog.onclick = () => { logModal.classList.add('hidden'); untrap(); };
     backBtn.onclick = () => { manageModal.classList.add('hidden'); untrap(); };
 
-    // Close on ESC / outside
+    // Close on ESC / outside (modals)
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') { logModal.classList.add('hidden'); manageModal.classList.add('hidden'); untrap(); }
     });
@@ -683,6 +721,7 @@
       safeSave(STORAGE_KEYS.ACTIVITIES, activities);
       newActivityInput.value = '';
       renderActivities();
+      applyFilterAndSort();
     }, 250);
 
     // AI toggle -> lazy load model
@@ -751,7 +790,7 @@
       }
     };
 
-    // Filters/sort handlers
+    // Filters/sort handlers (in Tools Panel)
     searchInput.oninput = debounce(applyFilterAndSort, 150);
     filterActivity.onchange = applyFilterAndSort;
     sortSelect.onchange = applyFilterAndSort;
