@@ -2,302 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Daily Activity Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white h-screen flex flex-col">
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+  <header class="p-4 text-center text-xl font-bold bg-gray-800">AI Daily Activity Tracker</header>
+  <main class="flex-1 p-4 overflow-y-auto" id="log"></main>
 
-  <!-- Header -->
-  <header class="bg-gray-800 p-4 flex justify-between items-center shadow-md">
-    <span class="text-lg md:text-xl font-bold">AI Daily Activity Tracker 🤖</span>
-    <div class="flex items-center space-x-2">
-      <label class="flex items-center space-x-1 text-sm">
-        <input type="checkbox" id="aiToggle" class="w-4 h-4">
-        <span>AI Coach</span>
+  <div class="fixed bottom-4 right-4 space-y-2 flex flex-col">
+    <button id="fabBtn" aria-label="Log Activity" class="bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-full shadow">➕</button>
+    <button id="clearBtn" aria-label="Clear Logs" class="bg-red-500 hover:bg-red-600 text-white p-4 rounded-full shadow">🗑️</button>
+    <button id="manageBtn" aria-label="Manage Activities" class="bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow">⚙️</button>
+  </div>
+
+  <div id="logModal" role="dialog" aria-labelledby="logModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+    <div class="bg-gray-800 p-6 rounded shadow-lg w-80">
+      <h2 id="logModalTitle" class="text-lg font-bold mb-4">Log Activity</h2>
+      <select id="activitySelect" class="w-full mb-4 p-2 bg-gray-700 rounded"></select>
+      <label class="flex items-center space-x-2 mb-4">
+        <input type="checkbox" id="aiToggle" class="form-checkbox"> <span>Enable AI Coach</span>
       </label>
-    </div>
-  </header>
-
-  <!-- Spinner Overlay -->
-  <div id="spinner" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center space-y-4 z-50">
-    <div class="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-    <p id="spinnerText" class="text-lg font-semibold text-blue-300">Preparing AI Coach…</p>
-    <div class="w-64 bg-gray-700 rounded-full h-4 overflow-hidden">
-      <div id="progressBar" class="bg-blue-400 h-4 w-0"></div>
-    </div>
-    <p class="text-sm text-gray-400">Model size: ~66 MB (cached after first load)</p>
-  </div>
-
-  <!-- Logs -->
-  <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2"></main>
-
-  <!-- Floating Buttons -->
-  <button id="fabBtn" class="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-3xl shadow-lg">➕</button>
-  <button id="clearBtn" class="fixed bottom-28 right-6 bg-red-600 px-4 py-2 rounded-lg shadow-lg text-sm font-semibold hover:bg-red-500">🗑️ Clear</button>
-  <button id="manageBtn" class="fixed bottom-48 right-6 bg-green-600 px-4 py-2 rounded-lg shadow-lg text-sm font-semibold hover:bg-green-500">⚙️ Manage</button>
-
-  <!-- Log Modal -->
-  <div id="logModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
-    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl">
-      <h2 class="text-lg font-bold mb-4">Log Activity</h2>
-      <div class="flex flex-col space-y-2 md:flex-row md:space-x-2 mb-4">
-        <select id="activity" class="flex-1 p-3 rounded bg-gray-700 text-white border border-gray-500"></select>
-        <button id="logBtn" class="px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold">Log</button>
+      <div id="spinner" class="hidden mb-4">
+        <div class="w-full bg-gray-600 h-2 rounded"><div id="progressBar" class="bg-blue-500 h-2 rounded" style="width:0%"></div></div>
+        <p id="spinnerText" class="text-sm text-gray-300 mt-1">Preparing AI Coach (~66MB)</p>
       </div>
-      <div class="text-right">
-        <button id="closeLogModal" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Close</button>
+      <div class="flex justify-end space-x-2">
+        <button id="cancelLog" class="px-4 py-2 bg-gray-600 rounded">Cancel</button>
+        <button id="logBtn" class="px-4 py-2 bg-blue-500 rounded">Log</button>
       </div>
     </div>
   </div>
 
-  <!-- Manage Activities Modal -->
-  <div id="manageModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
-    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl">
-      <h2 class="text-lg font-bold mb-4">Manage Activities</h2>
-      <div class="flex space-x-2 mb-4">
-        <input id="newActivity" type="text" placeholder="New activity..." class="flex-1 p-2 rounded bg-gray-700 border border-gray-500 text-white">
-        <button id="addActivityBtn" class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded">Add</button>
-      </div>
-      <ul id="activityList" class="space-y-2"></ul>
-      <div class="text-right mt-4">
-        <button id="closeManageModal" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Close</button>
-      </div>
+  <div id="manageModal" role="dialog" aria-labelledby="manageModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+    <div class="bg-gray-800 p-6 rounded shadow-lg w-80">
+      <h2 id="manageModalTitle" class="text-lg font-bold mb-4">Manage Activities</h2>
+      <ul id="activityList" class="mb-4"></ul>
+      <input id="newActivityInput" class="w-full p-2 mb-2 bg-gray-700 rounded" placeholder="New activity">
+      <button id="addActivityBtn" class="w-full px-4 py-2 bg-green-500 rounded">Add Activity</button>
+      <div class="flex justify-end mt-4"><button id="closeManage" class="px-4 py-2 bg-gray-600 rounded">Close</button></div>
     </div>
   </div>
 
-  <script type="module">
-    let generator = null;
-    const spinner = document.getElementById("spinner");
-    const spinnerText = document.getElementById("spinnerText");
-    const progressBar = document.getElementById("progressBar");
-    const aiToggle = document.getElementById("aiToggle");
+<script>
+const log = document.getElementById("log");
+const logModal = document.getElementById("logModal");
+const manageModal = document.getElementById("manageModal");
+const activitySelect = document.getElementById("activitySelect");
+const aiToggle = document.getElementById("aiToggle");
+const spinner = document.getElementById("spinner");
+const spinnerText = document.getElementById("spinnerText");
+const progressBar = document.getElementById("progressBar");
+const activityList = document.getElementById("activityList");
+const newActivityInput = document.getElementById("newActivityInput");
 
-    // Activities
-    let activities = JSON.parse(localStorage.getItem("activityList")) || [
-      "Sleeping","Eating","Drinking","Personal Hygiene","Working / Studying",
-      "Social Interaction","Walking / Moving","Leisure / Entertainment","Resting / Relaxing","Using Technology"
-    ];
-    let logs = JSON.parse(localStorage.getItem("activityLogs") || "[]");
+let activities = JSON.parse(localStorage.getItem("activityList")||"[]");
+if(activities.length===0) activities=["Sleep","Eat","Work","Exercise","Study","Relax","Socialize","Commute","Entertainment","Chores"];
+let logs = JSON.parse(localStorage.getItem("activityLogs")||"[]");
+let generator=null;
 
-    const activitySelect = document.getElementById("activity");
-    const logDiv = document.getElementById("log");
-    const logBtn = document.getElementById("logBtn");
-    const fabBtn = document.getElementById("fabBtn");
-    const logModal = document.getElementById("logModal");
-    const closeLogModal = document.getElementById("closeLogModal");
-    const clearBtn = document.getElementById("clearBtn");
-    const manageBtn = document.getElementById("manageBtn");
-    const manageModal = document.getElementById("manageModal");
-    const closeManageModal = document.getElementById("closeManageModal");
-    const addActivityBtn = document.getElementById("addActivityBtn");
-    const newActivityInput = document.getElementById("newActivity");
-    const activityListUI = document.getElementById("activityList");
+function sanitize(str){return str.replace(/[<>"'&]/g,c=>({"<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#x27;","&":"&amp;"}[c]));}
+function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){alert("⚠️ Storage full, data may not be saved.");}}
 
-    // Fallback feedback
-    function ruleFeedback(activity) {
-      const templates = [
-        `🔥 Great job staying consistent with ${activity}!`,
-        `🌟 You're doing amazing by focusing on ${activity}!`,
-        `💪 Keep up the good work on ${activity}!`,
-        `✨ Consistency in ${activity} will pay off!`,
-        `🚀 Every step in ${activity} counts!`
-      ];
-      return templates[Math.floor(Math.random()*templates.length)];
+function renderActivities(){
+  activitySelect.innerHTML=""; activities.forEach(a=>{
+    const opt=document.createElement("option"); opt.textContent=a; activitySelect.appendChild(opt);
+  });
+  activityList.innerHTML=""; activities.forEach((a,i)=>{
+    const li=document.createElement("li");
+    li.className="flex justify-between items-center mb-1";
+    li.innerHTML=`<span>${a}</span><button class="text-red-400" data-i="${i}">✖</button>`;
+    li.querySelector("button").onclick=()=>{activities.splice(i,1);save("activityList",activities);renderActivities();};
+    activityList.appendChild(li);
+  });
+}
+function renderLogs(){
+  log.innerHTML=""; logs.forEach(e=>{
+    const div=document.createElement("div");
+    let border="border-green-400", title="AI Coach says"; 
+    if(e.status==="thinking"){border="border-yellow-400"; title="🤖 Thinking...";}
+    else if(e.status==="fail"){border="border-red-400"; title="AI Coach error";}
+    div.className=`bg-gray-800 p-2 rounded border-l-4 ${border} mb-2`;
+    div.innerHTML=`<p class="text-xs text-gray-400">${e.time} — ${e.activity}</p><p class="font-semibold">${title}</p><p class="text-sm">${e.feedback}</p>`;
+    log.appendChild(div);
+  });
+}
+
+async function aiCoachFeedback(act){
+  const out=await generator(act,{max_new_tokens:50});
+  return out[0].generated_text.replace(/\n/g," ").slice(act.length).trim();
+}
+function ruleFeedback(act){
+  return {
+    "Sleep":"Good rest helps recharge your mind.",
+    "Eat":"Balanced meals fuel your body.",
+    "Work":"Stay focused, but take short breaks.",
+    "Exercise":"Great! Movement boosts energy.",
+    "Study":"Consistency leads to mastery.",
+    "Relax":"Relaxation restores balance.",
+    "Socialize":"Strong bonds support wellbeing.",
+    "Commute":"Use this time to reset mentally.",
+    "Entertainment":"Fun is vital for balance.",
+    "Chores":"Keeping order reduces stress."
+  }[act]||"Keep going!";
+}
+
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+
+document.getElementById("fabBtn").onclick=()=>logModal.classList.remove("hidden");
+document.getElementById("cancelLog").onclick=()=>logModal.classList.add("hidden");
+document.getElementById("manageBtn").onclick=()=>manageModal.classList.remove("hidden");
+document.getElementById("closeManage").onclick=()=>manageModal.classList.add("hidden");
+document.getElementById("clearBtn").onclick=()=>{if(confirm("Clear all logs?")){logs=[];save("activityLogs",logs);renderLogs();}};
+document.getElementById("addActivityBtn").onclick=debounce(()=>{
+  const val=sanitize(newActivityInput.value.trim());
+  if(!val){alert("Please enter an activity.");return;}
+  if(activities.includes(val)){alert("Activity exists.");return;}
+  activities.push(val); save("activityList",activities); renderActivities(); newActivityInput.value="";
+},300);
+
+document.getElementById("logBtn").onclick=debounce(async()=>{
+  const act=activitySelect.value;
+  const entry={activity:act,time:new Date().toLocaleString(),feedback:"🤖 AI Coach is thinking...",status:"thinking"};
+  logs.push(entry); save("activityLogs",logs); renderLogs();
+  const idx=logs.length-1;
+  if(aiToggle.checked && generator){
+    try{logs[idx].feedback=await aiCoachFeedback(act);logs[idx].status="done";}
+    catch{logs[idx].feedback=`⚠️ AI Coach error. ${ruleFeedback(act)}`;logs[idx].status="fail";}
+  } else if(aiToggle.checked && !generator){
+    logs[idx].feedback=`⚠️ AI Coach unavailable. ${ruleFeedback(act)}`;logs[idx].status="fail";
+  } else {
+    logs[idx].feedback=ruleFeedback(act);logs[idx].status="done";
+  }
+  save("activityLogs",logs); renderLogs(); logModal.classList.add("hidden");
+},300);
+
+aiToggle.onchange=async()=>{
+  if(aiToggle.checked && !generator){
+    if(!navigator.onLine){alert("⚠️ Offline. AI Coach requires internet.");aiToggle.checked=false;return;}
+    spinner.classList.remove("hidden");
+    const timeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")),ms))]);
+    try{
+      const {pipeline}=await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0");
+      generator=await timeout(pipeline("text-generation","Xenova/distilgpt2",{
+        progress_callback:(prog)=>{if(prog.total){const pct=Math.floor((prog.loaded/prog.total)*100);spinnerText.textContent=`Downloading AI Coach… ${pct}% (~66MB)`;progressBar.style.width=pct+"%";}}
+      }),30000);
+      spinnerText.textContent="AI Coach ready (cached for next time)";
+    }catch(e){
+      alert("⚠️ "+(e.message||"Failed to load AI Coach.")); aiToggle.checked=false;
     }
+    spinner.classList.add("hidden");
+  }
+};
 
-    async function aiCoachFeedback(activity) {
-      if (!generator) return ruleFeedback(activity);
-      const prompt = `I just did the activity: ${activity}. As a motivational life coach, give me up to 4 short positive sentences encouraging me. Mention "${activity}" clearly at least once.`;
-      try {
-        const output = await generator(prompt, {
-          max_new_tokens: 100,
-          temperature: 0.8,
-          do_sample: true
-        });
-        let text = output[0].generated_text;
-        if (text.startsWith(prompt)) {
-          text = text.slice(prompt.length).trim();
-        }
-        if (!text.toLowerCase().includes(activity.toLowerCase())) {
-          text = ruleFeedback(activity);
-        }
-        return text || ruleFeedback(activity);
-      } catch {
-        return `⚠️ AI Coach unavailable. ${ruleFeedback(activity)}`;
-      }
-    }
-
-    function renderActivities() {
-      activitySelect.innerHTML = "";
-      activities.forEach(a => {
-        const opt = document.createElement("option");
-        opt.textContent = a;
-        activitySelect.appendChild(opt);
-      });
-      renderActivityManager();
-    }
-
-    function renderLogs() {
-      logDiv.innerHTML = "";
-      logs.forEach((e,i) => {
-        const row = document.createElement("div");
-        row.className = "flex flex-col bg-gray-700 p-3 rounded space-y-2 shadow";
-        let borderColor = "border-green-400";
-        let titleColor = "text-green-400";
-        if (e.feedback.startsWith("⚠️")) {
-          borderColor = "border-red-400";
-          titleColor = "text-red-400";
-        } else if (e.status === "thinking") {
-          borderColor = "border-yellow-400 animate-pulse";
-          titleColor = "text-yellow-400";
-        }
-        row.innerHTML = `
-          <div class="flex justify-between items-center">
-            <span>📝 ${e.time} → <b>${e.activity}</b></span>
-            <button class="delete-log bg-red-500 px-2 rounded text-xs" data-index="${i}">✕</button>
-          </div>
-          <div class="bg-gray-800 p-2 rounded border-l-4 ${borderColor}">
-            <p class="font-semibold mb-1 ${titleColor}">🤖 AI Coach says:</p>
-            <p class="text-sm text-gray-200 leading-snug">${e.feedback}</p>
-          </div>
-        `;
-        logDiv.appendChild(row);
-      });
-      document.querySelectorAll(".delete-log").forEach(btn=>{
-        btn.addEventListener("click", e=>{
-          const idx = e.target.getAttribute("data-index");
-          logs.splice(idx,1);
-          localStorage.setItem("activityLogs",JSON.stringify(logs));
-          renderLogs();
-        });
-      });
-    }
-
-    function renderActivityManager() {
-      activityListUI.innerHTML = "";
-      activities.forEach((a,i)=>{
-        const li = document.createElement("li");
-        li.className = "flex justify-between bg-gray-700 p-2 rounded";
-        li.innerHTML = `
-          <span>${a}</span>
-          <button class="delete-activity bg-red-500 px-2 rounded text-xs" data-index="${i}">✕</button>
-        `;
-        activityListUI.appendChild(li);
-      });
-      document.querySelectorAll(".delete-activity").forEach(btn=>{
-        btn.addEventListener("click", e=>{
-          const idx = e.target.getAttribute("data-index");
-          activities.splice(idx,1);
-          localStorage.setItem("activityList",JSON.stringify(activities));
-          renderActivities();
-        });
-      });
-    }
-
-    // 🚀 Log with persistent "thinking" banner
-    logBtn.addEventListener("click", async ()=>{
-      const act = activitySelect.value;
-
-      // Insert yellow thinking entry
-      const entry = {
-        activity: act,
-        time: new Date().toLocaleString(),
-        feedback: "🤖 AI Coach is thinking...",
-        status: "thinking"
-      };
-      logs.push(entry);
-      localStorage.setItem("activityLogs", JSON.stringify(logs));
-      renderLogs();
-
-      const idx = logs.length - 1;
-      const logRow = document.querySelectorAll("#log > div")[idx];
-      const feedbackBox = logRow.querySelector("p.text-sm");
-      const feedbackTitle = logRow.querySelector("p.font-semibold");
-      const feedbackContainer = logRow.querySelector("div.bg-gray-800");
-
-      if (aiToggle.checked && generator) {
-        try {
-          const feedback = await aiCoachFeedback(act);
-          logs[idx].feedback = feedback;
-          logs[idx].status = "done";
-          feedbackTitle.classList.remove("text-yellow-400");
-          feedbackTitle.classList.add("text-green-400");
-          feedbackBox.textContent = feedback;
-          feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-green-400";
-        } catch {
-          logs[idx].feedback = `⚠️ AI Coach unavailable. ${ruleFeedback(act)}`;
-          logs[idx].status = "fail";
-          feedbackTitle.classList.remove("text-yellow-400");
-          feedbackTitle.classList.add("text-red-400");
-          feedbackBox.textContent = logs[idx].feedback;
-          feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-red-400";
-        }
-      } else if (aiToggle.checked && !generator) {
-        logs[idx].feedback = `⚠️ AI Coach unavailable (offline or not loaded). ${ruleFeedback(act)}`;
-        logs[idx].status = "fail";
-        feedbackTitle.classList.remove("text-yellow-400");
-        feedbackTitle.classList.add("text-red-400");
-        feedbackBox.textContent = logs[idx].feedback;
-        feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-red-400";
-      } else {
-        logs[idx].feedback = ruleFeedback(act);
-        logs[idx].status = "done";
-        feedbackTitle.classList.remove("text-yellow-400");
-        feedbackTitle.classList.add("text-green-400");
-        feedbackBox.textContent = logs[idx].feedback;
-        feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-green-400";
-      }
-
-      localStorage.setItem("activityLogs", JSON.stringify(logs));
-      logModal.classList.add("hidden");
-    });
-
-    // UI Buttons
-    fabBtn.addEventListener("click", ()=>logModal.classList.remove("hidden"));
-    closeLogModal.addEventListener("click", ()=>logModal.classList.add("hidden"));
-    clearBtn.addEventListener("click", ()=>{if(confirm("Delete all logs?")){logs=[];localStorage.setItem("activityLogs","[]");renderLogs();}});
-    manageBtn.addEventListener("click", ()=>manageModal.classList.remove("hidden"));
-    closeManageModal.addEventListener("click", ()=>manageModal.classList.add("hidden"));
-    addActivityBtn.addEventListener("click", ()=>{
-      const val = newActivityInput.value.trim();
-      if(val && !activities.includes(val)){
-        activities.push(val);
-        localStorage.setItem("activityList",JSON.stringify(activities));
-        renderActivities();
-        newActivityInput.value="";
-      }
-    });
-
-    aiToggle.addEventListener("change", async ()=>{
-      if (aiToggle.checked && !generator) {
-        if (!navigator.onLine) {
-          alert("⚠️ You are offline. AI Coach cannot be loaded.");
-          aiToggle.checked = false;
-          return;
-        }
-        spinner.classList.remove("hidden");
-        try {
-          const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0");
-          generator = await pipeline("text-generation","Xenova/distilgpt2",{
-            progress_callback: (progress)=>{
-              if(progress && progress.total){
-                const percent = Math.floor((progress.loaded/progress.total)*100);
-                spinnerText.textContent = `Downloading AI Coach… ${percent}%`;
-                progressBar.style.width = percent + "%";
-              }
-            }
-          });
-        } catch(e) {
-          alert("⚠️ Failed to load AI Coach. Falling back to basic encouragement.");
-          aiToggle.checked = false;
-        }
-        spinner.classList.add("hidden");
-      }
-    });
-
-    renderActivities();
-    renderLogs();
-  </script>
+renderActivities(); renderLogs();
+</script>
 </body>
 </html>
