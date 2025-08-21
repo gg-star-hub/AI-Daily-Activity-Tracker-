@@ -5,716 +5,209 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Daily Activity Tracker</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: {
-              500: '#8B5CF6',
-              600: '#7C3AED',
-            },
-            health: '#3B82F6',
-            work: '#10B981',
-            leisure: '#F59E0B',
-            personal: '#EC4899',
-            essentials: '#6366F1'
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    body {
-      font-family: 'Inter', sans-serif;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    
-    .activity-health { border-left: 4px solid #3B82F6; }
-    .activity-work { border-left: 4px solid #10B981; }
-    .activity-leisure { border-left: 4px solid #F59E0B; }
-    .activity-personal { border-left: 4px solid #EC4899; }
-    .activity-essentials { border-left: 4px solid #6366F1; }
-    
-    .light-mode {
-      background-color: #f3f4f6;
-      color: #1f2937;
-    }
-    
-    .light-mode .light-element {
-      background-color: white;
-      color: #1f2937;
-      border: 1px solid #e5e7eb;
-    }
-    
-    .fade-in {
-      animation: fadeIn 0.5s;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    .progress-bar {
-      transition: width 0.5s ease-in-out;
-    }
-  </style>
 </head>
-<body class="bg-gray-900 text-white h-screen flex flex-col transition-colors duration-200">
+<body class="bg-gray-900 text-white h-screen flex flex-col">
 
   <!-- Header -->
-  <header class="bg-gray-800 p-4 text-lg md:text-xl font-bold flex justify-between items-center">
-    <div class="flex items-center">
-      <span class="mr-2">AI Daily Activity Tracker 🚀</span>
-      <button id="themeToggle" class="p-1 rounded-full bg-gray-700">
-        <i class="fas fa-moon"></i>
-      </button>
-    </div>
-    <div class="flex space-x-2">
-      <button id="statsBtn" class="px-3 py-1 text-sm md:text-base bg-blue-500 rounded">
-        <i class="fas fa-chart-pie mr-1"></i>Stats
-      </button>
-      <button id="manageBtn" class="px-3 py-1 text-sm md:text-base bg-purple-600 rounded">
-        <i class="fas fa-cog mr-1"></i>Manage
-      </button>
-    </div>
+  <header class="bg-gray-800 p-4 text-lg md:text-xl font-bold flex justify-between items-center shadow-md">
+    <span>AI Daily Activity Tracker 🚀</span>
+    <button id="manageBtn" class="px-3 py-1 text-sm md:text-base bg-purple-600 rounded shadow hover:bg-purple-500">
+      ⚙️ Manage
+    </button>
   </header>
 
-  <!-- Stats Panel -->
-  <div id="statsPanel" class="hidden light-element bg-gray-800 p-4 border-b border-gray-700">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="font-bold">Today's Activity Summary</h2>
-      <span id="todayDate" class="text-sm text-gray-400"></span>
-    </div>
-    <div class="grid grid-cols-2 gap-4 mb-4">
-      <div class="bg-gray-700 p-3 rounded">
-        <div class="text-sm text-gray-400">Activities Logged</div>
-        <div id="totalActivities" class="text-xl font-bold">0</div>
-      </div>
-      <div class="bg-gray-700 p-3 rounded">
-        <div class="text-sm text-gray-400">Most Active</div>
-        <div id="mostActive" class="text-xl font-bold">-</div>
-      </div>
-    </div>
-    <div class="mb-4">
-      <div class="flex justify-between text-sm mb-1">
-        <span>Activity Distribution</span>
-        <span id="completionText">0% Complete</span>
-      </div>
-      <div class="w-full bg-gray-700 rounded-full h-2">
-        <div id="completionBar" class="progress-bar h-2 rounded-full bg-primary-500" style="width: 0%"></div>
-      </div>
-    </div>
-    <div id="categoryBreakdown" class="space-y-2">
-      <!-- Will be populated by JavaScript -->
-    </div>
-  </div>
-
   <!-- Log Display -->
-  <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2 mb-20"></main>
+  <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2"></main>
 
-  <!-- Bottom Input Bar -->
-  <div class="fixed bottom-0 left-0 right-0 bg-gray-800 p-2 flex space-x-2">
-    <select id="activity" class="flex-1 p-2 rounded bg-gray-700 text-white text-sm md:text-base"></select>
-    <button id="logBtn" class="px-3 md:px-4 py-2 bg-blue-500 rounded text-sm md:text-base">
-      <i class="fas fa-plus mr-1"></i>Log
-    </button>
-  </div>
-
-  <!-- Clear Logs Button (Floating) -->
-  <button id="clearBtn" 
-          class="fixed bottom-20 right-4 bg-red-600 px-3 py-2 rounded-full shadow-lg text-sm md:text-base">
-    <i class="fas fa-trash"></i>
+  <!-- Floating Action Button -->
+  <button id="fabBtn" 
+          class="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-3xl shadow-lg transition">
+    ➕
   </button>
 
-  <!-- Activity Manager Modal -->
-  <div id="activityModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-    <div class="bg-gray-800 p-4 md:p-6 rounded-lg w-full max-w-md">
-      <h2 class="text-base md:text-lg font-bold mb-4">Manage Activities</h2>
-      <ul id="activityList" class="space-y-2 mb-4 max-h-60 overflow-y-auto"></ul>
+  <!-- Clear Logs Button -->
+  <button id="clearBtn" 
+          class="fixed bottom-28 right-6 bg-red-600 px-4 py-2 rounded-lg shadow-lg text-sm md:text-base font-semibold hover:bg-red-500">
+    🗑️ Clear
+  </button>
+
+  <!-- Activity Log Modal -->
+  <div id="logModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
+    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl">
+      <h2 class="text-lg font-bold mb-4">Log Activity</h2>
       <div class="flex space-x-2 mb-4">
-        <select id="activityCategory" class="p-2 rounded bg-gray-700 text-white text-sm md:text-base">
-          <option value="essentials">Essentials</option>
-          <option value="health">Health</option>
-          <option value="work">Work/Study</option>
-          <option value="personal">Personal</option>
-          <option value="leisure">Leisure</option>
-        </select>
-        <input id="newActivity" placeholder="New activity..." 
-               class="flex-1 p-2 rounded bg-gray-700 text-white text-sm md:text-base">
-        <button id="addActivity" class="px-3 py-1 bg-green-600 rounded text-sm md:text-base">
-          <i class="fas fa-plus"></i>
-        </button>
+        <select id="activity" class="flex-1 p-3 rounded bg-gray-700 text-white border border-gray-500 text-base"></select>
+        <button id="logBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold">Log</button>
       </div>
-      <div class="mt-4 text-right">
-        <button id="closeModal" class="px-3 md:px-4 py-2 bg-gray-600 rounded text-sm md:text-base">Close</button>
+      <div class="text-right">
+        <button id="closeLogModal" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Close</button>
       </div>
     </div>
   </div>
 
-  <!-- Edit Activity Modal -->
-  <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-    <div class="bg-gray-800 p-4 md:p-6 rounded-lg w-full max-w-md">
-      <h2 class="text-base md:text-lg font-bold mb-4">Edit Activity</h2>
-      <div class="mb-4">
-        <input id="editActivityName" class="w-full p-2 rounded bg-gray-700 text-white text-sm md:text-base">
+  <!-- Activity Manager Modal -->
+  <div id="activityModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
+    <div class="bg-gray-800 p-4 md:p-6 rounded-lg w-full max-w-md shadow-xl">
+      <h2 class="text-base md:text-lg font-bold mb-4">Manage Activities</h2>
+      <ul id="activityList" class="space-y-2 mb-4"></ul>
+      <div class="flex space-x-2">
+        <input id="newActivity" placeholder="New activity..." 
+               class="flex-1 p-2 rounded bg-gray-700 text-white text-sm md:text-base border border-gray-500">
+        <button id="addActivity" class="px-3 py-1 bg-green-600 rounded hover:bg-green-500 text-sm md:text-base">Add</button>
       </div>
-      <div class="flex space-x-2 mb-4">
-        <select id="editActivityCategory" class="p-2 rounded bg-gray-700 text-white text-sm md:text-base">
-          <option value="essentials">Essentials</option>
-          <option value="health">Health</option>
-          <option value="work">Work/Study</option>
-          <option value="personal">Personal</option>
-          <option value="leisure">Leisure</option>
-        </select>
-      </div>
-      <div class="flex justify-between">
-        <button id="cancelEdit" class="px-3 md:px-4 py-2 bg-gray-600 rounded text-sm md:text-base">Cancel</button>
-        <button id="saveEdit" class="px-3 md:px-4 py-2 bg-green-600 rounded text-sm md:text-base">Save</button>
+      <div class="mt-4 text-right">
+        <button id="closeModal" class="px-3 md:px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 text-sm md:text-base">Close</button>
       </div>
     </div>
   </div>
 
   <script>
-    // Enhanced activities with categories
+    // Default activities
     const defaultActivities = [
-      { name: "Sleeping", category: "essentials" },
-      { name: "Eating", category: "health" },
-      { name: "Drinking", category: "health" },
-      { name: "Personal Hygiene", category: "essentials" },
-      { name: "Working / Studying", category: "work" },
-      { name: "Social Interaction", category: "personal" },
-      { name: "Walking / Moving", category: "health" },
-      { name: "Leisure / Entertainment", category: "leisure" },
-      { name: "Resting / Relaxing", category: "leisure" },
-      { name: "Using Technology / Communication", category: "work" }
+      "Sleeping", "Eating", "Drinking", "Personal Hygiene",
+      "Working / Studying", "Social Interaction", "Walking / Moving",
+      "Leisure / Entertainment", "Resting / Relaxing", "Using Technology / Communication"
     ];
 
-    let activities = JSON.parse(localStorage.getItem("activities")) || defaultActivities;
-    let logs = JSON.parse(localStorage.getItem("activityLogs")) || [];
-    let isLightMode = localStorage.getItem("lightMode") === "true";
-    let editIndex = -1;
+    let activities = JSON.parse(localStorage.getItem("activities") || JSON.stringify(defaultActivities));
+    let logs = JSON.parse(localStorage.getItem("activityLogs") || "[]");
 
-    // DOM Elements
     const activitySelect = document.getElementById("activity");
     const logDiv = document.getElementById("log");
     const logBtn = document.getElementById("logBtn");
+    const fabBtn = document.getElementById("fabBtn");
+    const logModal = document.getElementById("logModal");
+    const closeLogModal = document.getElementById("closeLogModal");
     const clearBtn = document.getElementById("clearBtn");
     const manageBtn = document.getElementById("manageBtn");
-    const statsBtn = document.getElementById("statsBtn");
-    const statsPanel = document.getElementById("statsPanel");
     const modal = document.getElementById("activityModal");
-    const editModal = document.getElementById("editModal");
     const activityList = document.getElementById("activityList");
     const newActivityInput = document.getElementById("newActivity");
-    const activityCategory = document.getElementById("activityCategory");
     const addActivityBtn = document.getElementById("addActivity");
     const closeModal = document.getElementById("closeModal");
-    const themeToggle = document.getElementById("themeToggle");
-    const todayDateEl = document.getElementById("todayDate");
-    const totalActivitiesEl = document.getElementById("totalActivities");
-    const mostActiveEl = document.getElementById("mostActive");
-    const completionBar = document.getElementById("completionBar");
-    const completionText = document.getElementById("completionText");
-    const categoryBreakdown = document.getElementById("categoryBreakdown");
-    const editActivityName = document.getElementById("editActivityName");
-    const editActivityCategory = document.getElementById("editActivityCategory");
-    const cancelEdit = document.getElementById("cancelEdit");
-    const saveEdit = document.getElementById("saveEdit");
 
-    // Set today's date
-    todayDateEl.textContent = new Date().toLocaleDateString('en-US', { 
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    });
-
-    // Apply theme if saved
-    if (isLightMode) {
-      document.body.classList.add('light-mode');
-      themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-    }
-
-    // Enhanced AI Coach feedback rules
-    function coachFeedback(activity, activityCounts) {
-      const feedbackRules = {
-        "Sleeping": {
-          low: "😴 Aim for 7-9 hours of sleep for optimal health.",
-          medium: "😴 Your sleep pattern looks good. Keep it consistent!",
-          high: "😴 You're sleeping quite a lot. Make sure it's quality sleep."
-        },
-        "Eating": {
-          low: "🍎 Regular meals help maintain energy levels. Try to eat at consistent times.",
-          medium: "🍎 Your eating habits seem balanced. Remember to include fruits and vegetables!",
-          high: "🍎 You're eating frequently. Watch for mindless snacking."
-        },
-        "Drinking": {
-          low: "💧 Don't forget to stay hydrated! Water is essential for cognitive function.",
-          medium: "💧 Good job staying hydrated!",
-          high: "💧 You're drinking frequently. Make sure it's mostly water!"
-        },
-        "Personal Hygiene": {
-          low: "🚿 Regular self-care is important for both physical and mental health.",
-          medium: "🚿 Good personal hygiene habits contribute to overall wellbeing!",
-          high: "🚿 You're maintaining excellent personal care routines."
-        },
-        "Working / Studying": {
-          low: "💻 Consistency is key for productivity. Try the Pomodoro technique!",
-          medium: "💻 Good work rhythm! Remember to take short breaks to avoid burnout.",
-          high: "💻 You're putting in a lot of work! Make sure to balance with rest."
-        },
-        "Social Interaction": {
-          low: "🗣️ Social connections are important for mental health. Reach out to someone today!",
-          medium: "🗣️ Healthy social interactions contribute to happiness!",
-          high: "🗣️ You're very socially active! Remember to also value some quiet time."
-        },
-        "Walking / Moving": {
-          low: "🚶 Movement is crucial for physical health. Try to take short active breaks!",
-          medium: "🚶 Good job staying active! Regular movement boosts energy and mood.",
-          high: "🚶 You're very active! This is great for both physical and mental health."
-        },
-        "Leisure / Entertainment": {
-          low: "🎮 Everyone needs downtime. Schedule some leisure activities!",
-          medium: "🎮 Good balance between productivity and relaxation!",
-          high: "🎮 You're enjoying plenty of leisure time. Make sure it's truly rejuvenating."
-        },
-        "Resting / Relaxing": {
-          low: "🛋️ Remember to schedule downtime. Rest is productive too!",
-          medium: "🛋️ Good job prioritizing rest and recovery!",
-          high: "🛋️ You're resting frequently. Make sure it's quality relaxation."
-        },
-        "Using Technology / Communication": {
-          low: "📱 Technology is a tool - use it intentionally rather than reactively.",
-          medium: "📱 You're maintaining a healthy relationship with technology!",
-          high: "📱 You're spending significant time with technology. Consider a digital detox."
-        }
+    // AI Coach feedback rules
+    function coachFeedback(activity) {
+      const feedback = {
+        "Sleeping": "😴 Good rest boosts energy and memory.",
+        "Eating": "🍎 Fuel your body well — balance is key.",
+        "Drinking": "💧 Hydration keeps you sharp and healthy.",
+        "Personal Hygiene": "🚿 Clean habits, clean mind!",
+        "Working / Studying": "💻 Great progress — consistency builds mastery.",
+        "Social Interaction": "🗣️ Connection strengthens your wellbeing.",
+        "Walking / Moving": "🚶 Movement keeps body & mind active.",
+        "Leisure / Entertainment": "🎮 Balance fun and focus.",
+        "Resting / Relaxing": "🛋️ Recharge to prevent burnout.",
+        "Using Technology / Communication": "📱 Stay connected, but avoid overload."
       };
-
-      // Default feedback for custom activities
-      if (!feedbackRules[activity]) {
-        const customFeedback = [
-          "✨ Maintaining good habits leads to long-term benefits!",
-          "✨ Consistency is key. Keep tracking your activities!",
-          "✨ Awareness of how you spend your time is the first step to improvement!",
-          "✨ Every activity contributes to your overall wellbeing!",
-          "✨ Balance is important - make time for different types of activities!"
-        ];
-        return customFeedback[Math.floor(Math.random() * customFeedback.length)];
-      }
-
-      const count = activityCounts[activity] || 0;
-      let level = "medium";
-      
-      if (count <= 1) level = "low";
-      if (count >= 4) level = "high";
-      
-      return feedbackRules[activity][level];
+      return feedback[activity] || "✨ Keep going!";
     }
 
-    // Get activity counts for today
-    function getTodaysActivityCounts() {
-      const today = new Date().toDateString();
-      const todaysLogs = logs.filter(log => new Date(log.time).toDateString() === today);
-      const counts = {};
-      
-      todaysLogs.forEach(log => {
-        counts[log.activity] = (counts[log.activity] || 0) + 1;
-      });
-      
-      return counts;
-    }
-
-    // Get activity category
-    function getActivityCategory(activityName) {
-      const activity = activities.find(a => a.name === activityName);
-      return activity ? activity.category : "essentials";
-    }
-
-    // Get category name
-    function getCategoryName(category) {
-      const names = {
-        "essentials": "Essentials",
-        "health": "Health",
-        "work": "Work/Study",
-        "personal": "Personal",
-        "leisure": "Leisure"
-      };
-      return names[category] || "Other";
-    }
-
-    // Get category color class
-    function getCategoryColorClass(category) {
-      return `activity-${category}`;
-    }
-
-    // Get category color value
-    function getCategoryColor(category) {
-      const colors = {
-        "essentials": "#6366F1",
-        "health": "#3B82F6",
-        "work": "#10B981",
-        "personal": "#EC4899",
-        "leisure": "#F59E0B"
-      };
-      return colors[category] || "#8B5CF6";
-    }
-
-    // Rendering functions
+    // Rendering
     function renderActivities() {
       activitySelect.innerHTML = "";
       activities.forEach(a => {
         const opt = document.createElement("option");
-        opt.textContent = a.name;
-        opt.value = a.name;
+        opt.textContent = a;
         activitySelect.appendChild(opt);
       });
     }
 
     function renderLogs() {
       logDiv.innerHTML = "";
-      
-      if (logs.length === 0) {
-        logDiv.innerHTML = `
-          <div class="flex flex-col items-center justify-center h-full text-gray-500 py-12">
-            <i class="fas fa-clipboard-list text-4xl mb-4"></i>
-            <p class="text-center">No activities logged yet</p>
-            <p class="text-center text-sm mt-2">Start logging your activities to see them here</p>
+      logs.forEach((e, i) => {
+        const row = document.createElement("div");
+        row.className = "flex flex-col bg-gray-700 p-2 rounded space-y-1 shadow";
+        row.innerHTML = `
+          <div class="flex justify-between flex-wrap gap-2">
+            <span class="text-sm md:text-base">${e.time} → <b>${e.activity}</b></span>
+            <button class="bg-red-500 px-2 rounded text-xs md:text-sm hover:bg-red-400" onclick="deleteLog(${i})">✕</button>
           </div>
+          <div class="text-xs md:text-sm text-green-400">🤖 Coach: ${e.feedback}</div>
         `;
-        return;
-      }
-      
-      // Group logs by date
-      const logsByDate = {};
-      logs.forEach(log => {
-        const date = new Date(log.time).toDateString();
-        if (!logsByDate[date]) logsByDate[date] = [];
-        logsByDate[date].push(log);
+        logDiv.appendChild(row);
       });
-      
-      // Display logs grouped by date, newest first
-      const dates = Object.keys(logsByDate).sort((a, b) => new Date(b) - new Date(a));
-      
-      dates.forEach(date => {
-        const dateHeader = document.createElement("div");
-        dateHeader.className = "text-sm font-bold text-gray-400 mt-4 mb-2 sticky top-0 bg-gray-900 py-1";
-        dateHeader.textContent = new Date(date).toLocaleDateString('en-US', { 
-          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-        });
-        logDiv.appendChild(dateHeader);
-        
-        logsByDate[date].forEach((e, i) => {
-          const originalIndex = logs.findIndex(log => log.time === e.time && log.activity === e.activity);
-          const category = getActivityCategory(e.activity);
-          const row = document.createElement("div");
-          row.className = `flex flex-col bg-gray-800 p-3 rounded space-y-1 fade-in ${getCategoryColorClass(category)}`;
-          row.innerHTML = `
-            <div class="flex justify-between flex-wrap gap-2">
-              <div class="flex items-center">
-                <span class="text-xs px-2 py-1 rounded mr-2" style="background-color: ${getCategoryColor(category)}22; color: ${getCategoryColor(category)}">
-                  ${getCategoryName(category)}
-                </span>
-                <span class="text-sm md:text-base">${new Date(e.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} → <b>${e.activity}</b></span>
-              </div>
-              <button class="bg-red-500 px-2 rounded text-xs md:text-sm delete-log" data-index="${originalIndex}">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            <div class="text-xs md:text-sm text-green-400 mt-1">🤖 Coach: ${e.feedback}</div>
-          `;
-          logDiv.appendChild(row);
-        });
-      });
-      
-      logDiv.scrollTop = logDiv.scrollHeight;
+      logDiv.scrollTop = logDiv.scrollHeight; // auto-scroll
     }
 
     function renderActivityManager() {
       activityList.innerHTML = "";
-      
-      if (activities.length === 0) {
-        activityList.innerHTML = '<li class="text-center text-gray-500 py-4">No activities yet</li>';
-        return;
-      }
-      
       activities.forEach((a, i) => {
         const li = document.createElement("li");
-        li.className = "flex justify-between items-center bg-gray-700 p-2 rounded text-sm md:text-base";
+        li.className = "flex justify-between bg-gray-700 p-2 rounded text-sm md:text-base shadow";
         li.innerHTML = `
-          <div class="flex items-center">
-            <span class="text-xs px-2 py-1 rounded mr-2" style="background-color: ${getCategoryColor(a.category)}22; color: ${getCategoryColor(a.category)}">
-              ${getCategoryName(a.category)}
-            </span>
-            <span>${a.name}</span>
-          </div>
-          <div class="flex space-x-2">
-            <button class="bg-blue-500 px-2 rounded text-xs md:text-sm edit-activity" data-index="${i}">
-              <i class="fas fa-edit"></i>
-            </button>
-            <button class="bg-red-500 px-2 rounded text-xs md:text-sm delete-activity" data-index="${i}">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
+          <span>${a}</span>
+          <button class="bg-red-500 px-2 rounded text-xs md:text-sm hover:bg-red-400" onclick="deleteActivity(${i})">✕</button>
         `;
         activityList.appendChild(li);
       });
     }
 
-    function updateStatistics() {
-      const today = new Date().toDateString();
-      const todaysLogs = logs.filter(log => new Date(log.time).toDateString() === today);
-      
-      // Update basic stats
-      totalActivitiesEl.textContent = todaysLogs.length;
-      
-      // Find most frequent activity today
-      if (todaysLogs.length > 0) {
-        const activityCounts = {};
-        todaysLogs.forEach(log => {
-          activityCounts[log.activity] = (activityCounts[log.activity] || 0) + 1;
-        });
-        
-        const mostFrequent = Object.keys(activityCounts).reduce((a, b) => 
-          activityCounts[a] > activityCounts[b] ? a : b
-        );
-        mostActiveEl.textContent = mostFrequent;
-      } else {
-        mostActiveEl.textContent = "-";
-      }
-      
-      // Update completion (based on number of activities vs expected)
-      const completionPercentage = Math.min(100, Math.round((todaysLogs.length / 12) * 100));
-      completionBar.style.width = `${completionPercentage}%`;
-      completionText.textContent = `${completionPercentage}% Complete`;
-      
-      // Update category breakdown
-      const categoryCounts = {
-        essentials: 0,
-        health: 0,
-        work: 0,
-        personal: 0,
-        leisure: 0
-      };
-      
-      todaysLogs.forEach(log => {
-        const category = getActivityCategory(log.activity);
-        if (categoryCounts.hasOwnProperty(category)) {
-          categoryCounts[category]++;
-        }
-      });
-      
-      let breakdownHTML = '';
-      for (const category in categoryCounts) {
-        const count = categoryCounts[category];
-        if (count > 0) {
-          const percentage = Math.round((count / todaysLogs.length) * 100);
-          breakdownHTML += `
-            <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <span class="w-3 h-3 rounded-full mr-2" style="background-color: ${getCategoryColor(category)}"></span>
-                <span>${getCategoryName(category)}</span>
-              </div>
-              <div class="text-sm">
-                ${count} (${percentage}%)
-              </div>
-            </div>
-            <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
-              <div class="h-2 rounded-full" style="width: ${percentage}%; background-color: ${getCategoryColor(category)}"></div>
-            </div>
-          `;
-        }
-      }
-      
-      categoryBreakdown.innerHTML = breakdownHTML || '<p class="text-gray-500 text-center py-2">No activities today</p>';
-    }
-
-    // Save functions
+    // Save
     function saveActivities() {
       localStorage.setItem("activities", JSON.stringify(activities));
       renderActivities();
     }
-
     function saveLogs() {
       localStorage.setItem("activityLogs", JSON.stringify(logs));
     }
 
-    function toggleTheme() {
-      isLightMode = !isLightMode;
-      localStorage.setItem("lightMode", isLightMode);
-      
-      if (isLightMode) {
-        document.body.classList.add('light-mode');
-        themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-      } else {
-        document.body.classList.remove('light-mode');
-        themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-      }
-      
-      renderLogs();
-    }
-
-    // Event listeners
-    logBtn.addEventListener('click', () => {
+    // Actions
+    logBtn.onclick = () => {
       const act = activitySelect.value;
-      if (!act) return;
-      
-      const activityCounts = getTodaysActivityCounts();
       const entry = { 
         activity: act, 
-        time: new Date().toISOString(),
-        feedback: coachFeedback(act, activityCounts)
+        time: new Date().toLocaleString(),
+        feedback: coachFeedback(act)
       };
-      
       logs.push(entry);
       saveLogs();
       renderLogs();
-      updateStatistics();
-      
-      // Visual feedback for logging
-      logBtn.innerHTML = '<i class="fas fa-check mr-1"></i>Logged!';
-      logBtn.classList.add('bg-green-500');
-      setTimeout(() => {
-        logBtn.innerHTML = '<i class="fas fa-plus mr-1"></i>Log';
-        logBtn.classList.remove('bg-green-500');
-      }, 1500);
-    });
+      logModal.classList.add("hidden");
+    };
 
-    clearBtn.addEventListener('click', () => {
-      if (logs.length === 0) {
-        alert("No logs to clear!");
-        return;
-      }
-      
-      if (confirm("Are you sure you want to delete all logs? This cannot be undone.")) {
+    clearBtn.onclick = () => {
+      if (confirm("Delete all logs?")) {
         logs = [];
         saveLogs();
         renderLogs();
-        updateStatistics();
       }
-    });
+    };
 
-    manageBtn.addEventListener('click', () => {
-      modal.classList.remove('hidden');
+    fabBtn.onclick = () => logModal.classList.remove("hidden");
+    closeLogModal.onclick = () => logModal.classList.add("hidden");
+
+    manageBtn.onclick = () => {
+      modal.classList.remove("hidden");
       renderActivityManager();
-    });
+    };
+    closeModal.onclick = () => modal.classList.add("hidden");
 
-    statsBtn.addEventListener('click', () => {
-      statsPanel.classList.toggle('hidden');
-      if (!statsPanel.classList.contains('hidden')) {
-        updateStatistics();
-      }
-    });
-
-    closeModal.addEventListener('click', () => {
-      modal.classList.add('hidden');
-    });
-
-    addActivityBtn.addEventListener('click', () => {
+    addActivityBtn.onclick = () => {
       const val = newActivityInput.value.trim();
-      if (!val) return;
-      
-      // Check for duplicates
-      if (activities.some(a => a.name.toLowerCase() === val.toLowerCase())) {
-        alert("This activity already exists!");
-        return;
+      if (val && !activities.includes(val)) {
+        activities.push(val);
+        saveActivities();
+        renderActivityManager();
+        newActivityInput.value = "";
       }
-      
-      activities.push({
-        name: val,
-        category: activityCategory.value
-      });
-      
+    };
+
+    window.deleteLog = (i) => {
+      logs.splice(i, 1);
+      saveLogs();
+      renderLogs();
+    };
+
+    window.deleteActivity = (i) => {
+      activities.splice(i, 1);
       saveActivities();
       renderActivityManager();
-      newActivityInput.value = "";
-      newActivityInput.focus();
-    });
+    };
 
-    themeToggle.addEventListener('click', toggleTheme);
-
-    // Event delegation for dynamic elements
-    document.addEventListener('click', function(e) {
-      // Delete log button
-      if (e.target.classList.contains('delete-log') || e.target.parentElement.classList.contains('delete-log')) {
-        const button = e.target.classList.contains('delete-log') ? e.target : e.target.parentElement;
-        const index = parseInt(button.getAttribute('data-index'));
-        
-        if (confirm("Delete this activity log?")) {
-          logs.splice(index, 1);
-          saveLogs();
-          renderLogs();
-          updateStatistics();
-        }
-      }
-      
-      // Delete activity button
-      if (e.target.classList.contains('delete-activity') || e.target.parentElement.classList.contains('delete-activity')) {
-        const button = e.target.classList.contains('delete-activity') ? e.target : e.target.parentElement;
-        const index = parseInt(button.getAttribute('data-index'));
-        
-        if (confirm("Delete this activity? This will not affect existing logs.")) {
-          activities.splice(index, 1);
-          saveActivities();
-          renderActivityManager();
-        }
-      }
-      
-      // Edit activity button
-      if (e.target.classList.contains('edit-activity') || e.target.parentElement.classList.contains('edit-activity')) {
-        const button = e.target.classList.contains('edit-activity') ? e.target : e.target.parentElement;
-        editIndex = parseInt(button.getAttribute('data-index'));
-        const activity = activities[editIndex];
-        
-        editActivityName.value = activity.name;
-        editActivityCategory.value = activity.category;
-        editModal.classList.remove('hidden');
-      }
-    });
-
-    // Edit modal handlers
-    cancelEdit.addEventListener('click', () => {
-      editModal.classList.add('hidden');
-      editIndex = -1;
-    });
-
-    saveEdit.addEventListener('click', () => {
-      const newName = editActivityName.value.trim();
-      if (!newName) return;
-      
-      // Check for duplicates (excluding current activity)
-      if (activities.some((a, i) => i !== editIndex && a.name.toLowerCase() === newName.toLowerCase())) {
-        alert("This activity already exists!");
-        return;
-      }
-      
-      activities[editIndex] = {
-        name: newName,
-        category: editActivityCategory.value
-      };
-      
-      saveActivities();
-      renderActivityManager();
-      editModal.classList.add('hidden');
-      editIndex = -1;
-    });
-
-    // Close modals when clicking outside
-    window.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.add('hidden');
-      }
-      if (e.target === editModal) {
-        editModal.classList.add('hidden');
-        editIndex = -1;
-      }
-    });
-
-    // Initialize
+    // Init
     renderActivities();
     renderLogs();
-    updateStatistics();
   </script>
 </body>
 </html>
