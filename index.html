@@ -35,6 +35,7 @@
   <!-- Floating Buttons -->
   <button id="fabBtn" class="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-3xl shadow-lg">➕</button>
   <button id="clearBtn" class="fixed bottom-28 right-6 bg-red-600 px-4 py-2 rounded-lg shadow-lg text-sm font-semibold hover:bg-red-500">🗑️ Clear</button>
+  <button id="manageBtn" class="fixed bottom-48 right-6 bg-green-600 px-4 py-2 rounded-lg shadow-lg text-sm font-semibold hover:bg-green-500">⚙️ Manage</button>
 
   <!-- Log Modal -->
   <div id="logModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
@@ -50,6 +51,21 @@
     </div>
   </div>
 
+  <!-- Manage Activities Modal -->
+  <div id="manageModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
+    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl">
+      <h2 class="text-lg font-bold mb-4">Manage Activities</h2>
+      <div class="flex space-x-2 mb-4">
+        <input id="newActivity" type="text" placeholder="New activity..." class="flex-1 p-2 rounded bg-gray-700 border border-gray-500 text-white">
+        <button id="addActivityBtn" class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded">Add</button>
+      </div>
+      <ul id="activityList" class="space-y-2"></ul>
+      <div class="text-right mt-4">
+        <button id="closeManageModal" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     let generator = null;
     const spinner = document.getElementById("spinner");
@@ -57,8 +73,8 @@
     const progressBar = document.getElementById("progressBar");
     const aiToggle = document.getElementById("aiToggle");
 
-    // Default activities
-    const activities = [
+    // Activities (load from storage or default)
+    let activities = JSON.parse(localStorage.getItem("activityList")) || [
       "Sleeping","Eating","Drinking","Personal Hygiene","Working / Studying",
       "Social Interaction","Walking / Moving","Leisure / Entertainment","Resting / Relaxing","Using Technology"
     ];
@@ -71,8 +87,14 @@
     const logModal = document.getElementById("logModal");
     const closeLogModal = document.getElementById("closeLogModal");
     const clearBtn = document.getElementById("clearBtn");
+    const manageBtn = document.getElementById("manageBtn");
+    const manageModal = document.getElementById("manageModal");
+    const closeManageModal = document.getElementById("closeManageModal");
+    const addActivityBtn = document.getElementById("addActivityBtn");
+    const newActivityInput = document.getElementById("newActivity");
+    const activityListUI = document.getElementById("activityList");
 
-    // Hardcoded backup feedback (now activity-aware)
+    // Hardcoded backup feedback
     function ruleFeedback(activity) {
       const templates = [
         `🔥 Great job staying consistent with ${activity}!`,
@@ -86,10 +108,10 @@
 
     async function aiCoachFeedback(activity) {
       if (!generator) return ruleFeedback(activity);
-      const prompt = `I just did the activity: ${activity}. As a motivational life coach, give me 1-2 short, positive sentences directly encouraging me about this activity. Mention "${activity}" clearly.`;
+      const prompt = `I just did the activity: ${activity}. As a motivational life coach, give me 1 short, positive sentence encouraging me about this activity. Mention "${activity}" clearly.`;
       try {
         const output = await generator(prompt, {
-          max_new_tokens: 50,
+          max_new_tokens: 40,
           temperature: 0.8,
           do_sample: true
         });
@@ -97,7 +119,6 @@
         if (text.startsWith(prompt)) {
           text = text.slice(prompt.length).trim();
         }
-        // Ensure activity is mentioned
         if (!text.toLowerCase().includes(activity.toLowerCase())) {
           text = ruleFeedback(activity);
         }
@@ -114,7 +135,9 @@
         opt.textContent = a;
         activitySelect.appendChild(opt);
       });
+      renderActivityManager();
     }
+
     function renderLogs() {
       logDiv.innerHTML = "";
       logs.forEach((e,i) => {
@@ -139,6 +162,27 @@
       });
     }
 
+    function renderActivityManager() {
+      activityListUI.innerHTML = "";
+      activities.forEach((a,i)=>{
+        const li = document.createElement("li");
+        li.className = "flex justify-between bg-gray-700 p-2 rounded";
+        li.innerHTML = `
+          <span>${a}</span>
+          <button class="delete-activity bg-red-500 px-2 rounded text-xs" data-index="${i}">✕</button>
+        `;
+        activityListUI.appendChild(li);
+      });
+      document.querySelectorAll(".delete-activity").forEach(btn=>{
+        btn.addEventListener("click", e=>{
+          const idx = e.target.getAttribute("data-index");
+          activities.splice(idx,1);
+          localStorage.setItem("activityList",JSON.stringify(activities));
+          renderActivities();
+        });
+      });
+    }
+
     logBtn.addEventListener("click", async ()=>{
       const act = activitySelect.value;
       const feedback = aiToggle.checked ? await aiCoachFeedback(act) : ruleFeedback(act);
@@ -148,9 +192,21 @@
       renderLogs();
       logModal.classList.add("hidden");
     });
+
     fabBtn.addEventListener("click", ()=>logModal.classList.remove("hidden"));
     closeLogModal.addEventListener("click", ()=>logModal.classList.add("hidden"));
     clearBtn.addEventListener("click", ()=>{if(confirm("Delete all logs?")){logs=[];localStorage.setItem("activityLogs","[]");renderLogs();}});
+    manageBtn.addEventListener("click", ()=>manageModal.classList.remove("hidden"));
+    closeManageModal.addEventListener("click", ()=>manageModal.classList.add("hidden"));
+    addActivityBtn.addEventListener("click", ()=>{
+      const val = newActivityInput.value.trim();
+      if(val && !activities.includes(val)){
+        activities.push(val);
+        localStorage.setItem("activityList",JSON.stringify(activities));
+        renderActivities();
+        newActivityInput.value="";
+      }
+    });
 
     aiToggle.addEventListener("change", async ()=>{
       if (aiToggle.checked && !generator) {
