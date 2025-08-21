@@ -5,14 +5,34 @@
   <title>AI Daily Activity Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js for pie chart (graceful fallback if unavailable) -->
+  <!-- Chart.js (pie). App falls back to a table if CDN fails. -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <style>
+    /* Prevent layout shift on mobile address bar show/hide */
+    html, body { height: 100%; }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
   <!-- Header -->
   <header class="bg-gray-800 p-4 text-center text-xl font-bold">
     AI Daily Activity Tracker
   </header>
+
+  <!-- Toolbar: search/filter/sort -->
+  <section class="px-4 pt-3">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <input id="searchInput" class="w-full p-2 rounded text-black" placeholder="Search feedback or activity…" aria-label="Search logs" />
+      <select id="filterActivity" class="w-full p-2 rounded text-black" aria-label="Filter by activity">
+        <option value="">All activities</option>
+      </select>
+      <select id="sortSelect" class="w-full p-2 rounded text-black" aria-label="Sort logs">
+        <option value="timeDesc">Newest first</option>
+        <option value="timeAsc">Oldest first</option>
+        <option value="activityAsc">Activity A→Z</option>
+        <option value="activityDesc">Activity Z→A</option>
+      </select>
+    </div>
+  </section>
 
   <!-- Logs -->
   <main class="flex-1 p-4 overflow-y-auto">
@@ -36,10 +56,18 @@
     <button id="manageBtn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-full shadow" aria-label="Manage activities">⚙️</button>
   </div>
 
-  <!-- Floating buttons (left) – exports -->
+  <!-- Floating buttons (left) – exports & cache -->
   <div class="fixed bottom-4 left-4 space-y-2">
-    <button id="exportJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as JSON">Export JSON</button>
-    <button id="exportCsvBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as CSV">Export CSV</button>
+    <div class="flex gap-2">
+      <button id="exportJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as JSON">Export JSON</button>
+      <button id="exportCsvBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as CSV">Export CSV</button>
+      <button id="importJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Import logs from JSON">Import</button>
+      <input id="importFile" type="file" accept="application/json" class="hidden" />
+    </div>
+    <div class="flex gap-2">
+      <button id="retryLoadBtn" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded shadow text-xs" aria-label="Retry AI model load">Retry AI Load</button>
+      <button id="clearAICacheBtn" class="bg-amber-700 hover:bg-amber-600 px-3 py-2 rounded shadow text-xs" aria-label="Clear AI cache">Clear AI cache</button>
+    </div>
   </div>
 
   <!-- Log Modal -->
@@ -99,7 +127,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.32</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.33</footer>
 
   <script type="module">
     // Elements
@@ -130,6 +158,13 @@
     const chartFallback = document.getElementById('chartFallback');
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     const exportCsvBtn  = document.getElementById('exportCsvBtn');
+    const importJsonBtn = document.getElementById('importJsonBtn');
+    const importFile    = document.getElementById('importFile');
+    const retryLoadBtn  = document.getElementById('retryLoadBtn');
+    const clearAICacheBtn = document.getElementById('clearAICacheBtn');
+    const searchInput   = document.getElementById('searchInput');
+    const filterActivity = document.getElementById('filterActivity');
+    const sortSelect    = document.getElementById('sortSelect');
 
     // Data
     const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
@@ -142,8 +177,8 @@
     let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
     let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 1500000;        // 25 minutes (kept long by request)
-    const BASE_GEN_TIMEOUT = 15000;    // base 15s generation
+    const TIMEOUT_MS = 1500000;        // 25 minutes
+    const BASE_GEN_TIMEOUT = 15000;    // 15s base
     let logBusy = false;
 
     // Model config
@@ -208,11 +243,11 @@
       return m[a] || 'Great job — keep the momentum going!';
     }
 
-    // Activity chart
+    // Activity counts / chart
     let activityChart = null;
-    function getActivityCounts() {
+    function getActivityCounts(list = logs) {
       const counts = {};
-      for (const l of logs) counts[l.activity] = (counts[l.activity] || 0) + 1;
+      for (const l of list) counts[l.activity] = (counts[l.activity] || 0) + 1;
       return counts;
     }
     function renderCountsTable(counts) {
@@ -227,8 +262,9 @@
           <table class="text-sm w-full"><tbody>${rows}</tbody></table>
         </div>`;
     }
-    function updateChart() {
-      const counts = getActivityCounts();
+    function updateChart(filtered = null) {
+      const list = filtered || logs;
+      const counts = getActivityCounts(list);
       const labels = Object.keys(counts);
       const data = Object.values(counts);
 
@@ -237,7 +273,6 @@
       chartEmpty.classList.toggle('hidden', !isEmpty);
       if (isEmpty) return;
 
-      // If Chart.js missing -> fallback table
       if (!window.Chart) {
         chartCanvas.parentElement.classList.add('hidden');
         chartFallback.classList.remove('hidden');
@@ -257,27 +292,41 @@
       }
       activityChart = new Chart(ctx, {
         type: 'doughnut',
-        data: {
-          labels,
-          datasets: [{
-            data,
-            // let Chart.js pick theme-friendly defaults; border off for a clean look
-            borderWidth: 0
-          }]
-        },
+        data: { labels, datasets: [{ data, borderWidth: 0 }] },
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom', labels: { color: '#e5e7eb' } },
-            title: { display: false }
-          }
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#e5e7eb' } } }
         }
       });
     }
 
+    // Filtering / Sorting
+    function applyFilterAndSort() {
+      const q = searchInput.value.trim().toLowerCase();
+      const fa = filterActivity.value;
+      const sort = sortSelect.value;
+
+      let view = logs.slice();
+      if (fa) view = view.filter(l => l.activity === fa);
+      if (q) view = view.filter(l =>
+        l.activity.toLowerCase().includes(q) || (l.feedback||'').toLowerCase().includes(q)
+      );
+
+      view.sort((a,b) => {
+        if (sort === 'timeAsc') return new Date(a.time) - new Date(b.time);
+        if (sort === 'timeDesc') return new Date(b.time) - new Date(a.time);
+        if (sort === 'activityAsc') return a.activity.localeCompare(b.activity);
+        if (sort === 'activityDesc') return b.activity.localeCompare(a.activity);
+        return 0;
+      });
+
+      renderLogs(view);
+      updateChart(view);
+    }
+
     // Renders
     function renderActivities() {
+      // Activity select (modal)
       const current = activitySelect.value;
       activitySelect.innerHTML = '<option value="" disabled>Select activity</option>';
       activities.forEach(a => {
@@ -288,6 +337,15 @@
       if (current && activities.includes(current)) activitySelect.value = current;
       else activitySelect.selectedIndex = 0;
 
+      // Filter dropdown
+      filterActivity.innerHTML = '<option value="">All activities</option>';
+      activities.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a; opt.textContent = a;
+        filterActivity.appendChild(opt);
+      });
+
+      // Manage list
       activityList.innerHTML = '';
       activities.forEach((a,i) => {
         const li = document.createElement('li');
@@ -308,9 +366,9 @@
       });
     }
 
-    function renderLogs() {
+    function renderLogs(list = logs) {
       logDiv.innerHTML = '';
-      logs.forEach(l => {
+      list.forEach((l, idx) => {
         const isThinking = l.status === 'thinking';
         const isFail = l.status === 'fail';
         const border = isThinking ? 'border-yellow-400' : isFail ? 'border-red-400' : 'border-green-400';
@@ -318,13 +376,42 @@
         const card = document.createElement('div');
         card.className = `bg-gray-800 p-3 rounded border-l-4 ${border}`;
         card.innerHTML = `
-          <div class="flex justify-between items-center">
-            <div class="font-semibold">${sanitize(l.activity)}</div>
-            <div class="text-xs text-gray-400">${l.time}</div>
+          <div class="flex justify-between gap-3">
+            <div>
+              <div class="font-semibold">${sanitize(l.activity)}</div>
+              <div class="text-xs text-gray-400">${l.time}</div>
+              <div class="text-[11px] text-yellow-400 mt-0.5">AI Model: ${sanitize(l.model || 'N/A')}</div>
+            </div>
+            <div class="flex items-start gap-2">
+              <button class="text-gray-300 hover:text-white" title="Copy feedback" aria-label="Copy feedback">📋</button>
+              <button class="text-gray-300 hover:text-white" title="Share" aria-label="Share log">📤</button>
+              <button class="text-red-400 hover:text-red-300" title="Delete log" aria-label="Delete log">🗑️</button>
+            </div>
           </div>
-          <div class="text-[11px] text-yellow-400 mt-0.5">AI Model: ${sanitize(l.model || 'N/A')}</div>
-          <div class="${titleC} mt-1">${sanitize(l.feedback || '')}</div>
+          <div class="${titleC} mt-2">${sanitize(l.feedback || '')}</div>
         `;
+        const [copyBtn, shareBtn, delBtn] = card.querySelectorAll('button');
+
+        copyBtn.onclick = async () => {
+          try { await navigator.clipboard.writeText(l.feedback || ''); alert('Copied to clipboard.'); }
+          catch { alert('Could not copy.'); }
+        };
+        shareBtn.onclick = async () => {
+          const text = `Activity: ${l.activity}\nTime: ${l.time}\nFeedback: ${l.feedback || ''}`;
+          if (navigator.share) {
+            try { await navigator.share({ title: 'My Activity Log', text }); } catch {}
+          } else {
+            try { await navigator.clipboard.writeText(text); alert('Copied (no native share on this device).'); }
+            catch { alert('Could not share or copy.'); }
+          }
+        };
+        delBtn.onclick = () => {
+          if (!confirm('Delete this log?')) return;
+          const ix = logs.indexOf(l);
+          if (ix >= 0) logs.splice(ix, 1);
+          safeSave(STORAGE_KEYS.LOGS, logs);
+          applyFilterAndSort();
+        };
         logDiv.appendChild(card);
       });
     }
@@ -358,12 +445,16 @@
     }
     let untrap = () => {};
 
-    // Load AI model (retries + backoff + device fallback)
+    // Load AI model (multi-attempt + device fallback)
+    async function importTransformers() {
+      // Primary (jsDelivr). Keep it simple/reliable; show clear error if it fails.
+      return await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
+    }
     async function loadModel() {
       if (!navigator.onLine) { alert('⚠️ Offline. AI Coach needs internet.'); aiToggle.checked = false; return null; }
       if (!window.WebAssembly) { alert('⚠️ Browser lacks WebAssembly. Use Chrome/Firefox/Edge.'); aiToggle.checked = false; return null; }
 
-      const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
+      const { pipeline } = await importTransformers();
       const attempts = [0, 2000, 5000]; // backoff (ms)
 
       for (let i = 0; i < attempts.length; i++) {
@@ -385,7 +476,7 @@
               }
             }
           };
-          // First attempt uses WebGPU if available; subsequent attempts force CPU
+          // Attempt 1 uses WebGPU if available; later attempts force CPU for reliability
           opts.device = (i === 0 && navigator.gpu) ? 'webgpu' : 'cpu';
           Object.assign(opts, cfg.opts);
 
@@ -435,7 +526,7 @@
       }
     }
 
-    // Exports
+    // Export / Import
     function downloadBlob(blob, filename) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -453,8 +544,61 @@
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, 'activity_logs.csv');
     };
+    importJsonBtn.onclick = () => importFile.click();
+    importFile.onchange = async () => {
+      const f = importFile.files[0]; if (!f) return;
+      try {
+        const text = await f.text();
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) throw new Error('Invalid file format.');
+        const mode = confirm('Replace existing logs? (OK = Replace, Cancel = Merge)') ? 'replace' : 'merge';
+        if (mode === 'replace') logs = data;
+        else logs = logs.concat(data);
+        safeSave(STORAGE_KEYS.LOGS, logs);
+        applyFilterAndSort();
+        alert('Import complete.');
+      } catch (e) { alert('Import failed: ' + e.message); }
+      importFile.value = '';
+    };
 
-    // Events
+    // AI Cache clear (best effort)
+    clearAICacheBtn.onclick = async () => {
+      let cleared = false;
+      try {
+        if ('caches' in window) {
+          const names = await caches.keys();
+          for (const n of names) {
+            if (/transformers|huggingface|hf|onnx|model/i.test(n) || true) {
+              await caches.delete(n); cleared = true;
+            }
+          }
+        }
+      } catch {}
+      try {
+        if (indexedDB && indexedDB.databases) {
+          const dbs = await indexedDB.databases();
+          for (const db of dbs) {
+            if (db.name && /transformers|huggingface|hf|onnx|model/i.test(db.name)) {
+              indexedDB.deleteDatabase(db.name); cleared = true;
+            }
+          }
+        }
+      } catch {}
+      generator = null;
+      alert((cleared ? '✅' : 'ℹ️') + ' AI cache cleared (best effort). Models will re-download when needed.');
+    };
+
+    retryLoadBtn.onclick = async () => {
+      if (!aiToggle.checked) aiToggle.checked = true;
+      generator = await loadModel();
+      if (generator) {
+        const cfg = MODELS[activeModelKey];
+        modelInfo.textContent = `Active: ${cfg.badge}${activeModelKey==='smollm2' ? ' (quantized bnb4)' : ''}`;
+        modelInfo.classList.remove('hidden');
+      }
+    };
+
+    // Events: open/close modals
     const openLog = () => { logModal.classList.remove('hidden'); untrap = trapFocus(logModal); };
     fabBtn.onclick = openLog;
     manageBtn.onclick = () => { manageModal.classList.remove('hidden'); untrap = trapFocus(manageModal); };
@@ -470,15 +614,16 @@
       if (e.target === manageModal) { manageModal.classList.add('hidden'); untrap(); }
     });
 
+    // Clear logs
     clearBtn.onclick = () => {
       if (confirm('Clear all logs?')) {
         logs = [];
         safeSave(STORAGE_KEYS.LOGS, logs);
-        renderLogs();
-        updateChart();
+        applyFilterAndSort();
       }
     };
 
+    // Add activity (debounced)
     addActivityBtn.onclick = debounce(() => {
       const val = newActivityInput.value.trim();
       if (!val) { alert('Enter activity.'); return; }
@@ -489,6 +634,7 @@
       renderActivities();
     }, 250);
 
+    // AI toggle -> lazy load model
     aiToggle.onchange = async () => {
       if (!aiToggle.checked) return;
       if (!generator) generator = await loadModel();
@@ -499,6 +645,7 @@
       }
     };
 
+    // Log flow with correct fallbacks
     logBtn.onclick = async () => {
       if (logBusy) return;
       logBusy = true;
@@ -519,8 +666,7 @@
           };
           logs.push(entry);
           safeSave(STORAGE_KEYS.LOGS, logs);
-          renderLogs();
-          updateChart();
+          applyFilterAndSort();
           logModal.classList.add('hidden');
           return;
         }
@@ -535,8 +681,7 @@
         };
         logs.push(entry);
         safeSave(STORAGE_KEYS.LOGS, logs);
-        renderLogs();
-        updateChart();
+        applyFilterAndSort();
 
         try {
           const feedback = await aiCoachFeedback(act);
@@ -548,22 +693,23 @@
         }
 
         safeSave(STORAGE_KEYS.LOGS, logs);
-        renderLogs();
-        updateChart();
+        applyFilterAndSort();
         logModal.classList.add('hidden');
       } finally {
         logBusy = false;
       }
     };
 
+    // Filters/sort handlers
+    searchInput.oninput = debounce(applyFilterAndSort, 150);
+    filterActivity.onchange = applyFilterAndSort;
+    sortSelect.onchange = applyFilterAndSort;
+
     // Init
     function init() {
       renderActivities();
-      renderLogs();
-      updateChart();
-      const hasData = logs.length > 0;
-      chartSection.classList.toggle('hidden', !hasData);
-      chartEmpty.classList.toggle('hidden', hasData);
+      applyFilterAndSort(); // renders logs + chart with current filters
+      // hide chart if empty on first load handled by applyFilterAndSort
     }
     init();
   </script>
