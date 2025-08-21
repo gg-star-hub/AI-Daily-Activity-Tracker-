@@ -22,7 +22,11 @@
   <!-- Spinner Overlay -->
   <div id="spinner" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center space-y-4 z-50">
     <div class="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-    <p class="text-lg font-semibold text-blue-300">Loading AI Coach…</p>
+    <p id="spinnerText" class="text-lg font-semibold text-blue-300">Preparing AI Coach…</p>
+    <div class="w-64 bg-gray-700 rounded-full h-4 overflow-hidden">
+      <div id="progressBar" class="bg-blue-400 h-4 w-0"></div>
+    </div>
+    <p class="text-sm text-gray-400">Model size: ~66 MB (cached after first load)</p>
   </div>
 
   <!-- Logs -->
@@ -49,6 +53,8 @@
   <script type="module">
     let generator = null;
     const spinner = document.getElementById("spinner");
+    const spinnerText = document.getElementById("spinnerText");
+    const progressBar = document.getElementById("progressBar");
     const aiToggle = document.getElementById("aiToggle");
 
     // Default activities
@@ -88,11 +94,9 @@
           do_sample: true
         });
         let text = output[0].generated_text;
-        // Remove the prompt echo
         if (text.startsWith(prompt)) {
           text = text.slice(prompt.length).trim();
         }
-        // Ensure fallback if empty
         return text || ruleFeedback();
       } catch {
         return ruleFeedback();
@@ -148,7 +152,15 @@
       if (aiToggle.checked && !generator) {
         spinner.classList.remove("hidden");
         const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0");
-        generator = await pipeline("text-generation","Xenova/distilgpt2");
+        generator = await pipeline("text-generation","Xenova/distilgpt2",{
+          progress_callback: (progress)=>{
+            if(progress && progress.total){
+              const percent = Math.floor((progress.loaded/progress.total)*100);
+              spinnerText.textContent = `Downloading AI Coach… ${percent}%`;
+              progressBar.style.width = percent + "%";
+            }
+          }
+        });
         spinner.classList.add("hidden");
       }
     });
