@@ -16,9 +16,6 @@
         <input type="checkbox" id="aiToggle" class="w-4 h-4">
         <span>AI Coach</span>
       </label>
-      <button id="manageBtn" class="px-3 py-1 text-sm bg-purple-600 rounded shadow hover:bg-purple-500">
-        ⚙️ Manage
-      </button>
     </div>
   </header>
 
@@ -49,35 +46,18 @@
     </div>
   </div>
 
-  <!-- Manage Activities Modal -->
-  <div id="activityModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
-    <div class="bg-gray-800 p-4 rounded-lg w-full max-w-md shadow-xl">
-      <h2 class="text-lg font-bold mb-4">Manage Activities</h2>
-      <ul id="activityList" class="space-y-2 mb-4"></ul>
-      <div class="flex space-x-2">
-        <input id="newActivity" placeholder="New activity..." class="flex-1 p-2 rounded bg-gray-700 text-white border border-gray-500">
-        <button id="addActivity" class="px-3 py-1 bg-green-600 rounded hover:bg-green-500">Add</button>
-      </div>
-      <div class="mt-4 text-right">
-        <button id="closeModal" class="px-3 py-2 bg-gray-600 rounded hover:bg-gray-500">Close</button>
-      </div>
-    </div>
-  </div>
-
   <script type="module">
     let generator = null;
     const spinner = document.getElementById("spinner");
     const aiToggle = document.getElementById("aiToggle");
 
     // Default activities
-    const defaultActivities = [
+    const activities = [
       "Sleeping","Eating","Drinking","Personal Hygiene","Working / Studying",
       "Social Interaction","Walking / Moving","Leisure / Entertainment","Resting / Relaxing","Using Technology"
     ];
-    let activities = JSON.parse(localStorage.getItem("activities") || JSON.stringify(defaultActivities));
     let logs = JSON.parse(localStorage.getItem("activityLogs") || "[]");
 
-    // Elements
     const activitySelect = document.getElementById("activity");
     const logDiv = document.getElementById("log");
     const logBtn = document.getElementById("logBtn");
@@ -85,14 +65,8 @@
     const logModal = document.getElementById("logModal");
     const closeLogModal = document.getElementById("closeLogModal");
     const clearBtn = document.getElementById("clearBtn");
-    const manageBtn = document.getElementById("manageBtn");
-    const modal = document.getElementById("activityModal");
-    const activityList = document.getElementById("activityList");
-    const newActivityInput = document.getElementById("newActivity");
-    const addActivityBtn = document.getElementById("addActivity");
-    const closeModal = document.getElementById("closeModal");
 
-    // Feedback
+    // Hardcoded backup feedback
     const hardcodedFeedback = [
       "🔥 Great job keeping up the habit!",
       "🌟 You're doing amazing!",
@@ -106,16 +80,25 @@
 
     async function aiCoachFeedback(activity) {
       if (!generator) return ruleFeedback();
-      const prompt = `I just did the activity: ${activity}. Please give me a short motivational feedback.`;
+      const prompt = `I just did the activity: ${activity}. Give me a short motivational coaching comment (1-2 sentences).`;
       try {
-        const output = await generator(prompt, {max_new_tokens: 30, temperature: 0.7});
-        return output[0].generated_text.replace(prompt, "").trim();
+        const output = await generator(prompt, {
+          max_new_tokens: 40,
+          temperature: 0.8,
+          do_sample: true
+        });
+        let text = output[0].generated_text;
+        // Remove the prompt echo
+        if (text.startsWith(prompt)) {
+          text = text.slice(prompt.length).trim();
+        }
+        // Ensure fallback if empty
+        return text || ruleFeedback();
       } catch {
         return ruleFeedback();
       }
     }
 
-    // Rendering
     function renderActivities() {
       activitySelect.innerHTML = "";
       activities.forEach(a => {
@@ -138,63 +121,29 @@
         `;
         logDiv.appendChild(row);
       });
-
-      // Attach delete handlers
-      document.querySelectorAll(".delete-log").forEach(btn => {
-        btn.addEventListener("click", e => {
+      document.querySelectorAll(".delete-log").forEach(btn=>{
+        btn.addEventListener("click", e=>{
           const idx = e.target.getAttribute("data-index");
           logs.splice(idx,1);
-          saveLogs();
+          localStorage.setItem("activityLogs",JSON.stringify(logs));
           renderLogs();
         });
       });
     }
-    function renderActivityManager() {
-      activityList.innerHTML = "";
-      activities.forEach((a,i)=>{
-        const li = document.createElement("li");
-        li.className="flex justify-between bg-gray-700 p-2 rounded";
-        li.innerHTML=`
-          <span>${a}</span>
-          <button class="delete-activity bg-red-500 px-2 rounded text-xs" data-index="${i}">✕</button>
-        `;
-        activityList.appendChild(li);
-      });
 
-      document.querySelectorAll(".delete-activity").forEach(btn=>{
-        btn.addEventListener("click", e=>{
-          const idx = e.target.getAttribute("data-index");
-          activities.splice(idx,1);
-          saveActivities();
-          renderActivityManager();
-          renderActivities();
-        });
-      });
-    }
-
-    function saveActivities(){localStorage.setItem("activities",JSON.stringify(activities));}
-    function saveLogs(){localStorage.setItem("activityLogs",JSON.stringify(logs));}
-
-    // Event handlers
     logBtn.addEventListener("click", async ()=>{
       const act = activitySelect.value;
       const feedback = aiToggle.checked ? await aiCoachFeedback(act) : ruleFeedback();
       const entry = {activity:act,time:new Date().toLocaleString(),feedback};
-      logs.push(entry); saveLogs(); renderLogs(); logModal.classList.add("hidden");
+      logs.push(entry);
+      localStorage.setItem("activityLogs",JSON.stringify(logs));
+      renderLogs();
+      logModal.classList.add("hidden");
     });
-    clearBtn.addEventListener("click", ()=>{if(confirm("Delete all logs?")){logs=[];saveLogs();renderLogs();}});
     fabBtn.addEventListener("click", ()=>logModal.classList.remove("hidden"));
     closeLogModal.addEventListener("click", ()=>logModal.classList.add("hidden"));
-    manageBtn.addEventListener("click", ()=>{modal.classList.remove("hidden");renderActivityManager();});
-    closeModal.addEventListener("click", ()=>modal.classList.add("hidden"));
-    addActivityBtn.addEventListener("click", ()=>{
-      const v=newActivityInput.value.trim();
-      if(v&&!activities.includes(v)){
-        activities.push(v); saveActivities(); renderActivityManager(); renderActivities(); newActivityInput.value="";
-      }
-    });
+    clearBtn.addEventListener("click", ()=>{if(confirm("Delete all logs?")){logs=[];localStorage.setItem("activityLogs","[]");renderLogs();}});
 
-    // AI Toggle
     aiToggle.addEventListener("change", async ()=>{
       if (aiToggle.checked && !generator) {
         spinner.classList.remove("hidden");
@@ -204,7 +153,6 @@
       }
     });
 
-    // Init
     renderActivities();
     renderLogs();
   </script>
