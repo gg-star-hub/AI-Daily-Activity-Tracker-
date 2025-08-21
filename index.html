@@ -73,7 +73,7 @@
     const progressBar = document.getElementById("progressBar");
     const aiToggle = document.getElementById("aiToggle");
 
-    // Activities (load from storage or default)
+    // Activities
     let activities = JSON.parse(localStorage.getItem("activityList")) || [
       "Sleeping","Eating","Drinking","Personal Hygiene","Working / Studying",
       "Social Interaction","Walking / Moving","Leisure / Entertainment","Resting / Relaxing","Using Technology"
@@ -124,7 +124,7 @@
         }
         return text || ruleFeedback(activity);
       } catch {
-        return ruleFeedback(activity);
+        return `⚠️ AI Coach unavailable. ${ruleFeedback(activity)}`;
       }
     }
 
@@ -188,7 +188,17 @@
 
     logBtn.addEventListener("click", async ()=>{
       const act = activitySelect.value;
-      const feedback = aiToggle.checked ? await aiCoachFeedback(act) : ruleFeedback(act);
+      let feedback;
+      if (aiToggle.checked) {
+        if (generator) {
+          feedback = await aiCoachFeedback(act);
+        } else {
+          feedback = `⚠️ AI Coach unavailable (offline or not loaded). ${ruleFeedback(act)}`;
+        }
+      } else {
+        feedback = ruleFeedback(act);
+      }
+
       const entry = {activity:act,time:new Date().toLocaleString(),feedback};
       logs.push(entry);
       localStorage.setItem("activityLogs",JSON.stringify(logs));
@@ -213,17 +223,27 @@
 
     aiToggle.addEventListener("change", async ()=>{
       if (aiToggle.checked && !generator) {
+        if (!navigator.onLine) {
+          alert("⚠️ You are offline. AI Coach cannot be loaded.");
+          aiToggle.checked = false;
+          return;
+        }
         spinner.classList.remove("hidden");
-        const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0");
-        generator = await pipeline("text-generation","Xenova/distilgpt2",{
-          progress_callback: (progress)=>{
-            if(progress && progress.total){
-              const percent = Math.floor((progress.loaded/progress.total)*100);
-              spinnerText.textContent = `Downloading AI Coach… ${percent}%`;
-              progressBar.style.width = percent + "%";
+        try {
+          const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0");
+          generator = await pipeline("text-generation","Xenova/distilgpt2",{
+            progress_callback: (progress)=>{
+              if(progress && progress.total){
+                const percent = Math.floor((progress.loaded/progress.total)*100);
+                spinnerText.textContent = `Downloading AI Coach… ${percent}%`;
+                progressBar.style.width = percent + "%";
+              }
             }
-          }
-        });
+          });
+        } catch(e) {
+          alert("⚠️ Failed to load AI Coach. Falling back to basic encouragement.");
+          aiToggle.checked = false;
+        }
         spinner.classList.add("hidden");
       }
     });
