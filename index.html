@@ -72,24 +72,24 @@
     const closeLogModal = document.getElementById("closeLogModal");
     const clearBtn = document.getElementById("clearBtn");
 
-    // Hardcoded backup feedback
-    const hardcodedFeedback = [
-      "🔥 Great job keeping up the habit!",
-      "🌟 You're doing amazing!",
-      "💪 Keep pushing forward!",
-      "✨ Consistency is key!",
-      "🚀 Every step counts!"
-    ];
-    function ruleFeedback() {
-      return hardcodedFeedback[Math.floor(Math.random()*hardcodedFeedback.length)];
+    // Hardcoded backup feedback (now activity-aware)
+    function ruleFeedback(activity) {
+      const templates = [
+        `🔥 Great job staying consistent with ${activity}!`,
+        `🌟 You're doing amazing by focusing on ${activity}!`,
+        `💪 Keep up the good work on ${activity}!`,
+        `✨ Consistency in ${activity} will pay off!`,
+        `🚀 Every step in ${activity} counts!`
+      ];
+      return templates[Math.floor(Math.random()*templates.length)];
     }
 
     async function aiCoachFeedback(activity) {
-      if (!generator) return ruleFeedback();
-      const prompt = `I just did the activity: ${activity}. Give me a short motivational coaching comment (1-2 sentences).`;
+      if (!generator) return ruleFeedback(activity);
+      const prompt = `I just did the activity: ${activity}. As a motivational life coach, give me 1-2 short, positive sentences directly encouraging me about this activity. Mention "${activity}" clearly.`;
       try {
         const output = await generator(prompt, {
-          max_new_tokens: 40,
+          max_new_tokens: 50,
           temperature: 0.8,
           do_sample: true
         });
@@ -97,9 +97,13 @@
         if (text.startsWith(prompt)) {
           text = text.slice(prompt.length).trim();
         }
-        return text || ruleFeedback();
+        // Ensure activity is mentioned
+        if (!text.toLowerCase().includes(activity.toLowerCase())) {
+          text = ruleFeedback(activity);
+        }
+        return text || ruleFeedback(activity);
       } catch {
-        return ruleFeedback();
+        return ruleFeedback(activity);
       }
     }
 
@@ -137,7 +141,7 @@
 
     logBtn.addEventListener("click", async ()=>{
       const act = activitySelect.value;
-      const feedback = aiToggle.checked ? await aiCoachFeedback(act) : ruleFeedback();
+      const feedback = aiToggle.checked ? await aiCoachFeedback(act) : ruleFeedback(act);
       const entry = {activity:act,time:new Date().toLocaleString(),feedback};
       logs.push(entry);
       localStorage.setItem("activityLogs",JSON.stringify(logs));
