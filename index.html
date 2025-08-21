@@ -5,31 +5,12 @@
   <title>AI Daily Activity Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js for the pie chart -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
   <!-- Header -->
   <header class="bg-gray-800 p-4 text-center text-xl font-bold">
     AI Daily Activity Tracker
   </header>
-
-  <!-- Toolbar (exports) -->
-  <div class="flex gap-2 p-3 bg-gray-900 sticky top-0 z-10">
-    <button id="exportJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm">Export JSON</button>
-    <button id="exportCsvBtn"  class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded text-sm">Export CSV</button>
-  </div>
-
-  <!-- Chart Card -->
-  <section id="chartCard" class="px-4 hidden">
-    <div class="bg-gray-800 p-4 rounded">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="font-semibold">Activity Breakdown</h3>
-        <span class="text-xs text-gray-300">share of total logs</span>
-      </div>
-      <canvas id="activityPie" height="220" aria-label="Activity pie chart" role="img"></canvas>
-    </div>
-  </section>
 
   <!-- Logs -->
   <main class="flex-1 p-4 overflow-y-auto">
@@ -100,14 +81,11 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.31</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.30</footer>
 
   <script type="module">
     // Elements
     const logDiv = document.getElementById('log');
-    const exportJsonBtn = document.getElementById('exportJsonBtn');
-    const exportCsvBtn  = document.getElementById('exportCsvBtn');
-    const chartCard = document.getElementById('chartCard');
     const fabBtn = document.getElementById('fabBtn');
     const clearBtn = document.getElementById('clearBtn');
     const manageBtn = document.getElementById('manageBtn');
@@ -128,7 +106,6 @@
     const spinnerText = document.getElementById('spinnerText');
     const spinnerSub = document.getElementById('spinnerSub');
     const progressBar = document.getElementById('progressBar');
-    const activityPieCanvas = document.getElementById('activityPie');
 
     // Data
     const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
@@ -141,12 +118,9 @@
     let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
     let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 1500000;        // 25 minutes (5× previous 5 min)
+    const TIMEOUT_MS = 1500000;        // 25 minutes (5x the old 5-minute timeout)
     const BASE_GEN_TIMEOUT = 15000;    // base 15s generation
     let logBusy = false;
-
-    // Chart
-    let pieChart = null;
 
     // Model config
     const MODELS = {
@@ -177,6 +151,7 @@
     const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','&':'&amp;'}[c]));
     const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
     function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+    function bytesOf(obj){ return new Blob([JSON.stringify(obj)]).size; }
     function warnIfNearLimit() {
       try {
         const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
@@ -199,30 +174,16 @@
         }
       }
     }
-    function download(name, mime, data) {
-      const blob = new Blob([data], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = name;
-      document.body.appendChild(a); a.click();
-      a.remove(); URL.revokeObjectURL(url);
-    }
-    function toCSV(rows) {
-      const esc = (v) => `"${String(v ?? '').replace(/"/g,'""')}"`;
-      const header = ['time','activity','model','feedback','status'];
-      const body = rows.map(r => [r.time, r.activity, r.model ?? 'N/A', r.feedback ?? '', r.status ?? ''].map(esc).join(','));
-      return '\uFEFF' + [header.join(','), ...body].join('\n'); // BOM for UTF-8/Excel
-    }
 
-    // Exports
-    exportJsonBtn.onclick = () => {
-      const ts = new Date().toISOString().replace(/[:.]/g,'-');
-      download(`activity_logs_${ts}.json`, 'application/json', JSON.stringify(logs, null, 2));
-    };
-    exportCsvBtn.onclick = () => {
-      const ts = new Date().toISOString().replace(/[:.]/g,'-');
-      download(`activity_logs_${ts}.csv`, 'text/csv;charset=utf-8', toCSV(logs));
-    };
+    // Fallback messages
+    function ruleFeedback(a) {
+      const m = {
+        Eat:'🍽️ Good to stay nourished!', Sleep:'😴 Rest is essential.', Work:'💼 Keep focused!',
+        Exercise:'🏃 Great energy boost.', Study:'📚 Knowledge is power.', Commute:'🚌 Time well spent traveling.',
+        Socialize:'🤝 Stay connected.', Relax:'🧘 Calm and balanced.', Shop:'🛒 Don’t overspend!', Cook:'👩‍🍳 Healthy eating starts here.'
+      };
+      return m[a] || 'Keep it up!';
+    }
 
     // Renders
     function renderActivities() {
@@ -233,6 +194,7 @@
         opt.value = a; opt.textContent = a;
         activitySelect.appendChild(opt);
       });
+      // Keep selection if possible
       if (current && activities.includes(current)) activitySelect.value = current;
       else activitySelect.selectedIndex = 0;
 
@@ -275,58 +237,6 @@
         `;
         logDiv.appendChild(card);
       });
-      updateChart();
-    }
-
-    // Chart logic
-    function countActivities() {
-      const counts = {};
-      for (const l of logs) {
-        const a = l.activity || 'Unknown';
-        counts[a] = (counts[a] || 0) + 1;
-      }
-      return counts;
-    }
-
-    function updateChart() {
-      const counts = countActivities();
-      const labels = Object.keys(counts);
-      const data = Object.values(counts);
-      const hasData = labels.length > 0 && data.reduce((s,n)=>s+n,0) > 0;
-
-      if (!hasData) {
-        chartCard.classList.add('hidden');
-        if (pieChart) { pieChart.destroy(); pieChart = null; }
-        return;
-      }
-      chartCard.classList.remove('hidden');
-
-      const cfg = {
-        type: 'pie',
-        data: {
-          labels,
-          datasets: [{
-            data,
-            // No custom colors => Chart.js defaults (good contrast on dark)
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { labels: { color: '#e5e7eb' } }, // light text for dark bg
-            tooltip: { enabled: true }
-          }
-        }
-      };
-
-      if (!pieChart) {
-        if (!window.Chart) return; // Chart.js not loaded
-        pieChart = new Chart(activityPieCanvas.getContext('2d'), cfg);
-      } else {
-        pieChart.data.labels = labels;
-        pieChart.data.datasets[0].data = data;
-        pieChart.update();
-      }
     }
 
     // Model selection -> config
