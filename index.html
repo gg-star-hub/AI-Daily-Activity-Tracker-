@@ -14,19 +14,20 @@
     <button id="manageBtn" class="px-3 py-1 text-sm md:text-base bg-purple-600 rounded">⚙️ Manage</button>
   </header>
 
-  <!-- Activity Selector -->
-  <div class="p-2 md:p-4 bg-gray-800 flex space-x-2">
+  <!-- Log Display -->
+  <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2 mb-20"></main>
+
+  <!-- Bottom Input Bar -->
+  <div class="fixed bottom-0 left-0 right-0 bg-gray-800 p-2 flex space-x-2">
     <select id="activity" class="flex-1 p-2 rounded bg-gray-700 text-white text-sm md:text-base"></select>
     <button id="logBtn" class="px-3 md:px-4 py-2 bg-blue-500 rounded text-sm md:text-base">Log</button>
   </div>
 
-  <!-- Log Display -->
-  <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2"></main>
-
-  <!-- Controls -->
-  <div class="p-2 md:p-4 bg-gray-800 flex justify-between">
-    <button id="clearBtn" class="px-3 md:px-4 py-2 bg-red-600 rounded text-sm md:text-base">Clear All Logs</button>
-  </div>
+  <!-- Clear Logs Button (Floating) -->
+  <button id="clearBtn" 
+          class="fixed bottom-20 right-4 bg-red-600 px-3 py-2 rounded shadow-lg text-sm md:text-base">
+    Clear
+  </button>
 
   <!-- Activity Manager Modal -->
   <div id="activityModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
@@ -107,6 +108,7 @@
         `;
         logDiv.appendChild(row);
       });
+      logDiv.scrollTop = logDiv.scrollHeight; // auto-scroll like chat
     }
 
     function renderActivityManager() {
