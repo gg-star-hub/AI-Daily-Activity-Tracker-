@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Daily Activity Tracker v0.24</title>
+  <title>AI Daily Activity Tracker v0.25</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
@@ -49,7 +49,7 @@
   </div>
 
   <!-- Spinner -->
-  <div id="spinner" class="hidden fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black p-2 rounded shadow">
+  <div id="spinner" class="hidden fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black p-2 rounded shadow text-sm">
     <span id="spinnerText">Loading AI Coach…</span>
     <div class="w-48 bg-gray-300 h-2 mt-1 rounded">
       <div id="progressBar" class="bg-green-600 h-2 rounded" style="width:0%"></div>
@@ -58,7 +58,7 @@
 
   <!-- Footer version -->
   <footer class="bg-gray-800 text-xs p-1 absolute bottom-0 left-0">
-    Testversion 0.24
+    Testversion 0.25
   </footer>
 
   <script type="module">
@@ -83,6 +83,7 @@
       ["Eat","Sleep","Work","Exercise","Study","Commute","Socialize","Relax","Shop","Cook"];
     let logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS)) || [];
     let generator = null;
+    let activeModel = null; // Track which model is active
 
     function sanitize(str) {
       const div = document.createElement("div");
@@ -141,29 +142,47 @@
       return fb[act] || "Keep it up!";
     }
 
-    async function loadModel(retries=2){
-      if(!navigator.onLine){alert("⚠️ Offline. AI Coach needs internet."); aiToggle.checked=false; return null;}
-      if(!window.WebAssembly){alert("⚠️ Browser lacks WebAssembly."); aiToggle.checked=false; return null;}
-      spinner.classList.remove("hidden"); spinnerText.textContent="Downloading AI Coach (~70MB)…";
+    async function tryLoadModel(modelId, timeoutMs){
+      spinner.classList.remove("hidden");
+      spinnerText.textContent=`Downloading ${modelId}…`;
       progressBar.style.width="0%";
       try{
         const {pipeline}=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2");
         return await Promise.race([
-          pipeline("text-generation","Xenova/distilgpt2",{
+          pipeline("text-generation", modelId, {
             progress_callback:(p)=>{
               if(p.loaded && p.total){
-                const pct=Math.floor((p.loaded/p.total)*100);
+                const pct=Math.floor((p.loaded / p.total)*100);
                 progressBar.style.width=pct+"%";
-                spinnerText.textContent=`Downloading… ${pct}% (${(p.loaded/1e6).toFixed(1)}MB / ${(p.total/1e6).toFixed(1)}MB)`;
+                spinnerText.textContent=`Downloading ${modelId}: ${pct}% (${(p.loaded/1e6).toFixed(1)}MB / ${(p.total/1e6).toFixed(1)}MB)`;
               }
             }
           }),
-          new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")),120000)) // 2 minutes
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")),timeoutMs))
         ]);
-      }catch(e){
-        if(retries>0) return loadModel(retries-1);
-        console.error("AI load fail",e); alert("⚠️ Failed: "+e.message); aiToggle.checked=false; return null;
-      }finally{spinner.classList.add("hidden");}
+      }catch(e){throw e;}
+      finally{spinner.classList.add("hidden");}
+    }
+
+    async function loadModel(){
+      if(!navigator.onLine){alert("⚠️ Offline. AI Coach needs internet."); aiToggle.checked=false; return null;}
+      try{
+        generator=await tryLoadModel("Xenova/distilgpt2",120000); activeModel="DistilGPT2";
+        spinnerText.textContent="✅ AI Coach ready (DistilGPT2)";
+        return generator;
+      }catch(e1){
+        console.warn("DistilGPT2 failed, trying fallback…",e1);
+        try{
+          generator=await tryLoadModel("Xenova/t5-small",60000); activeModel="T5-small";
+          spinnerText.textContent="✅ AI Coach ready (T5-small)";
+          return generator;
+        }catch(e2){
+          console.error("Both models failed",e2);
+          alert("⚠️ AI Coach unavailable. Falling back to rule-based feedback.");
+          aiToggle.checked=false; generator=null; activeModel=null;
+          return null;
+        }
+      }
     }
 
     async function aiCoachFeedback(act){
@@ -174,7 +193,7 @@
         ]);
         let txt=out[0]?.generated_text || "";
         if(txt.startsWith(act)) txt=txt.slice(act.length);
-        return sanitize(txt.trim().split(/(?<=[.!?])\s+/).slice(0,4).join(" "))||"Keep it up!";
+        return `[${activeModel}] ` + (txt.trim().split(/(?<=[.!?])\s+/).slice(0,4).join(" ")||ruleFeedback(act));
       }catch(e){throw new Error("AI feedback fail: "+e.message);}
     }
 
@@ -186,7 +205,7 @@
         activities.push(val); save(STORAGE_KEYS.ACTIVITIES,activities); renderActivities(); newActivityInput.value="";
       }
     };
-    aiToggle.onchange=async()=>{if(aiToggle.checked&&!generator){generator=await loadModel(); if(generator) spinnerText.textContent="✅ AI Coach ready";}};
+    aiToggle.onchange=async()=>{if(aiToggle.checked&&!generator){generator=await loadModel();}};
 
     logBtn.onclick=async()=>{
       const act=activitySelect.value;
@@ -195,7 +214,7 @@
       const idx=logs.length-1;
       if(aiToggle.checked&&generator){
         try{logs[idx].feedback=await aiCoachFeedback(act);}catch(e){logs[idx].feedback="⚠️ AI Coach error. "+ruleFeedback(act);}
-      }else{logs[idx].feedback=aiToggle.checked?"⚠️ AI Coach unavailable. "+ruleFeedback(act):ruleFeedback(act);}
+      }else{logs[idx].feedback=ruleFeedback(act);}
       save(STORAGE_KEYS.LOGS,logs); renderLogs(); logModal.classList.add("hidden");
     };
 
