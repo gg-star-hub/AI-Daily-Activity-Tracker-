@@ -94,7 +94,7 @@
     const newActivityInput = document.getElementById("newActivity");
     const activityListUI = document.getElementById("activityList");
 
-    // Hardcoded backup feedback
+    // Fallback feedback
     function ruleFeedback(activity) {
       const templates = [
         `🔥 Great job staying consistent with ${activity}!`,
@@ -148,7 +148,7 @@
         if (e.feedback.startsWith("⚠️")) {
           borderColor = "border-red-400";
           titleColor = "text-red-400";
-        } else if (e.feedback.includes("thinking")) {
+        } else if (e.status === "thinking") {
           borderColor = "border-yellow-400 animate-pulse";
           titleColor = "text-yellow-400";
         }
@@ -195,40 +195,65 @@
       });
     }
 
-    // 🚀 Log with "AI thinking..." banner
+    // 🚀 Log with persistent "thinking" banner
     logBtn.addEventListener("click", async ()=>{
       const act = activitySelect.value;
 
+      // Insert yellow thinking entry
       const entry = {
         activity: act,
         time: new Date().toLocaleString(),
-        feedback: "🤖 AI Coach is thinking..."
+        feedback: "🤖 AI Coach is thinking...",
+        status: "thinking"
       };
       logs.push(entry);
+      localStorage.setItem("activityLogs", JSON.stringify(logs));
       renderLogs();
 
       const idx = logs.length - 1;
+      const logRow = document.querySelectorAll("#log > div")[idx];
+      const feedbackBox = logRow.querySelector("p.text-sm");
+      const feedbackTitle = logRow.querySelector("p.font-semibold");
+      const feedbackContainer = logRow.querySelector("div.bg-gray-800");
 
-      if (aiToggle.checked) {
-        if (generator) {
-          try {
-            const feedback = await aiCoachFeedback(act);
-            logs[idx].feedback = feedback;
-          } catch {
-            logs[idx].feedback = `⚠️ AI Coach unavailable. ${ruleFeedback(act)}`;
-          }
-        } else {
-          logs[idx].feedback = `⚠️ AI Coach unavailable (offline or not loaded). ${ruleFeedback(act)}`;
+      if (aiToggle.checked && generator) {
+        try {
+          const feedback = await aiCoachFeedback(act);
+          logs[idx].feedback = feedback;
+          logs[idx].status = "done";
+          feedbackTitle.classList.remove("text-yellow-400");
+          feedbackTitle.classList.add("text-green-400");
+          feedbackBox.textContent = feedback;
+          feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-green-400";
+        } catch {
+          logs[idx].feedback = `⚠️ AI Coach unavailable. ${ruleFeedback(act)}`;
+          logs[idx].status = "fail";
+          feedbackTitle.classList.remove("text-yellow-400");
+          feedbackTitle.classList.add("text-red-400");
+          feedbackBox.textContent = logs[idx].feedback;
+          feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-red-400";
         }
+      } else if (aiToggle.checked && !generator) {
+        logs[idx].feedback = `⚠️ AI Coach unavailable (offline or not loaded). ${ruleFeedback(act)}`;
+        logs[idx].status = "fail";
+        feedbackTitle.classList.remove("text-yellow-400");
+        feedbackTitle.classList.add("text-red-400");
+        feedbackBox.textContent = logs[idx].feedback;
+        feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-red-400";
       } else {
         logs[idx].feedback = ruleFeedback(act);
+        logs[idx].status = "done";
+        feedbackTitle.classList.remove("text-yellow-400");
+        feedbackTitle.classList.add("text-green-400");
+        feedbackBox.textContent = logs[idx].feedback;
+        feedbackContainer.className = "bg-gray-800 p-2 rounded border-l-4 border-green-400";
       }
 
       localStorage.setItem("activityLogs", JSON.stringify(logs));
-      renderLogs();
       logModal.classList.add("hidden");
     });
 
+    // UI Buttons
     fabBtn.addEventListener("click", ()=>logModal.classList.remove("hidden"));
     closeLogModal.addEventListener("click", ()=>logModal.classList.add("hidden"));
     clearBtn.addEventListener("click", ()=>{if(confirm("Delete all logs?")){logs=[];localStorage.setItem("activityLogs","[]");renderLogs();}});
