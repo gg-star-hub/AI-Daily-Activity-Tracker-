@@ -2,282 +2,204 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AI Daily Activity Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Daily Activity Tracker v0.24</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
-  <header class="bg-gray-800 p-4 text-center text-xl font-bold">AI Daily Activity Tracker</header>
+  <!-- Header -->
+  <header class="bg-gray-800 p-4 text-center text-xl font-bold">
+    AI Daily Activity Tracker
+  </header>
 
+  <!-- Logs -->
   <main class="flex-1 p-4 overflow-y-auto">
-    <div id="log" class="space-y-3" aria-live="polite"></div>
+    <div id="log" class="space-y-4"></div>
   </main>
 
+  <!-- Floating buttons -->
   <div class="fixed bottom-4 right-4 space-y-2">
-    <button id="fabBtn" class="bg-green-600 hover:bg-green-700 p-4 rounded-full shadow text-xl" aria-label="Log activity">➕</button>
-    <button id="clearBtn" class="bg-red-600 hover:bg-red-700 p-4 rounded-full shadow" aria-label="Clear logs">🗑️</button>
-    <button id="manageBtn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-full shadow" aria-label="Manage activities">⚙️</button>
+    <button id="fabBtn" class="bg-green-600 p-4 rounded-full shadow">➕</button>
+    <button id="clearBtn" class="bg-red-600 p-4 rounded-full shadow">🗑️</button>
+    <button id="manageBtn" class="bg-blue-600 p-4 rounded-full shadow">⚙️</button>
   </div>
 
   <!-- Log Modal -->
-  <div id="logModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
+  <div id="logModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 class="text-lg font-bold mb-3">Log Activity</h2>
-      <select id="activitySelect" class="w-full p-2 text-black rounded mb-3"></select>
-      <label class="flex items-center space-x-2 text-sm mb-3">
+      <h2 class="text-lg font-bold mb-2">Log Activity</h2>
+      <select id="activitySelect" class="w-full p-2 text-black rounded mb-2"></select>
+      <label class="flex items-center space-x-2 text-sm mb-2">
         <input type="checkbox" id="aiToggle" />
         <span>Enable AI Coach</span>
       </label>
-      <div class="flex gap-2">
-        <button id="closeLog" class="w-1/2 bg-gray-700 hover:bg-gray-600 py-2 rounded">Close</button>
-        <button id="logBtn" class="w-1/2 bg-green-600 hover:bg-green-700 py-2 rounded">Log</button>
-      </div>
+      <button id="logBtn" class="w-full bg-green-600 p-2 rounded">Log</button>
     </div>
   </div>
 
   <!-- Manage Modal -->
-  <div id="manageModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
+  <div id="manageModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 class="text-lg font-bold mb-3">Manage Activities</h2>
-      <input id="newActivityInput" type="text" placeholder="New activity" class="w-full p-2 text-black rounded mb-2" />
-      <button id="addActivityBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded mb-3">Add</button>
-      <ul id="activityList" class="space-y-1 max-h-40 overflow-y-auto"></ul>
-      <div class="mt-3 text-right">
-        <button id="closeManage" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded">Close</button>
-      </div>
+      <h2 class="text-lg font-bold mb-2">Manage Activities</h2>
+      <input id="newActivityInput" type="text" placeholder="New activity"
+             class="w-full p-2 text-black rounded mb-2" />
+      <button id="addActivityBtn" class="w-full bg-blue-600 p-2 rounded mb-4">Add</button>
+      <ul id="activityList" class="space-y-1"></ul>
     </div>
   </div>
 
   <!-- Spinner -->
-  <div id="spinner" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow">
-    <div class="font-semibold" id="spinnerText">Downloading AI Coach…</div>
+  <div id="spinner" class="hidden fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black p-2 rounded shadow">
+    <span id="spinnerText">Loading AI Coach…</span>
     <div class="w-48 bg-gray-300 h-2 mt-1 rounded">
-      <div id="progressBar" class="bg-green-700 h-2 rounded" style="width:0%"></div>
+      <div id="progressBar" class="bg-green-600 h-2 rounded" style="width:0%"></div>
     </div>
-    <div class="text-xs mt-1 opacity-80">~70–80MB first load, then cached</div>
   </div>
 
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.24</footer>
+  <!-- Footer version -->
+  <footer class="bg-gray-800 text-xs p-1 absolute bottom-0 left-0">
+    Testversion 0.24
+  </footer>
 
   <script type="module">
-    // Elements
-    const logDiv = document.getElementById("log");
     const fabBtn = document.getElementById("fabBtn");
     const clearBtn = document.getElementById("clearBtn");
     const manageBtn = document.getElementById("manageBtn");
     const logModal = document.getElementById("logModal");
     const manageModal = document.getElementById("manageModal");
-    const closeLog = document.getElementById("closeLog");
-    const closeManage = document.getElementById("closeManage");
     const logBtn = document.getElementById("logBtn");
     const activitySelect = document.getElementById("activitySelect");
     const aiToggle = document.getElementById("aiToggle");
     const newActivityInput = document.getElementById("newActivityInput");
     const addActivityBtn = document.getElementById("addActivityBtn");
     const activityList = document.getElementById("activityList");
+    const log = document.getElementById("log");
     const spinner = document.getElementById("spinner");
     const spinnerText = document.getElementById("spinnerText");
     const progressBar = document.getElementById("progressBar");
 
-    // Data
     const STORAGE_KEYS = { ACTIVITIES: "activityList", LOGS: "activityLogs" };
-    let activities = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES) || "[]");
-    if (!activities.length) activities = ["Eat","Sleep","Work","Exercise","Study","Commute","Socialize","Relax","Shop","Cook"];
-    let logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || "[]");
+    let activities = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES)) ||
+      ["Eat","Sleep","Work","Exercise","Study","Commute","Socialize","Relax","Shop","Cook"];
+    let logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS)) || [];
     let generator = null;
 
-    // Utils
-    const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({ "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#x27;", "&":"&amp;" }[c]));
-    function safeSave(key, val) {
-      try { localStorage.setItem(key, JSON.stringify(val)); }
-      catch {
-        if (key === STORAGE_KEYS.LOGS && logs.length > 10) {
-          logs = logs.slice(-10);
-          localStorage.setItem(key, JSON.stringify(logs));
-          alert("⚠️ Storage full. Kept last 10 logs.");
-        } else {
-          alert("⚠️ Storage full. Data not saved.");
-        }
-      }
+    function sanitize(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
     }
-    function ruleFeedback(a) {
-      const m = {
-        Eat:"🍽️ Good to stay nourished!", Sleep:"😴 Rest is essential.", Work:"💼 Keep focused!",
-        Exercise:"🏃 Great energy boost.", Study:"📚 Knowledge is power.", Commute:"🚌 Time well spent traveling.",
-        Socialize:"🤝 Stay connected.", Relax:"🧘 Calm and balanced.", Shop:"🛒 Don’t overspend!", Cook:"👩‍🍳 Healthy eating starts here."
-      };
-      return m[a] || "Keep it up!";
+    function save(key, val) {
+      localStorage.setItem(key, JSON.stringify(val));
     }
-    const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(" ");
 
-    // Render
     function renderActivities() {
       activitySelect.innerHTML = "";
-      activities.forEach(a => {
+      activities.forEach(act => {
         const opt = document.createElement("option");
-        opt.value = a; opt.textContent = a;
-        activitySelect.appendChild(opt);
+        opt.textContent = act; activitySelect.appendChild(opt);
       });
       activityList.innerHTML = "";
-      activities.forEach((a,i) => {
+      activities.forEach((act, i) => {
         const li = document.createElement("li");
-        li.className = "flex justify-between items-center bg-gray-700 rounded px-2 py-1";
-        li.innerHTML = `<span>${sanitize(a)}</span>
-                        <button class="text-red-300 hover:text-red-200" data-i="${i}">✖</button>`;
-        li.querySelector("button").onclick = () => {
-          activities.splice(i,1);
-          safeSave(STORAGE_KEYS.ACTIVITIES, activities);
-          renderActivities();
-        };
+        li.innerHTML = `<span>${sanitize(act)}</span>
+          <button class="bg-red-600 px-2 rounded ml-2" onclick="removeActivity(${i})">✕</button>`;
         activityList.appendChild(li);
       });
     }
-    function renderLogs() {
-      logDiv.innerHTML = "";
-      logs.forEach(l => {
-        const isThinking = l.status === "thinking";
-        const isFail = l.status === "fail";
-        const border = isThinking ? "border-yellow-400" : isFail ? "border-red-400" : "border-green-400";
-        const titleC = isThinking ? "text-yellow-300" : isFail ? "text-red-300" : "text-green-300";
-        const card = document.createElement("div");
-        card.className = `bg-gray-800 p-3 rounded border-l-4 ${border}`;
-        card.innerHTML = `
-          <div class="flex justify-between items-center">
-            <div class="font-semibold">${sanitize(l.activity)}</div>
-            <div class="text-xs text-gray-400">${l.time}</div>
-          </div>
-          <div class="${titleC} mt-1">${sanitize(l.feedback || "")}</div>
-        `;
-        logDiv.appendChild(card);
-      });
-    }
 
-    // AI loader (v3, WebGPU optional)
-    async function loadModel(retries=3) {
-      if (!navigator.onLine) { alert("⚠️ Offline. AI Coach needs internet."); aiToggle.checked = false; return null; }
-      if (!window.WebAssembly) { alert("⚠️ Browser lacks WebAssembly. Use Chrome/Firefox/Edge."); aiToggle.checked = false; return null; }
-
-      spinner.classList.remove("hidden");
-      spinnerText.textContent = "Downloading AI Coach…";
-      progressBar.style.width = "0%";
-
-      try {
-        const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2");
-        const pipelineOpts = {
-          progress_callback: (p) => {
-            if (p && p.loaded && p.total) {
-              const pct = Math.floor((p.loaded / p.total) * 100);
-              progressBar.style.width = pct + "%";
-              spinnerText.textContent = `Downloading… ${pct}%`;
-            }
-          }
-        };
-        if (navigator.gpu) pipelineOpts.device = "webgpu"; // optional speed-up
-
-        const gen = await Promise.race([
-          pipeline("text-generation", "Xenova/distilgpt2", pipelineOpts),
-          new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")), 120000)) // 120s
-        ]);
-        spinnerText.textContent = "✅ AI Coach ready (cached)";
-        return gen;
-      } catch (e) {
-        if (retries > 0) return loadModel(retries - 1);
-        console.error("AI load fail:", e);
-        alert("⚠️ Failed to load AI Coach: " + e.message);
-        aiToggle.checked = false;
-        return null;
-      } finally {
-        setTimeout(() => spinner.classList.add("hidden"), 300);
-      }
-    }
-
-    async function aiCoachFeedback(activity) {
-      try {
-        const out = await Promise.race([
-          generator(activity, { max_new_tokens: 80 }),
-          new Promise((_,rej)=>setTimeout(()=>rej(new Error("AI timeout")), 12000))
-        ]);
-        let txt = out?.[0]?.generated_text || "";
-        if (txt.startsWith(activity)) txt = txt.slice(activity.length);
-        txt = limitSentences(txt.trim(), 4);
-        return txt || "Keep it up!";
-      } catch (e) {
-        console.error("AI feedback fail:", e);
-        return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
-      }
-    }
-
-    // Events
-    fabBtn.onclick = () => { logModal.classList.remove("hidden"); };
-    manageBtn.onclick = () => { manageModal.classList.remove("hidden"); };
-    document.getElementById("closeLog").onclick = () => logModal.classList.add("hidden");
-    document.getElementById("closeManage").onclick = () => manageModal.classList.add("hidden");
-    clearBtn.onclick = () => {
-      if (confirm("Clear all logs?")) {
-        logs = [];
-        safeSave(STORAGE_KEYS.LOGS, logs);
-        renderLogs();
-      }
-    };
-    // Close on ESC / outside
-    document.addEventListener("keydown", e => {
-      if (e.key === "Escape") { logModal.classList.add("hidden"); manageModal.classList.add("hidden"); }
-    });
-    window.addEventListener("click", (e) => {
-      if (e.target === logModal) logModal.classList.add("hidden");
-      if (e.target === manageModal) manageModal.classList.add("hidden");
-    });
-
-    addActivityBtn.onclick = () => {
-      const val = newActivityInput.value.trim();
-      if (!val) { alert("Enter activity."); return; }
-      if (activities.includes(val)) { alert("Activity exists."); return; }
-      activities.push(val);
-      safeSave(STORAGE_KEYS.ACTIVITIES, activities);
-      newActivityInput.value = "";
+    window.removeActivity = (i) => {
+      activities.splice(i,1);
+      save(STORAGE_KEYS.ACTIVITIES,activities);
       renderActivities();
     };
 
-    aiToggle.onchange = async () => {
-      if (aiToggle.checked && !generator) {
-        generator = await loadModel();
-      }
-    };
+    function renderLogs() {
+      log.innerHTML = "";
+      logs.forEach(l => {
+        const div = document.createElement("div");
+        div.className="p-3 bg-gray-800 rounded";
+        div.innerHTML = `<div class="font-bold">${sanitize(l.activity)} <span class="text-xs">(${l.time})</span></div>
+                         <div class="text-sm mt-1">${sanitize(l.feedback)}</div>`;
+        log.appendChild(div);
+      });
+    }
 
-    logBtn.onclick = async () => {
-      const act = activitySelect.value;
-      if (!act) { alert("Please select an activity."); return; }
-
-      const entry = {
-        activity: act,
-        time: new Date().toLocaleString(),
-        feedback: "🤖 AI Coach is thinking…",
-        status: "thinking"
+    function ruleFeedback(act) {
+      const fb = {
+        Eat:"🍽️ Good to stay nourished!",
+        Sleep:"😴 Rest is essential.",
+        Work:"💼 Keep focused!",
+        Exercise:"🏃 Great energy boost.",
+        Study:"📚 Knowledge is power.",
+        Commute:"🚌 Time well spent traveling.",
+        Socialize:"🤝 Stay connected.",
+        Relax:"🧘 Calm and balanced.",
+        Shop:"🛒 Don’t overspend!",
+        Cook:"👩‍🍳 Healthy eating starts here."
       };
-      logs.push(entry);
-      safeSave(STORAGE_KEYS.LOGS, logs);
-      renderLogs();
+      return fb[act] || "Keep it up!";
+    }
 
-      const idx = logs.length - 1;
-      if (aiToggle.checked && generator) {
-        const feedback = await aiCoachFeedback(act);
-        logs[idx].feedback = feedback;
-        logs[idx].status = feedback.startsWith("⚠️") ? "fail" : "done";
-      } else if (aiToggle.checked && !generator) {
-        logs[idx].feedback = "⚠️ AI Coach unavailable. " + ruleFeedback(act);
-        logs[idx].status = "fail";
-      } else {
-        logs[idx].feedback = ruleFeedback(act);
-        logs[idx].status = "done";
+    async function loadModel(retries=2){
+      if(!navigator.onLine){alert("⚠️ Offline. AI Coach needs internet."); aiToggle.checked=false; return null;}
+      if(!window.WebAssembly){alert("⚠️ Browser lacks WebAssembly."); aiToggle.checked=false; return null;}
+      spinner.classList.remove("hidden"); spinnerText.textContent="Downloading AI Coach (~70MB)…";
+      progressBar.style.width="0%";
+      try{
+        const {pipeline}=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2");
+        return await Promise.race([
+          pipeline("text-generation","Xenova/distilgpt2",{
+            progress_callback:(p)=>{
+              if(p.loaded && p.total){
+                const pct=Math.floor((p.loaded/p.total)*100);
+                progressBar.style.width=pct+"%";
+                spinnerText.textContent=`Downloading… ${pct}% (${(p.loaded/1e6).toFixed(1)}MB / ${(p.total/1e6).toFixed(1)}MB)`;
+              }
+            }
+          }),
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")),120000)) // 2 minutes
+        ]);
+      }catch(e){
+        if(retries>0) return loadModel(retries-1);
+        console.error("AI load fail",e); alert("⚠️ Failed: "+e.message); aiToggle.checked=false; return null;
+      }finally{spinner.classList.add("hidden");}
+    }
+
+    async function aiCoachFeedback(act){
+      try{
+        const out=await Promise.race([
+          generator(act,{max_new_tokens:80}),
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error("AI timeout")),15000))
+        ]);
+        let txt=out[0]?.generated_text || "";
+        if(txt.startsWith(act)) txt=txt.slice(act.length);
+        return sanitize(txt.trim().split(/(?<=[.!?])\s+/).slice(0,4).join(" "))||"Keep it up!";
+      }catch(e){throw new Error("AI feedback fail: "+e.message);}
+    }
+
+    fabBtn.onclick=()=>{logModal.classList.remove("hidden");};
+    manageBtn.onclick=()=>{manageModal.classList.remove("hidden");};
+    clearBtn.onclick=()=>{if(confirm("Clear all logs?")){logs=[]; save(STORAGE_KEYS.LOGS,logs); renderLogs();}};
+    addActivityBtn.onclick=()=>{
+      const val=newActivityInput.value.trim(); if(val&&!activities.includes(val)){
+        activities.push(val); save(STORAGE_KEYS.ACTIVITIES,activities); renderActivities(); newActivityInput.value="";
       }
-      safeSave(STORAGE_KEYS.LOGS, logs);
-      renderLogs();
-      logModal.classList.add("hidden");
+    };
+    aiToggle.onchange=async()=>{if(aiToggle.checked&&!generator){generator=await loadModel(); if(generator) spinnerText.textContent="✅ AI Coach ready";}};
+
+    logBtn.onclick=async()=>{
+      const act=activitySelect.value;
+      const entry={activity:act,time:new Date().toLocaleString(),feedback:"🤖 AI Coach is thinking..."};
+      logs.push(entry); save(STORAGE_KEYS.LOGS,logs); renderLogs();
+      const idx=logs.length-1;
+      if(aiToggle.checked&&generator){
+        try{logs[idx].feedback=await aiCoachFeedback(act);}catch(e){logs[idx].feedback="⚠️ AI Coach error. "+ruleFeedback(act);}
+      }else{logs[idx].feedback=aiToggle.checked?"⚠️ AI Coach unavailable. "+ruleFeedback(act):ruleFeedback(act);}
+      save(STORAGE_KEYS.LOGS,logs); renderLogs(); logModal.classList.add("hidden");
     };
 
-    // Init
-    renderActivities();
-    renderLogs();
+    renderActivities(); renderLogs();
   </script>
 </body>
 </html>
