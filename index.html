@@ -8,7 +8,9 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
   <!-- Header -->
-  <header class="bg-gray-800 p-4 text-center text-xl font-bold">AI Daily Activity Tracker</header>
+  <header class="bg-gray-800 p-4 text-center text-xl font-bold">
+    AI Daily Activity Tracker
+  </header>
 
   <!-- Logs -->
   <main class="flex-1 p-4 overflow-y-auto">
@@ -23,9 +25,9 @@
   </div>
 
   <!-- Log Modal -->
-  <div id="logModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
+  <div id="logModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="logTitle">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 class="text-lg font-bold mb-3">Log Activity</h2>
+      <h2 id="logTitle" class="text-lg font-bold mb-3">Log Activity</h2>
 
       <label class="block text-sm mb-1">Activity</label>
       <select id="activitySelect" class="w-full p-2 text-black rounded mb-3"></select>
@@ -55,9 +57,9 @@
   </div>
 
   <!-- Manage Modal -->
-  <div id="manageModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
+  <div id="manageModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 class="text-lg font-bold mb-3">Manage Activities</h2>
+      <h2 id="manageTitle" class="text-lg font-bold mb-3">Manage Activities</h2>
       <input id="newActivityInput" type="text" placeholder="New activity" class="w-full p-2 text-black rounded mb-2" />
       <button id="addActivityBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded mb-4">Add</button>
       <ul id="activityList" class="space-y-1 max-h-40 overflow-y-auto mb-3"></ul>
@@ -75,7 +77,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.28</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.29</footer>
 
   <script type="module">
     // Elements
@@ -107,13 +109,14 @@
     if (!activities.length) activities = ['Eat','Sleep','Work','Exercise','Study','Commute','Socialize','Relax','Shop','Cook'];
     let logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
 
-    // AI
+    // AI state
     let generator = null;
     let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
-    let activeModelId = null;          // full HF repo id
+    let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 300000;         // 5 minutes for download
-    const GEN_TIMEOUT_MS = 15000;      // 15s for a single generation
+    const TIMEOUT_MS = 300000;         // 5 min download
+    const GEN_TIMEOUT_MS = 15000;      // 15s generation
+    let logBusy = false;
 
     // Utils
     const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','&':'&amp;'}[c]));
@@ -140,7 +143,7 @@
       return m[a] || 'Keep it up!';
     }
 
-    // Renderers
+    // Renders
     function renderActivities() {
       activitySelect.innerHTML = '';
       activities.forEach(a => {
@@ -184,7 +187,7 @@
       });
     }
 
-    // Model selection
+    // Model selection UI -> config
     function applyModelSelection() {
       const key = modelSelect.value;
       activeModelKey = key;
@@ -193,9 +196,9 @@
         activeModelId = 'Xenova/distilgpt2';
         activeTask = 'text-generation';
         modelBadge.textContent = 'DistilGPT-2';
-        spinnerSub.textContent = '~70–80MB first load (cached afterwards)';
+        spinnerSub.textContent = '~70–80MB first load (cached afterward)';
       } else if (key === 'smollm2') {
-        activeModelId = 'HuggingFaceTB/SmolLM2-135M-Instruct'; // will request quantized ONNX via dtype
+        activeModelId = 'HuggingFaceTB/SmolLM2-135M-Instruct'; // quantized via dtype below
         activeTask = 'text-generation';
         modelBadge.textContent = 'SmolLM2-135M (quantized)';
         spinnerSub.textContent = 'quantized ONNX ~175MB (bnb4), cached after first load';
@@ -203,7 +206,7 @@
         activeModelId = 'Xenova/t5-small';
         activeTask = 'text2text-generation';
         modelBadge.textContent = 'T5-small';
-        spinnerSub.textContent = '~200–240MB first load (cached afterwards)';
+        spinnerSub.textContent = '~200–240MB first load (cached afterward)';
       }
     }
     applyModelSelection();
@@ -221,7 +224,6 @@
       try {
         const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
 
-        // Options: progress, optional WebGPU, and dtype for quantized SmolLM2
         const opts = {
           progress_callback: (p) => {
             if (p && p.loaded && p.total) {
@@ -233,7 +235,7 @@
           }
         };
         if (navigator.gpu) opts.device = 'webgpu';
-        if (activeModelKey === 'smollm2') opts.dtype = 'bnb4'; // ask for quantized ONNX (model_bnb4.onnx)
+        if (activeModelKey === 'smollm2') opts.dtype = 'bnb4'; // request quantized ONNX if available
 
         const gen = await Promise.race([
           pipeline(activeTask, activeModelId, opts),
@@ -252,15 +254,12 @@
       }
     }
 
-    // Build prompts per model
+    // Prompt building for different tasks
     function buildPrompt(activity) {
-      const base = `You are a concise, positive fitness & wellbeing coach. Give short, motivational feedback (max 4 sentences) about the activity: "${activity}". Be concrete and encouraging.`;
       if (activeTask === 'text2text-generation') {
-        // T5 expects an instruction-like text input
         return `Give motivational feedback (max 4 sentences): ${activity}`;
       }
-      // Causal LMs (DistilGPT-2, SmolLM2) — prepend instruction
-      return base;
+      return `You are a concise, positive wellbeing coach. Give short, motivational feedback (max 4 sentences) about the activity: "${activity}". Be concrete and encouraging.`;
     }
 
     async function aiCoachFeedback(activity) {
@@ -270,12 +269,9 @@
           generator(input, { max_new_tokens: 80 }),
           new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_TIMEOUT_MS))
         ]);
-        // Output shape differs by task but both expose generated_text at [0]
         let txt = out?.[0]?.generated_text || '';
-        // Some generators echo the prompt; trim if so
         if (txt.startsWith(input)) txt = txt.slice(input.length);
-        txt = limitSentences(txt.trim(), 4);
-        return txt || 'Keep it up!';
+        return limitSentences(txt.trim(), 4) || 'Keep it up!';
       } catch (e) {
         console.error('AI feedback fail:', e);
         return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
@@ -288,7 +284,7 @@
     closeLog.onclick = () => { logModal.classList.add('hidden'); };
     backBtn.onclick = () => { manageModal.classList.add('hidden'); };
 
-    // Dismiss modals on ESC / outside
+    // Close on ESC / outside
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') { logModal.classList.add('hidden'); manageModal.classList.add('hidden'); }
     });
@@ -326,37 +322,58 @@
     };
 
     logBtn.onclick = async () => {
-      const act = activitySelect.value;
-      if (!act) { alert('Please select an activity.'); return; }
+      if (logBusy) return;
+      logBusy = true;
 
-      const entry = {
-        activity: act,
-        time: new Date().toLocaleString(),
-        model: aiToggle.checked ? (activeModelKey==='smollm2' ? 'SmolLM2-135M (bnb4)' : (activeModelKey==='t5' ? 'T5-small' : 'DistilGPT-2')) : 'N/A',
-        feedback: '🤖 AI Coach is thinking…',
-        status: 'thinking'
-      };
-      logs.push(entry);
-      safeSave(STORAGE_KEYS.LOGS, logs);
-      renderLogs();
+      try {
+        const act = activitySelect.value;
+        if (!act) { alert('Please select an activity.'); return; }
 
-      const idx = logs.length - 1;
+        const aiOn = aiToggle.checked;
 
-      if (aiToggle.checked && generator) {
-        const feedback = await aiCoachFeedback(act);
-        logs[idx].feedback = feedback;
-        logs[idx].status = feedback.startsWith('⚠️') ? 'fail' : 'done';
-      } else if (aiToggle.checked && !generator) {
-        logs[idx].feedback = '⚠️ AI Coach unavailable. ' + ruleFeedback(act);
-        logs[idx].status = 'fail';
-      } else {
-        logs[idx].feedback = ruleFeedback(act);
-        logs[idx].status = 'done';
+        // If AI OFF or generator unavailable -> direct rule-based feedback
+        if (!aiOn || !generator) {
+          const entry = {
+            activity: act,
+            time: new Date().toLocaleString(),
+            model: aiOn && !generator ? 'AI unavailable' : 'N/A',
+            feedback: aiOn && !generator ? `⚠️ AI Coach unavailable. ${ruleFeedback(act)}` : ruleFeedback(act),
+            status: aiOn && !generator ? 'fail' : 'done'
+          };
+          logs.push(entry);
+          safeSave(STORAGE_KEYS.LOGS, logs);
+          renderLogs();
+          logModal.classList.add('hidden');
+          return;
+        }
+
+        // AI ON + generator ready -> show thinking first, then replace
+        const entry = {
+          activity: act,
+          time: new Date().toLocaleString(),
+          model: activeModelKey==='smollm2' ? 'SmolLM2-135M (bnb4)' : (activeModelKey==='t5' ? 'T5-small' : 'DistilGPT-2'),
+          feedback: '🤖 AI Coach is thinking…',
+          status: 'thinking'
+        };
+        logs.push(entry);
+        safeSave(STORAGE_KEYS.LOGS, logs);
+        renderLogs();
+
+        try {
+          const feedback = await aiCoachFeedback(act);
+          entry.feedback = feedback;
+          entry.status = feedback.startsWith('⚠️') ? 'fail' : 'done';
+        } catch (e) {
+          entry.feedback = `⚠️ AI Coach error. ${ruleFeedback(act)}`;
+          entry.status = 'fail';
+        }
+
+        safeSave(STORAGE_KEYS.LOGS, logs);
+        renderLogs();
+        logModal.classList.add('hidden');
+      } finally {
+        logBusy = false;
       }
-
-      safeSave(STORAGE_KEYS.LOGS, logs);
-      renderLogs();
-      logModal.classList.add('hidden');
     };
 
     // Init
