@@ -10,12 +10,14 @@
   <header class="p-4 text-center text-xl font-bold bg-gray-800">AI Daily Activity Tracker</header>
   <main class="flex-1 p-4 overflow-y-auto" id="log"></main>
 
+  <!-- Floating buttons -->
   <div class="fixed bottom-4 right-4 space-y-3 flex flex-col">
     <button id="fabBtn" aria-label="Log Activity" class="bg-blue-500 hover:bg-blue-600 text-white p-5 md:p-4 rounded-full shadow">➕</button>
     <button id="clearBtn" aria-label="Clear Logs" class="bg-red-500 hover:bg-red-600 text-white p-5 md:p-4 rounded-full shadow">🗑️</button>
     <button id="manageBtn" aria-label="Manage Activities" class="bg-green-500 hover:bg-green-600 text-white p-5 md:p-4 rounded-full shadow">⚙️</button>
   </div>
 
+  <!-- Log Modal -->
   <div id="logModal" role="dialog" aria-labelledby="logModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
     <div class="bg-gray-800 p-6 rounded shadow-lg w-full max-w-sm mx-auto">
       <h2 id="logModalTitle" class="text-lg font-bold mb-4">Log Activity</h2>
@@ -34,6 +36,7 @@
     </div>
   </div>
 
+  <!-- Manage Modal -->
   <div id="manageModal" role="dialog" aria-labelledby="manageModalTitle" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4">
     <div class="bg-gray-800 p-6 rounded shadow-lg w-full max-w-sm mx-auto">
       <h2 id="manageModalTitle" class="text-lg font-bold mb-4">Manage Activities</h2>
@@ -44,9 +47,12 @@
     </div>
   </div>
 
-  <footer class="absolute bottom-2 left-2 text-xs text-gray-500">Testversion 0.17</footer>
+  <footer class="absolute bottom-2 left-2 text-xs text-gray-500" id="versionFooter"></footer>
 
-<script>
+<script type="module">
+const VERSION = "0.18"; 
+document.getElementById("versionFooter").textContent = "Testversion " + VERSION;
+
 const log = document.getElementById("log");
 const logModal = document.getElementById("logModal");
 const manageModal = document.getElementById("manageModal");
@@ -64,7 +70,7 @@ let logs = JSON.parse(localStorage.getItem("activityLogs")||"[]");
 let generator=null;
 
 function sanitize(str){return str.replace(/[<>"'&]/g,c=>({"<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#x27;","&":"&amp;"}[c]));}
-function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){alert("⚠️ Storage full, data may not be saved.");}}
+function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch(e){alert("⚠️ Storage full.");}}
 
 function renderActivities(){
   activitySelect.innerHTML=""; activities.forEach(a=>{
@@ -91,8 +97,13 @@ function renderLogs(){
 }
 
 async function aiCoachFeedback(act){
-  const out=await generator(act,{max_new_tokens:50});
-  return out[0].generated_text.replace(/\n/g," ").slice(act.length).trim();
+  try {
+    const out=await generator(act,{max_new_tokens:50});
+    return out[0].generated_text.replace(/\n/g," ").slice(act.length).trim();
+  } catch (e) {
+    console.error("AI error:", e);
+    throw e;
+  }
 }
 function ruleFeedback(act){
   return {
