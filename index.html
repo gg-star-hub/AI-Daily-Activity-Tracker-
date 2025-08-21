@@ -30,7 +30,9 @@
       <h2 id="logTitle" class="text-lg font-bold mb-3">Log Activity</h2>
 
       <label class="block text-sm mb-1">Activity</label>
-      <select id="activitySelect" class="w-full p-2 text-black rounded mb-3"></select>
+      <select id="activitySelect" class="w-full p-2 text-black rounded mb-3">
+        <option value="" disabled selected>Select activity</option>
+      </select>
 
       <div class="flex items-center justify-between mb-3">
         <label class="flex items-center space-x-2 text-sm">
@@ -68,7 +70,9 @@
   </div>
 
   <!-- Spinner / progress -->
-  <div id="spinner" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow text-sm">
+  <div id="spinner"
+       class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow text-sm"
+       role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
     <div id="spinnerText" class="font-semibold">Downloading AI Coach…</div>
     <div class="w-52 bg-gray-300 h-2 mt-1 rounded">
       <div id="progressBar" class="bg-green-700 h-2 rounded" style="width:0%"></div>
@@ -77,7 +81,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.29</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.30</footer>
 
   <script type="module">
     // Elements
@@ -114,13 +118,51 @@
     let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
     let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 300000;         // 5 min download
-    const GEN_TIMEOUT_MS = 15000;      // 15s generation
+    const TIMEOUT_MS = 1500000;        // 25 minutes (5x the old 5-minute timeout)
+    const BASE_GEN_TIMEOUT = 15000;    // base 15s generation
     let logBusy = false;
+
+    // Model config
+    const MODELS = {
+      distilgpt2: {
+        id: 'Xenova/distilgpt2',
+        task: 'text-generation',
+        note: '~70–80MB first load',
+        badge: 'DistilGPT-2',
+        opts: {}
+      },
+      smollm2: {
+        id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
+        task: 'text-generation',
+        note: 'quantized ONNX ~175MB (bnb4)',
+        badge: 'SmolLM2-135M (quantized)',
+        opts: { dtype: 'bnb4' } // request quantized weights if available
+      },
+      t5: {
+        id: 'Xenova/t5-small',
+        task: 'text2text-generation',
+        note: '~200–240MB first load',
+        badge: 'T5-small',
+        opts: {}
+      }
+    };
 
     // Utils
     const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','&':'&amp;'}[c]));
+    const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
+    function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+    function bytesOf(obj){ return new Blob([JSON.stringify(obj)]).size; }
+    function warnIfNearLimit() {
+      try {
+        const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
+        if (used > 4.5e6) {
+          const approxMB = (used/1e6).toFixed(2);
+          alert(`⚠️ Local storage almost full (~${approxMB}MB). Older logs may be truncated.`);
+        }
+      } catch {}
+    }
     function safeSave(key, val) {
+      warnIfNearLimit();
       try { localStorage.setItem(key, JSON.stringify(val)); }
       catch {
         if (key === STORAGE_KEYS.LOGS && logs.length > 10) {
@@ -132,8 +174,8 @@
         }
       }
     }
-    const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
 
+    // Fallback messages
     function ruleFeedback(a) {
       const m = {
         Eat:'🍽️ Good to stay nourished!', Sleep:'😴 Rest is essential.', Work:'💼 Keep focused!',
@@ -145,22 +187,32 @@
 
     // Renders
     function renderActivities() {
-      activitySelect.innerHTML = '';
+      const current = activitySelect.value;
+      activitySelect.innerHTML = '<option value="" disabled>Select activity</option>';
       activities.forEach(a => {
         const opt = document.createElement('option');
         opt.value = a; opt.textContent = a;
         activitySelect.appendChild(opt);
       });
+      // Keep selection if possible
+      if (current && activities.includes(current)) activitySelect.value = current;
+      else activitySelect.selectedIndex = 0;
+
       activityList.innerHTML = '';
       activities.forEach((a,i) => {
         const li = document.createElement('li');
         li.className = 'flex justify-between items-center bg-gray-700 rounded px-2 py-1';
         li.innerHTML = `<span>${sanitize(a)}</span>
-                        <button class="text-red-300 hover:text-red-200">✖</button>`;
-        li.querySelector('button').onclick = () => {
+                        <button class="text-red-300 hover:text-red-200" aria-label="Delete activity ${sanitize(a)}" tabindex="0">✖</button>`;
+        const delBtn = li.querySelector('button');
+        delBtn.onclick = () => {
+          if (!confirm(`Delete "${a}"?`)) return;
           activities.splice(i,1);
           safeSave(STORAGE_KEYS.ACTIVITIES, activities);
           renderActivities();
+        };
+        delBtn.onkeydown = (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); delBtn.click(); }
         };
         activityList.appendChild(li);
       });
@@ -187,87 +239,102 @@
       });
     }
 
-    // Model selection UI -> config
+    // Model selection -> config
     function applyModelSelection() {
       const key = modelSelect.value;
       activeModelKey = key;
-
-      if (key === 'distilgpt2') {
-        activeModelId = 'Xenova/distilgpt2';
-        activeTask = 'text-generation';
-        modelBadge.textContent = 'DistilGPT-2';
-        spinnerSub.textContent = '~70–80MB first load (cached afterward)';
-      } else if (key === 'smollm2') {
-        activeModelId = 'HuggingFaceTB/SmolLM2-135M-Instruct'; // quantized via dtype below
-        activeTask = 'text-generation';
-        modelBadge.textContent = 'SmolLM2-135M (quantized)';
-        spinnerSub.textContent = 'quantized ONNX ~175MB (bnb4), cached after first load';
-      } else { // t5
-        activeModelId = 'Xenova/t5-small';
-        activeTask = 'text2text-generation';
-        modelBadge.textContent = 'T5-small';
-        spinnerSub.textContent = '~200–240MB first load (cached afterward)';
-      }
+      const cfg = MODELS[key];
+      activeModelId = cfg.id;
+      activeTask   = cfg.task;
+      modelBadge.textContent = cfg.badge;
+      spinnerSub.textContent = `${cfg.note}, cached after first load`;
     }
     applyModelSelection();
     modelSelect.onchange = applyModelSelection;
 
-    // Load AI model
+    // Focus trap for modals
+    function trapFocus(modal) {
+      const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (!focusable.length) return () => {};
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      function handler(e) {
+        if (e.key !== 'Tab') return;
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      modal.addEventListener('keydown', handler);
+      first.focus();
+      return () => modal.removeEventListener('keydown', handler);
+    }
+    let untrap = () => {};
+
+    // Load AI model (retries + backoff + device fallback)
     async function loadModel() {
       if (!navigator.onLine) { alert('⚠️ Offline. AI Coach needs internet.'); aiToggle.checked = false; return null; }
       if (!window.WebAssembly) { alert('⚠️ Browser lacks WebAssembly. Use Chrome/Firefox/Edge.'); aiToggle.checked = false; return null; }
 
-      spinner.classList.remove('hidden');
-      spinnerText.textContent = `Downloading ${activeModelId}…`;
-      progressBar.style.width = '0%';
+      const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
+      const attempts = [0, 2000, 5000]; // backoff (ms)
 
-      try {
-        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
+      for (let i = 0; i < attempts.length; i++) {
+        try {
+          spinner.classList.remove('hidden');
+          spinnerText.textContent = `Downloading ${activeModelId}…`;
+          progressBar.style.width = '0%';
+          spinner.setAttribute('aria-valuenow', '0');
 
-        const opts = {
-          progress_callback: (p) => {
-            if (p && p.loaded && p.total) {
-              const pct = Math.floor((p.loaded / p.total) * 100);
-              progressBar.style.width = pct + '%';
-              spinnerText.textContent = `Downloading… ${pct}%`;
-              spinnerSub.textContent = `${(p.loaded/1e6).toFixed(1)}MB / ${(p.total/1e6).toFixed(1)}MB`;
+          const cfg = MODELS[activeModelKey];
+          const opts = {
+            progress_callback: (p) => {
+              if (p && p.loaded && p.total) {
+                const pct = Math.floor((p.loaded / p.total) * 100);
+                progressBar.style.width = pct + '%';
+                spinnerText.textContent = `Downloading… ${pct}%`;
+                spinnerSub.textContent = `${(p.loaded/1e6).toFixed(1)}MB / ${(p.total/1e6).toFixed(1)}MB`;
+                spinner.setAttribute('aria-valuenow', String(pct));
+              }
             }
-          }
-        };
-        if (navigator.gpu) opts.device = 'webgpu';
-        if (activeModelKey === 'smollm2') opts.dtype = 'bnb4'; // request quantized ONNX if available
+          };
+          // First attempt uses WebGPU if available; subsequent attempts force CPU
+          opts.device = (i === 0 && navigator.gpu) ? 'webgpu' : 'cpu';
+          Object.assign(opts, cfg.opts);
 
-        const gen = await Promise.race([
-          pipeline(activeTask, activeModelId, opts),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_MS))
-        ]);
+          const gen = await Promise.race([
+            pipeline(cfg.task, cfg.id, opts),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_MS))
+          ]);
 
-        spinnerText.textContent = '✅ AI Coach ready (cached)';
-        return gen;
-      } catch (e) {
-        console.error('AI load fail:', e);
-        alert('⚠️ Failed to load AI Coach: ' + e.message);
-        aiToggle.checked = false;
-        return null;
-      } finally {
-        setTimeout(() => spinner.classList.add('hidden'), 300);
+          spinnerText.textContent = '✅ AI Coach ready (cached)';
+          setTimeout(() => spinner.classList.add('hidden'), 300);
+          return gen;
+        } catch (e) {
+          console.warn(`Model load attempt ${i+1} failed:`, e.message);
+          await new Promise(r => setTimeout(r, attempts[i]));
+        } finally {
+          setTimeout(() => spinner.classList.add('hidden'), 300);
+        }
       }
+      alert('⚠️ Failed to load AI Coach after multiple attempts. Using rule-based feedback.');
+      aiToggle.checked = false;
+      return null;
     }
 
-    // Prompt building for different tasks
+    // Prompt
     function buildPrompt(activity) {
-      if (activeTask === 'text2text-generation') {
-        return `Give motivational feedback (max 4 sentences): ${activity}`;
-      }
-      return `You are a concise, positive wellbeing coach. Give short, motivational feedback (max 4 sentences) about the activity: "${activity}". Be concrete and encouraging.`;
+      const ask = `Give 2–4 short, specific, encouraging sentences about: "${activity}". Focus on momentum, next tiny step, and consistency.`;
+      return activeTask === 'text2text-generation'
+        ? ask
+        : `You are a concise wellbeing coach. ${ask}`;
     }
 
     async function aiCoachFeedback(activity) {
       const input = buildPrompt(activity);
+      const cores = navigator.hardwareConcurrency || 4;
+      const GEN_MS = Math.min(30000, Math.max(12000, cores < 4 ? 20000 : BASE_GEN_TIMEOUT));
       try {
         const out = await Promise.race([
           generator(input, { max_new_tokens: 80 }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_TIMEOUT_MS))
+          new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_MS))
         ]);
         let txt = out?.[0]?.generated_text || '';
         if (txt.startsWith(input)) txt = txt.slice(input.length);
@@ -279,18 +346,18 @@
     }
 
     // Events
-    fabBtn.onclick = () => { logModal.classList.remove('hidden'); };
-    manageBtn.onclick = () => { manageModal.classList.remove('hidden'); };
-    closeLog.onclick = () => { logModal.classList.add('hidden'); };
-    backBtn.onclick = () => { manageModal.classList.add('hidden'); };
+    fabBtn.onclick = () => { logModal.classList.remove('hidden'); untrap = trapFocus(logModal); };
+    manageBtn.onclick = () => { manageModal.classList.remove('hidden'); untrap = trapFocus(manageModal); };
+    closeLog.onclick = () => { logModal.classList.add('hidden'); untrap(); };
+    backBtn.onclick = () => { manageModal.classList.add('hidden'); untrap(); };
 
     // Close on ESC / outside
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') { logModal.classList.add('hidden'); manageModal.classList.add('hidden'); }
+      if (e.key === 'Escape') { logModal.classList.add('hidden'); manageModal.classList.add('hidden'); untrap(); }
     });
     window.addEventListener('click', (e) => {
-      if (e.target === logModal) logModal.classList.add('hidden');
-      if (e.target === manageModal) manageModal.classList.add('hidden');
+      if (e.target === logModal) { logModal.classList.add('hidden'); untrap(); }
+      if (e.target === manageModal) { manageModal.classList.add('hidden'); untrap(); }
     });
 
     clearBtn.onclick = () => {
@@ -301,7 +368,7 @@
       }
     };
 
-    addActivityBtn.onclick = () => {
+    addActivityBtn.onclick = debounce(() => {
       const val = newActivityInput.value.trim();
       if (!val) { alert('Enter activity.'); return; }
       if (activities.includes(val)) { alert('Activity exists.'); return; }
@@ -309,29 +376,28 @@
       safeSave(STORAGE_KEYS.ACTIVITIES, activities);
       newActivityInput.value = '';
       renderActivities();
-    };
+    }, 250);
 
     aiToggle.onchange = async () => {
-      if (aiToggle.checked && !generator) {
-        generator = await loadModel();
-        if (generator) {
-          modelInfo.textContent = `Active: ${activeModelId}${activeModelKey==='smollm2' ? ' (quantized bnb4)' : ''}`;
-          modelInfo.classList.remove('hidden');
-        }
+      if (!aiToggle.checked) return;
+      if (!generator) generator = await loadModel();
+      if (generator) {
+        const cfg = MODELS[activeModelKey];
+        modelInfo.textContent = `Active: ${cfg.badge}${activeModelKey==='smollm2' ? ' (quantized bnb4)' : ''}`;
+        modelInfo.classList.remove('hidden');
       }
     };
 
     logBtn.onclick = async () => {
       if (logBusy) return;
       logBusy = true;
-
       try {
         const act = activitySelect.value;
         if (!act) { alert('Please select an activity.'); return; }
 
         const aiOn = aiToggle.checked;
 
-        // If AI OFF or generator unavailable -> direct rule-based feedback
+        // Direct rule-based when AI is off or generator missing
         if (!aiOn || !generator) {
           const entry = {
             activity: act,
@@ -347,11 +413,11 @@
           return;
         }
 
-        // AI ON + generator ready -> show thinking first, then replace
+        // AI path: show thinking, then replace
         const entry = {
           activity: act,
           time: new Date().toLocaleString(),
-          model: activeModelKey==='smollm2' ? 'SmolLM2-135M (bnb4)' : (activeModelKey==='t5' ? 'T5-small' : 'DistilGPT-2'),
+          model: MODELS[activeModelKey].badge + (activeModelKey==='smollm2' ? ' (bnb4)' : ''),
           feedback: '🤖 AI Coach is thinking…',
           status: 'thinking'
         };
