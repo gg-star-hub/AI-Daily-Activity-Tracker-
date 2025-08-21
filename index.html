@@ -9,38 +9,45 @@
 <body class="bg-gray-900 text-white h-screen flex flex-col">
 
   <!-- Header -->
-  <header class="bg-gray-800 p-4 text-lg md:text-xl font-bold flex justify-between items-center">
+  <header class="bg-gray-800 p-4 text-lg md:text-xl font-bold flex justify-between items-center shadow-md">
     <span>AI Daily Activity Tracker 🚀</span>
-    <button id="manageBtn" class="px-3 py-1 text-sm md:text-base bg-purple-600 rounded">⚙️ Manage</button>
+    <button id="manageBtn" class="px-3 py-1 text-sm md:text-base bg-purple-600 rounded shadow hover:bg-purple-500">
+      ⚙️ Manage
+    </button>
   </header>
 
   <!-- Log Display -->
-  <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2 mb-20"></main>
+  <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2 mb-24"></main>
 
   <!-- Bottom Input Bar -->
-  <div class="fixed bottom-0 left-0 right-0 bg-gray-800 p-2 flex space-x-2">
-    <select id="activity" class="flex-1 p-2 rounded bg-gray-700 text-white text-sm md:text-base"></select>
-    <button id="logBtn" class="px-3 md:px-4 py-2 bg-blue-500 rounded text-sm md:text-base">Log</button>
+  <div class="fixed bottom-0 left-0 right-0 bg-gray-800 p-3 flex space-x-3 shadow-lg border-t border-gray-700">
+    <select id="activity" 
+            class="flex-1 p-3 rounded-lg bg-gray-700 text-white text-base md:text-lg font-medium border border-gray-500 focus:ring-2 focus:ring-blue-400">
+    </select>
+    <button id="logBtn" 
+            class="px-5 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-base md:text-lg font-bold shadow-lg transition">
+      ➕ Log
+    </button>
   </div>
 
   <!-- Clear Logs Button (Floating) -->
   <button id="clearBtn" 
-          class="fixed bottom-20 right-4 bg-red-600 px-3 py-2 rounded shadow-lg text-sm md:text-base">
-    Clear
+          class="fixed bottom-28 right-4 bg-red-600 px-4 py-2 rounded-lg shadow-lg text-sm md:text-base font-semibold hover:bg-red-500">
+    🗑️ Clear
   </button>
 
   <!-- Activity Manager Modal -->
   <div id="activityModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4">
-    <div class="bg-gray-800 p-4 md:p-6 rounded-lg w-full max-w-md">
+    <div class="bg-gray-800 p-4 md:p-6 rounded-lg w-full max-w-md shadow-xl">
       <h2 class="text-base md:text-lg font-bold mb-4">Manage Activities</h2>
       <ul id="activityList" class="space-y-2 mb-4"></ul>
       <div class="flex space-x-2">
         <input id="newActivity" placeholder="New activity..." 
-               class="flex-1 p-2 rounded bg-gray-700 text-white text-sm md:text-base">
-        <button id="addActivity" class="px-3 py-1 bg-green-600 rounded text-sm md:text-base">Add</button>
+               class="flex-1 p-2 rounded bg-gray-700 text-white text-sm md:text-base border border-gray-500">
+        <button id="addActivity" class="px-3 py-1 bg-green-600 rounded hover:bg-green-500 text-sm md:text-base">Add</button>
       </div>
       <div class="mt-4 text-right">
-        <button id="closeModal" class="px-3 md:px-4 py-2 bg-gray-600 rounded text-sm md:text-base">Close</button>
+        <button id="closeModal" class="px-3 md:px-4 py-2 bg-gray-600 rounded hover:bg-gray-500 text-sm md:text-base">Close</button>
       </div>
     </div>
   </div>
@@ -98,27 +105,27 @@
       logDiv.innerHTML = "";
       logs.forEach((e, i) => {
         const row = document.createElement("div");
-        row.className = "flex flex-col bg-gray-700 p-2 rounded space-y-1";
+        row.className = "flex flex-col bg-gray-700 p-2 rounded space-y-1 shadow";
         row.innerHTML = `
           <div class="flex justify-between flex-wrap gap-2">
             <span class="text-sm md:text-base">${e.time} → <b>${e.activity}</b></span>
-            <button class="bg-red-500 px-2 rounded text-xs md:text-sm" onclick="deleteLog(${i})">✕</button>
+            <button class="bg-red-500 px-2 rounded text-xs md:text-sm hover:bg-red-400" onclick="deleteLog(${i})">✕</button>
           </div>
           <div class="text-xs md:text-sm text-green-400">🤖 Coach: ${e.feedback}</div>
         `;
         logDiv.appendChild(row);
       });
-      logDiv.scrollTop = logDiv.scrollHeight; // auto-scroll like chat
+      logDiv.scrollTop = logDiv.scrollHeight; // auto-scroll
     }
 
     function renderActivityManager() {
       activityList.innerHTML = "";
       activities.forEach((a, i) => {
         const li = document.createElement("li");
-        li.className = "flex justify-between bg-gray-700 p-2 rounded text-sm md:text-base";
+        li.className = "flex justify-between bg-gray-700 p-2 rounded text-sm md:text-base shadow";
         li.innerHTML = `
           <span>${a}</span>
-          <button class="bg-red-500 px-2 rounded text-xs md:text-sm" onclick="deleteActivity(${i})">✕</button>
+          <button class="bg-red-500 px-2 rounded text-xs md:text-sm hover:bg-red-400" onclick="deleteActivity(${i})">✕</button>
         `;
         activityList.appendChild(li);
       });
