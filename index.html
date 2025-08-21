@@ -2,206 +2,366 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Daily Activity Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
   <!-- Header -->
-  <header class="bg-gray-800 p-4 text-center text-xl font-bold">
-    AI Daily Activity Tracker
-  </header>
+  <header class="bg-gray-800 p-4 text-center text-xl font-bold">AI Daily Activity Tracker</header>
 
   <!-- Logs -->
   <main class="flex-1 p-4 overflow-y-auto">
-    <div id="log" class="space-y-4"></div>
+    <div id="log" class="space-y-3" aria-live="polite"></div>
   </main>
 
   <!-- Floating buttons -->
   <div class="fixed bottom-4 right-4 space-y-2">
-    <button id="fabBtn" class="bg-green-600 p-4 rounded-full shadow">➕</button>
-    <button id="clearBtn" class="bg-red-600 p-4 rounded-full shadow">🗑️</button>
-    <button id="manageBtn" class="bg-blue-600 p-4 rounded-full shadow">⚙️</button>
+    <button id="fabBtn" class="bg-green-600 hover:bg-green-700 p-4 rounded-full shadow text-xl" aria-label="Log activity">➕</button>
+    <button id="clearBtn" class="bg-red-600 hover:bg-red-700 p-4 rounded-full shadow" aria-label="Clear logs">🗑️</button>
+    <button id="manageBtn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-full shadow" aria-label="Manage activities">⚙️</button>
   </div>
 
   <!-- Log Modal -->
-  <div id="logModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+  <div id="logModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 class="text-lg font-bold mb-2">Log Activity</h2>
-      <select id="activitySelect" class="w-full p-2 text-black rounded mb-2"></select>
-      <label class="flex items-center space-x-2 text-sm mb-2">
-        <input type="checkbox" id="aiToggle" />
-        <span>Enable AI Coach</span>
-      </label>
-      <div id="modelInfo" class="text-xs text-yellow-400 mb-2 hidden"></div>
-      <button id="logBtn" class="w-full bg-green-600 p-2 rounded">Log</button>
+      <h2 class="text-lg font-bold mb-3">Log Activity</h2>
+
+      <label class="block text-sm mb-1">Activity</label>
+      <select id="activitySelect" class="w-full p-2 text-black rounded mb-3"></select>
+
+      <div class="flex items-center justify-between mb-3">
+        <label class="flex items-center space-x-2 text-sm">
+          <input type="checkbox" id="aiToggle" />
+          <span>Enable AI Coach</span>
+        </label>
+        <span id="modelBadge" class="text-xs text-yellow-400"></span>
+      </div>
+
+      <label class="block text-sm mb-1">Choose AI Model</label>
+      <select id="modelSelect" class="w-full p-2 text-black rounded mb-3">
+        <option value="distilgpt2">DistilGPT-2 (82M, ~70–80MB)</option>
+        <option value="smollm2">SmolLM2-135M-Instruct (quantized ~175MB)</option>
+        <option value="t5">T5-small (60M, ~200–240MB)</option>
+      </select>
+
+      <div id="modelInfo" class="text-xs text-yellow-400 mb-3 hidden"></div>
+
+      <div class="flex gap-2">
+        <button id="closeLog" class="w-1/2 bg-gray-700 hover:bg-gray-600 py-2 rounded">Close</button>
+        <button id="logBtn" class="w-1/2 bg-green-600 hover:bg-green-700 py-2 rounded">Log</button>
+      </div>
     </div>
   </div>
 
   <!-- Manage Modal -->
-  <div id="manageModal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center">
+  <div id="manageModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center">
     <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 class="text-lg font-bold mb-2">Manage Activities</h2>
-      <input id="newActivityInput" type="text" placeholder="New activity"
-             class="w-full p-2 text-black rounded mb-2" />
-      <button id="addActivityBtn" class="w-full bg-blue-600 p-2 rounded mb-4">Add</button>
-      <ul id="activityList" class="space-y-1 mb-4"></ul>
-      <button id="backBtn" class="w-full bg-gray-600 p-2 rounded">⬅ Go Back</button>
+      <h2 class="text-lg font-bold mb-3">Manage Activities</h2>
+      <input id="newActivityInput" type="text" placeholder="New activity" class="w-full p-2 text-black rounded mb-2" />
+      <button id="addActivityBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded mb-4">Add</button>
+      <ul id="activityList" class="space-y-1 max-h-40 overflow-y-auto mb-3"></ul>
+      <button id="backBtn" class="w-full bg-gray-600 hover:bg-gray-500 py-2 rounded">⬅ Go Back</button>
     </div>
   </div>
 
-  <!-- Spinner -->
-  <div id="spinner" class="hidden fixed bottom-16 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black p-2 rounded shadow">
-    <span id="spinnerText">Loading AI Coach…</span>
-    <div class="w-40 bg-gray-300 h-2 mt-1 rounded">
-      <div id="progressBar" class="bg-green-600 h-2 rounded" style="width:0%"></div>
+  <!-- Spinner / progress -->
+  <div id="spinner" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow text-sm">
+    <div id="spinnerText" class="font-semibold">Downloading AI Coach…</div>
+    <div class="w-52 bg-gray-300 h-2 mt-1 rounded">
+      <div id="progressBar" class="bg-green-700 h-2 rounded" style="width:0%"></div>
     </div>
+    <div id="spinnerSub" class="text-[11px] mt-1 opacity-80"></div>
   </div>
 
-  <!-- Footer version -->
-  <footer class="bg-gray-800 text-xs p-1 absolute bottom-0 left-0">
-    Testversion 0.27
-  </footer>
+  <!-- Footer/version -->
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.28</footer>
 
   <script type="module">
-    const fabBtn = document.getElementById("fabBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    const manageBtn = document.getElementById("manageBtn");
-    const backBtn = document.getElementById("backBtn");
-    const logModal = document.getElementById("logModal");
-    const manageModal = document.getElementById("manageModal");
-    const logBtn = document.getElementById("logBtn");
-    const activitySelect = document.getElementById("activitySelect");
-    const aiToggle = document.getElementById("aiToggle");
-    const newActivityInput = document.getElementById("newActivityInput");
-    const addActivityBtn = document.getElementById("addActivityBtn");
-    const activityList = document.getElementById("activityList");
-    const log = document.getElementById("log");
-    const spinner = document.getElementById("spinner");
-    const spinnerText = document.getElementById("spinnerText");
-    const progressBar = document.getElementById("progressBar");
-    const modelInfo = document.getElementById("modelInfo");
+    // Elements
+    const logDiv = document.getElementById('log');
+    const fabBtn = document.getElementById('fabBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const manageBtn = document.getElementById('manageBtn');
+    const logModal = document.getElementById('logModal');
+    const manageModal = document.getElementById('manageModal');
+    const closeLog = document.getElementById('closeLog');
+    const backBtn = document.getElementById('backBtn');
+    const logBtn = document.getElementById('logBtn');
+    const activitySelect = document.getElementById('activitySelect');
+    const aiToggle = document.getElementById('aiToggle');
+    const modelSelect = document.getElementById('modelSelect');
+    const modelBadge = document.getElementById('modelBadge');
+    const modelInfo = document.getElementById('modelInfo');
+    const newActivityInput = document.getElementById('newActivityInput');
+    const addActivityBtn = document.getElementById('addActivityBtn');
+    const activityList = document.getElementById('activityList');
+    const spinner = document.getElementById('spinner');
+    const spinnerText = document.getElementById('spinnerText');
+    const spinnerSub = document.getElementById('spinnerSub');
+    const progressBar = document.getElementById('progressBar');
 
-    const STORAGE_KEYS = { ACTIVITIES: "activityList", LOGS: "activityLogs" };
-    let activities = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES)) ||
-      ["Eat","Sleep","Work","Exercise","Study","Commute","Socialize","Relax","Shop","Cook"];
-    let logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS)) || [];
+    // Data
+    const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
+    let activities = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES) || '[]');
+    if (!activities.length) activities = ['Eat','Sleep','Work','Exercise','Study','Commute','Socialize','Relax','Shop','Cook'];
+    let logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
+
+    // AI
     let generator = null;
-    let activeModel = null;
+    let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
+    let activeModelId = null;          // full HF repo id
+    let activeTask = null;             // 'text-generation' | 'text2text-generation'
+    const TIMEOUT_MS = 300000;         // 5 minutes for download
+    const GEN_TIMEOUT_MS = 15000;      // 15s for a single generation
 
-    function sanitize(str) {
-      const div = document.createElement("div");
-      div.textContent = str;
-      return div.innerHTML;
+    // Utils
+    const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','&':'&amp;'}[c]));
+    function safeSave(key, val) {
+      try { localStorage.setItem(key, JSON.stringify(val)); }
+      catch {
+        if (key === STORAGE_KEYS.LOGS && logs.length > 10) {
+          logs = logs.slice(-10);
+          localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
+          alert('⚠️ Storage full. Kept last 10 logs.');
+        } else {
+          alert('⚠️ Storage full. Data not saved.');
+        }
+      }
     }
-    function save(key, val) {
-      localStorage.setItem(key, JSON.stringify(val));
+    const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
+
+    function ruleFeedback(a) {
+      const m = {
+        Eat:'🍽️ Good to stay nourished!', Sleep:'😴 Rest is essential.', Work:'💼 Keep focused!',
+        Exercise:'🏃 Great energy boost.', Study:'📚 Knowledge is power.', Commute:'🚌 Time well spent traveling.',
+        Socialize:'🤝 Stay connected.', Relax:'🧘 Calm and balanced.', Shop:'🛒 Don’t overspend!', Cook:'👩‍🍳 Healthy eating starts here.'
+      };
+      return m[a] || 'Keep it up!';
     }
 
+    // Renderers
     function renderActivities() {
-      activitySelect.innerHTML = "";
-      activities.forEach(act => {
-        const opt = document.createElement("option");
-        opt.textContent = act; activitySelect.appendChild(opt);
+      activitySelect.innerHTML = '';
+      activities.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a; opt.textContent = a;
+        activitySelect.appendChild(opt);
       });
-      activityList.innerHTML = "";
-      activities.forEach((act, i) => {
-        const li = document.createElement("li");
-        li.innerHTML = `<span>${sanitize(act)}</span>
-          <button class="bg-red-600 px-2 rounded ml-2" onclick="removeActivity(${i})">✕</button>`;
+      activityList.innerHTML = '';
+      activities.forEach((a,i) => {
+        const li = document.createElement('li');
+        li.className = 'flex justify-between items-center bg-gray-700 rounded px-2 py-1';
+        li.innerHTML = `<span>${sanitize(a)}</span>
+                        <button class="text-red-300 hover:text-red-200">✖</button>`;
+        li.querySelector('button').onclick = () => {
+          activities.splice(i,1);
+          safeSave(STORAGE_KEYS.ACTIVITIES, activities);
+          renderActivities();
+        };
         activityList.appendChild(li);
       });
     }
 
-    window.removeActivity = (i) => {
-      activities.splice(i,1);
-      save(STORAGE_KEYS.ACTIVITIES,activities);
-      renderActivities();
-    };
-
     function renderLogs() {
-      log.innerHTML = "";
+      logDiv.innerHTML = '';
       logs.forEach(l => {
-        const div = document.createElement("div");
-        div.className="p-3 bg-gray-800 rounded";
-        div.innerHTML = `<div class="font-bold">${sanitize(l.activity)} <span class="text-xs">(${l.time})</span></div>
-                         <div class="text-sm mt-1">${sanitize(l.feedback)}</div>`;
-        log.appendChild(div);
+        const isThinking = l.status === 'thinking';
+        const isFail = l.status === 'fail';
+        const border = isThinking ? 'border-yellow-400' : isFail ? 'border-red-400' : 'border-green-400';
+        const titleC = isThinking ? 'text-yellow-300' : isFail ? 'text-red-300' : 'text-green-300';
+        const card = document.createElement('div');
+        card.className = `bg-gray-800 p-3 rounded border-l-4 ${border}`;
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <div class="font-semibold">${sanitize(l.activity)}</div>
+            <div class="text-xs text-gray-400">${l.time}</div>
+          </div>
+          <div class="text-[11px] text-yellow-400 mt-0.5">AI Model: ${sanitize(l.model || 'N/A')}</div>
+          <div class="${titleC} mt-1">${sanitize(l.feedback || '')}</div>
+        `;
+        logDiv.appendChild(card);
       });
     }
 
-    function ruleFeedback(act) {
-      const fb = {
-        Eat:"🍽️ Good to stay nourished!",
-        Sleep:"😴 Rest is essential.",
-        Work:"💼 Keep focused!",
-        Exercise:"🏃 Great energy boost.",
-        Study:"📚 Knowledge is power.",
-        Commute:"🚌 Time well spent traveling.",
-        Socialize:"🤝 Stay connected.",
-        Relax:"🧘 Calm and balanced.",
-        Shop:"🛒 Don’t overspend!",
-        Cook:"👩‍🍳 Healthy eating starts here."
-      };
-      return fb[act] || "Keep it up!";
-    }
+    // Model selection
+    function applyModelSelection() {
+      const key = modelSelect.value;
+      activeModelKey = key;
 
-    async function loadModel(retries=2){
-      if(!navigator.onLine){alert("⚠️ Offline. AI Coach needs internet."); aiToggle.checked=false; return null;}
-      if(!window.WebAssembly){alert("⚠️ Browser lacks WebAssembly."); aiToggle.checked=false; return null;}
-      spinner.classList.remove("hidden"); spinnerText.textContent="Downloading AI Coach (~70MB)…";
-      progressBar.style.width="0%";
-      try{
-        const {pipeline}=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2");
-        activeModel = "Xenova/distilgpt2";
-        return await Promise.race([
-          pipeline("text-generation", activeModel, {
-            progress_callback:(p)=>{if(p.loaded&&p.total){const pct=Math.floor((p.loaded/p.total)*100);
-              progressBar.style.width=pct+"%"; spinnerText.textContent=`Downloading… ${pct}% (~70MB)`;}}
-          }),
-          new Promise((_,rej)=>setTimeout(()=>rej(new Error("Timeout")),300000)) // 5 min timeout
+      if (key === 'distilgpt2') {
+        activeModelId = 'Xenova/distilgpt2';
+        activeTask = 'text-generation';
+        modelBadge.textContent = 'DistilGPT-2';
+        spinnerSub.textContent = '~70–80MB first load (cached afterwards)';
+      } else if (key === 'smollm2') {
+        activeModelId = 'HuggingFaceTB/SmolLM2-135M-Instruct'; // will request quantized ONNX via dtype
+        activeTask = 'text-generation';
+        modelBadge.textContent = 'SmolLM2-135M (quantized)';
+        spinnerSub.textContent = 'quantized ONNX ~175MB (bnb4), cached after first load';
+      } else { // t5
+        activeModelId = 'Xenova/t5-small';
+        activeTask = 'text2text-generation';
+        modelBadge.textContent = 'T5-small';
+        spinnerSub.textContent = '~200–240MB first load (cached afterwards)';
+      }
+    }
+    applyModelSelection();
+    modelSelect.onchange = applyModelSelection;
+
+    // Load AI model
+    async function loadModel() {
+      if (!navigator.onLine) { alert('⚠️ Offline. AI Coach needs internet.'); aiToggle.checked = false; return null; }
+      if (!window.WebAssembly) { alert('⚠️ Browser lacks WebAssembly. Use Chrome/Firefox/Edge.'); aiToggle.checked = false; return null; }
+
+      spinner.classList.remove('hidden');
+      spinnerText.textContent = `Downloading ${activeModelId}…`;
+      progressBar.style.width = '0%';
+
+      try {
+        const { pipeline } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
+
+        // Options: progress, optional WebGPU, and dtype for quantized SmolLM2
+        const opts = {
+          progress_callback: (p) => {
+            if (p && p.loaded && p.total) {
+              const pct = Math.floor((p.loaded / p.total) * 100);
+              progressBar.style.width = pct + '%';
+              spinnerText.textContent = `Downloading… ${pct}%`;
+              spinnerSub.textContent = `${(p.loaded/1e6).toFixed(1)}MB / ${(p.total/1e6).toFixed(1)}MB`;
+            }
+          }
+        };
+        if (navigator.gpu) opts.device = 'webgpu';
+        if (activeModelKey === 'smollm2') opts.dtype = 'bnb4'; // ask for quantized ONNX (model_bnb4.onnx)
+
+        const gen = await Promise.race([
+          pipeline(activeTask, activeModelId, opts),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_MS))
         ]);
-      }catch(e){
-        if(retries>0) return loadModel(retries-1);
-        console.error("AI load fail",e); alert("⚠️ Failed: "+e.message); aiToggle.checked=false; return null;
-      }finally{spinner.classList.add("hidden");}
+
+        spinnerText.textContent = '✅ AI Coach ready (cached)';
+        return gen;
+      } catch (e) {
+        console.error('AI load fail:', e);
+        alert('⚠️ Failed to load AI Coach: ' + e.message);
+        aiToggle.checked = false;
+        return null;
+      } finally {
+        setTimeout(() => spinner.classList.add('hidden'), 300);
+      }
     }
 
-    async function aiCoachFeedback(act){
-      try{
-        const out=await Promise.race([
-          generator(act,{max_new_tokens:80}),
-          new Promise((_,rej)=>setTimeout(()=>rej(new Error("AI timeout")),10000))
+    // Build prompts per model
+    function buildPrompt(activity) {
+      const base = `You are a concise, positive fitness & wellbeing coach. Give short, motivational feedback (max 4 sentences) about the activity: "${activity}". Be concrete and encouraging.`;
+      if (activeTask === 'text2text-generation') {
+        // T5 expects an instruction-like text input
+        return `Give motivational feedback (max 4 sentences): ${activity}`;
+      }
+      // Causal LMs (DistilGPT-2, SmolLM2) — prepend instruction
+      return base;
+    }
+
+    async function aiCoachFeedback(activity) {
+      const input = buildPrompt(activity);
+      try {
+        const out = await Promise.race([
+          generator(input, { max_new_tokens: 80 }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_TIMEOUT_MS))
         ]);
-        let txt=out[0].generated_text;
-        if(txt.startsWith(act)) txt=txt.slice(act.length);
-        return sanitize(txt.trim().split(/(?<=[.!?])\s+/).slice(0,4).join(" "))||"Keep it up!";
-      }catch{throw new Error("AI feedback fail");}
+        // Output shape differs by task but both expose generated_text at [0]
+        let txt = out?.[0]?.generated_text || '';
+        // Some generators echo the prompt; trim if so
+        if (txt.startsWith(input)) txt = txt.slice(input.length);
+        txt = limitSentences(txt.trim(), 4);
+        return txt || 'Keep it up!';
+      } catch (e) {
+        console.error('AI feedback fail:', e);
+        return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
+      }
     }
 
-    fabBtn.onclick=()=>{logModal.classList.remove("hidden");};
-    manageBtn.onclick=()=>{manageModal.classList.remove("hidden");};
-    backBtn.onclick=()=>{manageModal.classList.add("hidden");};
-    clearBtn.onclick=()=>{if(confirm("Clear all logs?")){logs=[]; save(STORAGE_KEYS.LOGS,logs); renderLogs();}};
-    addActivityBtn.onclick=()=>{
-      const val=newActivityInput.value.trim(); if(val&&!activities.includes(val)){
-        activities.push(val); save(STORAGE_KEYS.ACTIVITIES,activities); renderActivities(); newActivityInput.value="";
+    // Events
+    fabBtn.onclick = () => { logModal.classList.remove('hidden'); };
+    manageBtn.onclick = () => { manageModal.classList.remove('hidden'); };
+    closeLog.onclick = () => { logModal.classList.add('hidden'); };
+    backBtn.onclick = () => { manageModal.classList.add('hidden'); };
+
+    // Dismiss modals on ESC / outside
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { logModal.classList.add('hidden'); manageModal.classList.add('hidden'); }
+    });
+    window.addEventListener('click', (e) => {
+      if (e.target === logModal) logModal.classList.add('hidden');
+      if (e.target === manageModal) manageModal.classList.add('hidden');
+    });
+
+    clearBtn.onclick = () => {
+      if (confirm('Clear all logs?')) {
+        logs = [];
+        safeSave(STORAGE_KEYS.LOGS, logs);
+        renderLogs();
       }
     };
-    aiToggle.onchange=async()=>{if(aiToggle.checked&&!generator){generator=await loadModel(); if(generator){spinnerText.textContent="✅ AI Coach ready"; modelInfo.textContent=`Active model: ${activeModel}`; modelInfo.classList.remove("hidden");}}};
 
-    logBtn.onclick=async()=>{
-      const act=activitySelect.value;
-      const entry={activity:act,time:new Date().toLocaleString(),feedback:"🤖 AI Coach is thinking..."};
-      logs.push(entry); save(STORAGE_KEYS.LOGS,logs); renderLogs();
-      const idx=logs.length-1;
-      if(aiToggle.checked&&generator){
-        try{logs[idx].feedback=await aiCoachFeedback(act);}catch{logs[idx].feedback="⚠️ AI Coach error. "+ruleFeedback(act);}
-      }else{logs[idx].feedback=aiToggle.checked?"⚠️ AI Coach unavailable. "+ruleFeedback(act):ruleFeedback(act);}
-      save(STORAGE_KEYS.LOGS,logs); renderLogs(); logModal.classList.add("hidden");
+    addActivityBtn.onclick = () => {
+      const val = newActivityInput.value.trim();
+      if (!val) { alert('Enter activity.'); return; }
+      if (activities.includes(val)) { alert('Activity exists.'); return; }
+      activities.push(val);
+      safeSave(STORAGE_KEYS.ACTIVITIES, activities);
+      newActivityInput.value = '';
+      renderActivities();
     };
 
-    renderActivities(); renderLogs();
+    aiToggle.onchange = async () => {
+      if (aiToggle.checked && !generator) {
+        generator = await loadModel();
+        if (generator) {
+          modelInfo.textContent = `Active: ${activeModelId}${activeModelKey==='smollm2' ? ' (quantized bnb4)' : ''}`;
+          modelInfo.classList.remove('hidden');
+        }
+      }
+    };
+
+    logBtn.onclick = async () => {
+      const act = activitySelect.value;
+      if (!act) { alert('Please select an activity.'); return; }
+
+      const entry = {
+        activity: act,
+        time: new Date().toLocaleString(),
+        model: aiToggle.checked ? (activeModelKey==='smollm2' ? 'SmolLM2-135M (bnb4)' : (activeModelKey==='t5' ? 'T5-small' : 'DistilGPT-2')) : 'N/A',
+        feedback: '🤖 AI Coach is thinking…',
+        status: 'thinking'
+      };
+      logs.push(entry);
+      safeSave(STORAGE_KEYS.LOGS, logs);
+      renderLogs();
+
+      const idx = logs.length - 1;
+
+      if (aiToggle.checked && generator) {
+        const feedback = await aiCoachFeedback(act);
+        logs[idx].feedback = feedback;
+        logs[idx].status = feedback.startsWith('⚠️') ? 'fail' : 'done';
+      } else if (aiToggle.checked && !generator) {
+        logs[idx].feedback = '⚠️ AI Coach unavailable. ' + ruleFeedback(act);
+        logs[idx].status = 'fail';
+      } else {
+        logs[idx].feedback = ruleFeedback(act);
+        logs[idx].status = 'done';
+      }
+
+      safeSave(STORAGE_KEYS.LOGS, logs);
+      renderLogs();
+      logModal.classList.add('hidden');
+    };
+
+    // Init
+    renderActivities();
+    renderLogs();
   </script>
 </body>
 </html>
