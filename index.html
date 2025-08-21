@@ -10,11 +10,18 @@
 
   <!-- Header -->
   <header class="bg-gray-800 p-4 text-lg md:text-xl font-bold flex justify-between items-center shadow-md">
-    <span>AI Daily Activity Tracker 🚀</span>
+    <span>AI Daily Activity Tracker 🤖</span>
     <button id="manageBtn" class="px-3 py-1 text-sm md:text-base bg-purple-600 rounded shadow hover:bg-purple-500">
       ⚙️ Manage
     </button>
   </header>
+
+  <!-- Spinner Overlay -->
+  <div id="spinner" class="fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center space-y-4 z-50">
+    <div class="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+    <p class="text-lg font-semibold text-blue-300">Loading AI Coach (GPT-2)…</p>
+    <p class="text-sm text-gray-400">First load may take 10–20 seconds</p>
+  </div>
 
   <!-- Log Display -->
   <main id="log" class="flex-1 overflow-y-auto p-2 md:p-4 space-y-2"></main>
@@ -36,7 +43,6 @@
     <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md shadow-xl">
       <h2 class="text-lg font-bold mb-4">Log Activity</h2>
       
-      <!-- Stack on mobile, row on bigger screens -->
       <div class="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-2 mb-4">
         <select id="activity" 
                 class="flex-1 p-3 rounded bg-gray-700 text-white border border-gray-500 text-base"></select>
@@ -68,7 +74,17 @@
     </div>
   </div>
 
-  <script>
+  <!-- Transformers.js AI Integration -->
+  <script type="module">
+    import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0";
+
+    const spinner = document.getElementById("spinner");
+
+    // Show spinner while model loads
+    spinner.classList.remove("hidden");
+    const generator = await pipeline("text-generation", "Xenova/distilgpt2");
+    spinner.classList.add("hidden"); // Hide spinner once ready
+
     const defaultActivities = [
       "Sleeping", "Eating", "Drinking", "Personal Hygiene",
       "Working / Studying", "Social Interaction", "Walking / Moving",
@@ -92,20 +108,19 @@
     const addActivityBtn = document.getElementById("addActivity");
     const closeModal = document.getElementById("closeModal");
 
-    function coachFeedback(activity) {
-      const feedback = {
-        "Sleeping": "😴 Good rest boosts energy and memory.",
-        "Eating": "🍎 Fuel your body well — balance is key.",
-        "Drinking": "💧 Hydration keeps you sharp and healthy.",
-        "Personal Hygiene": "🚿 Clean habits, clean mind!",
-        "Working / Studying": "💻 Great progress — consistency builds mastery.",
-        "Social Interaction": "🗣️ Connection strengthens your wellbeing.",
-        "Walking / Moving": "🚶 Movement keeps body & mind active.",
-        "Leisure / Entertainment": "🎮 Balance fun and focus.",
-        "Resting / Relaxing": "🛋️ Recharge to prevent burnout.",
-        "Using Technology / Communication": "📱 Stay connected, but avoid overload."
-      };
-      return feedback[activity] || "✨ Keep going!";
+    async function aiCoachFeedback(activity) {
+      const prompt = `I just did the activity: ${activity}. 
+      Please give me a short, motivational feedback like a positive life coach.`;
+
+      try {
+        const output = await generator(prompt, {
+          max_new_tokens: 30,
+          temperature: 0.7,
+        });
+        return output[0].generated_text.replace(prompt, "").trim();
+      } catch {
+        return "✨ Keep going!";
+      }
     }
 
     function renderActivities() {
@@ -155,12 +170,14 @@
       localStorage.setItem("activityLogs", JSON.stringify(logs));
     }
 
-    logBtn.onclick = () => {
+    logBtn.onclick = async () => {
       const act = activitySelect.value;
+      const feedback = await aiCoachFeedback(act);
+
       const entry = { 
         activity: act, 
         time: new Date().toLocaleString(),
-        feedback: coachFeedback(act)
+        feedback: feedback
       };
       logs.push(entry);
       saveLogs();
