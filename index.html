@@ -148,8 +148,8 @@
             <span>📝 ${e.time} → <b>${e.activity}</b></span>
             <button class="delete-log bg-red-500 px-2 rounded text-xs" data-index="${i}">✕</button>
           </div>
-          <div class="bg-gray-800 p-2 rounded border-l-4 border-green-400">
-            <p class="text-green-400 font-semibold mb-1">🤖 AI Coach says:</p>
+          <div class="bg-gray-800 p-2 rounded border-l-4 ${e.feedback.startsWith("⚠️") ? "border-red-400" : "border-green-400"}">
+            <p class="font-semibold mb-1 ${e.feedback.startsWith("⚠️") ? "text-red-400" : "text-green-400"}">🤖 AI Coach says:</p>
             <p class="text-sm text-gray-200 leading-snug">${e.feedback}</p>
           </div>
         `;
@@ -186,22 +186,37 @@
       });
     }
 
+    // 🚀 Log with "AI thinking..." banner
     logBtn.addEventListener("click", async ()=>{
       const act = activitySelect.value;
-      let feedback;
+
+      // temporary "thinking" banner
+      const entry = {
+        activity: act,
+        time: new Date().toLocaleString(),
+        feedback: "🤖 AI Coach is thinking..."
+      };
+      logs.push(entry);
+      renderLogs();
+
+      const idx = logs.length - 1;
+
       if (aiToggle.checked) {
         if (generator) {
-          feedback = await aiCoachFeedback(act);
+          try {
+            const feedback = await aiCoachFeedback(act);
+            logs[idx].feedback = feedback;
+          } catch {
+            logs[idx].feedback = `⚠️ AI Coach unavailable. ${ruleFeedback(act)}`;
+          }
         } else {
-          feedback = `⚠️ AI Coach unavailable (offline or not loaded). ${ruleFeedback(act)}`;
+          logs[idx].feedback = `⚠️ AI Coach unavailable (offline or not loaded). ${ruleFeedback(act)}`;
         }
       } else {
-        feedback = ruleFeedback(act);
+        logs[idx].feedback = ruleFeedback(act);
       }
 
-      const entry = {activity:act,time:new Date().toLocaleString(),feedback};
-      logs.push(entry);
-      localStorage.setItem("activityLogs",JSON.stringify(logs));
+      localStorage.setItem("activityLogs", JSON.stringify(logs));
       renderLogs();
       logModal.classList.add("hidden");
     });
