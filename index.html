@@ -5,6 +5,8 @@
   <title>AI Daily Activity Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for the activity pie/doughnut chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
   <!-- Header -->
@@ -15,6 +17,15 @@
   <!-- Logs -->
   <main class="flex-1 p-4 overflow-y-auto">
     <div id="log" class="space-y-3" aria-live="polite"></div>
+
+    <!-- Activity Chart Section -->
+    <section id="chartSection" class="mt-6 bg-gray-800 rounded-lg p-4">
+      <h3 class="text-sm font-semibold mb-3 text-gray-200">Activity Breakdown</h3>
+      <div class="flex items-center justify-center">
+        <canvas id="activityChart" aria-label="Activity breakdown chart" role="img" style="max-height:300px; width:100%"></canvas>
+      </div>
+      <p id="chartEmpty" class="text-xs text-gray-400 mt-3 hidden">No logs yet. Log some activities to see the chart.</p>
+    </section>
   </main>
 
   <!-- Floating buttons -->
@@ -81,7 +92,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.30</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.31</footer>
 
   <script type="module">
     // Elements
@@ -106,6 +117,9 @@
     const spinnerText = document.getElementById('spinnerText');
     const spinnerSub = document.getElementById('spinnerSub');
     const progressBar = document.getElementById('progressBar');
+    const chartSection = document.getElementById('chartSection');
+    const chartEmpty = document.getElementById('chartEmpty');
+    const chartCanvas = document.getElementById('activityChart');
 
     // Data
     const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
@@ -118,7 +132,7 @@
     let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm2' | 't5'
     let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 1500000;        // 25 minutes (5x the old 5-minute timeout)
+    const TIMEOUT_MS = 1500000;        // 25 minutes (5x previous)
     const BASE_GEN_TIMEOUT = 15000;    // base 15s generation
     let logBusy = false;
 
@@ -151,7 +165,6 @@
     const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#x27;','&':'&amp;'}[c]));
     const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
     function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-    function bytesOf(obj){ return new Blob([JSON.stringify(obj)]).size; }
     function warnIfNearLimit() {
       try {
         const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
@@ -185,6 +198,52 @@
       return m[a] || 'Keep it up!';
     }
 
+    // Activity chart
+    let activityChart = null;
+    function getActivityCounts() {
+      const counts = {};
+      for (const l of logs) counts[l.activity] = (counts[l.activity] || 0) + 1;
+      return counts;
+    }
+    function updateChart() {
+      const counts = getActivityCounts();
+      const labels = Object.keys(counts);
+      const data = Object.values(counts);
+
+      // Toggle empty state
+      const isEmpty = data.length === 0;
+      chartSection.classList.toggle('hidden', isEmpty);
+      chartEmpty.classList.toggle('hidden', !isEmpty);
+
+      if (isEmpty) return;
+
+      const ctx = chartCanvas.getContext('2d');
+      if (activityChart) {
+        activityChart.data.labels = labels;
+        activityChart.data.datasets[0].data = data;
+        activityChart.update();
+        return;
+      }
+      activityChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#e5e7eb' } },
+            title: { display: false }
+          }
+        }
+      });
+    }
+
     // Renders
     function renderActivities() {
       const current = activitySelect.value;
@@ -194,7 +253,6 @@
         opt.value = a; opt.textContent = a;
         activitySelect.appendChild(opt);
       });
-      // Keep selection if possible
       if (current && activities.includes(current)) activitySelect.value = current;
       else activitySelect.selectedIndex = 0;
 
@@ -365,6 +423,7 @@
         logs = [];
         safeSave(STORAGE_KEYS.LOGS, logs);
         renderLogs();
+        updateChart();
       }
     };
 
@@ -409,6 +468,7 @@
           logs.push(entry);
           safeSave(STORAGE_KEYS.LOGS, logs);
           renderLogs();
+          updateChart();
           logModal.classList.add('hidden');
           return;
         }
@@ -424,6 +484,7 @@
         logs.push(entry);
         safeSave(STORAGE_KEYS.LOGS, logs);
         renderLogs();
+        updateChart();
 
         try {
           const feedback = await aiCoachFeedback(act);
@@ -436,6 +497,7 @@
 
         safeSave(STORAGE_KEYS.LOGS, logs);
         renderLogs();
+        updateChart();
         logModal.classList.add('hidden');
       } finally {
         logBusy = false;
@@ -443,8 +505,16 @@
     };
 
     // Init
-    renderActivities();
-    renderLogs();
+    function init() {
+      renderActivities();
+      renderLogs();
+      updateChart();
+      // hide chart if empty on first load
+      const hasData = logs.length > 0;
+      chartSection.classList.toggle('hidden', !hasData);
+      chartEmpty.classList.toggle('hidden', hasData);
+    }
+    init();
   </script>
 </body>
 </html>
