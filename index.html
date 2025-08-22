@@ -4,9 +4,14 @@
   <meta charset="UTF-8" />
   <title>AI Daily Activity Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind & Chart.js -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js (pie). App falls back to a table if CDN fails). -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+  <!-- DOMPurify for robust sanitization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
   <style>
     html, body { height: 100%; }
   </style>
@@ -62,6 +67,18 @@
           <option value="activityAsc">Activity A→Z</option>
           <option value="activityDesc">Activity Z→A</option>
         </select>
+
+        <!-- Date range -->
+        <div class="grid grid-cols-2 gap-2">
+          <input id="startDate" type="date" class="w-full p-2 rounded text-black" aria-label="Start date (filter)" />
+          <input id="endDate"   type="date" class="w-full p-2 rounded text-black" aria-label="End date (filter)" />
+        </div>
+
+        <!-- Low-memory mode -->
+        <label class="mt-1 flex items-center gap-2 text-sm">
+          <input id="lowMemToggle" type="checkbox" />
+          <span>Low-memory mode (rule-based or smaller AI)</span>
+        </label>
       </div>
 
       <hr class="border-gray-700 my-3" />
@@ -160,10 +177,10 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.40</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.41</footer>
 
   <script type="module">
-    // Elements
+    // ---------- Elements ----------
     const logDiv = document.getElementById('log');
     const fabBtn = document.getElementById('fabBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -191,7 +208,6 @@
     const chartCanvas = document.getElementById('activityChart');
     const chartFallback = document.getElementById('chartFallback');
 
-    // Tools panel elements
     const toolsFab = document.getElementById('toolsFab');
     const toolsPanel = document.getElementById('toolsPanel');
     const closeTools = document.getElementById('closeTools');
@@ -204,23 +220,75 @@
     const retryLoadBtn  = document.getElementById('retryLoadBtn');
     const clearAICacheBtn = document.getElementById('clearAICacheBtn');
 
-    // Search/filters now live in Tools Panel
     const searchInput   = document.getElementById('searchInput');
     const filterActivity = document.getElementById('filterActivity');
     const sortSelect    = document.getElementById('sortSelect');
 
-    // Links modal elements
+    // New elements
+    const lowMemToggle = document.getElementById('lowMemToggle');
+    const startDate = document.getElementById('startDate');
+    const endDate   = document.getElementById('endDate');
+
     const linksModal = document.getElementById('linksModal');
     const closeLinks = document.getElementById('closeLinks');
     const prefetchBtn = document.getElementById('prefetchBtn');
 
-    // Data
+    // ---------- Storage / DB ----------
     const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
-    let activities = JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES) || '[]');
-    if (!activities.length) activities = ['Eat','Sleep','Work','Exercise','Study','Commute','Socialize','Relax','Shop','Cook'];
-    let logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
+    const DB_NAME = 'ADAT_DB';
+    const DB_VER = 1;
+    const STORE = 'kvs';
+    const SETTINGS_KEY = 'settings';
 
-    // AI state
+    // IndexedDB helpers
+    function openDB() {
+      return new Promise((resolve) => {
+        if (!('indexedDB' in window)) return resolve(null);
+        const req = indexedDB.open(DB_NAME, DB_VER);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'key' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null); // soft fallback
+      });
+    }
+    async function idbSet(key, value) {
+      const db = await openDB(); if (!db) return false;
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put({ key, value });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      });
+    }
+    async function idbGet(key) {
+      const db = await openDB(); if (!db) return null;
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = () => resolve(req.result?.value ?? null);
+        req.onerror = () => resolve(null);
+      });
+    }
+
+    // ---------- Data ----------
+    let activities = [];
+    let logs = [];
+    let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"lowMem":false}');
+    lowMemToggle.checked = !!settings.lowMem;
+
+    async function hydrateFromStorage() {
+      const idbActs = await idbGet(STORAGE_KEYS.ACTIVITIES);
+      const idbLogs = await idbGet(STORAGE_KEYS.LOGS);
+      activities = Array.isArray(idbActs) ? idbActs
+        : JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES) || '[]');
+      if (!activities.length) activities = ['Eat','Sleep','Work','Exercise','Study','Commute','Socialize','Relax','Shop','Cook'];
+      logs = Array.isArray(idbLogs) ? idbLogs
+        : JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
+    }
+
+    // ---------- AI state ----------
     let generator = null;
     let activeModelKey = 'smollm135';  // 'smollm135' | 't5small'
     let activeModelId = null;          // HF repo id
@@ -230,7 +298,7 @@
     let logBusy = false;
     let cancelFlag = false;            // soft-cancel for downloads
 
-    // Model config (GPT-2 removed)
+    // ---------- Model config ----------
     const MODELS = {
       smollm135: {
         id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
@@ -248,58 +316,60 @@
       }
     };
 
-    // ---- Chart color palette (cycles if more slices than colors) ----
+    // ---------- Chart palette ----------
     const PALETTE = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'];
 
-    // Utils
-    const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#x27;','&':'&amp;'}[c]));
+    // ---------- Utils ----------
+    const sanitize = (s) => DOMPurify.sanitize(String(s), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
     const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
     function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
-    // Text cleanup to prevent prompt echo & rambles
+    // Clean / de-echo AI output
     function cleanAIText(txt, inputPrompt) {
       if (!txt) return '';
       let out = txt;
+
+      // Strip prompt echoes
       const needle = inputPrompt.trim();
       if (needle) {
         const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
         out = out.replace(re, ' ').trim();
       }
+      // Remove boilerplate / headers / preambles
       out = out
         .replace(/^\s*you are a .*?coach.*?:?/i, ' ')
         .replace(/^\s*i am a .*?coach.*?:?/i, ' ')
+        .replace(/\b(?:i am|you are)\b[^.!?]{0,80}\bcoach\b[^.!?]*[.!?]/gi, ' ')
         .replace(/^\s*activity:\s*".*?"\s*/i, ' ')
         .replace(/^\s*output:.*$/im, ' ')
         .replace(/^\s*###\s*response:\s*/i, ' ')
+        .replace(/^#+.*$/gmi, ' ')
         .replace(/\s{2,}/g, ' ')
         .trim();
 
+      // Split, sanitize, dedupe
       let sentences = out
         .split(/(?<=[.!?])\s+|\n+/)
         .map(s => s.replace(/^[-•\s]+/,'').trim())
         .filter(Boolean);
 
       const seen = new Set();
-      sentences = sentences.filter(s => {
-        const key = s.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      sentences = sentences.filter(s => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
 
+      // Normalize punctuation
       sentences = sentences.map(s => {
         const trimmed = s.replace(/^["'“”]+|["'“”]+$/g,'').trim();
         return /[.!?]$/.test(trimmed) ? trimmed : trimmed + '.';
       });
 
-      sentences = sentences.filter(s => !/^#+\s/.test(s) && !/^response:/i.test(s));
+      // Keep 2–4 short sentences
       sentences.sort((a,b) => a.length - b.length);
       if (sentences.length > 4) sentences = sentences.slice(0,4);
 
       return sentences.join(' ');
     }
 
-    // Storage warning
+    // Storage warnings
     async function warnIfNearLimit() {
       try {
         if (navigator.storage?.estimate) {
@@ -310,28 +380,17 @@
           }
         } else {
           const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
-          if (used > 4.5e6) {
-            const approxMB = (used / 1e6).toFixed(2);
-            alert(`⚠️ Local storage almost full (~${approxMB}MB).`);
-          }
+          if (used > 4.5e6) alert('⚠️ Local storage almost full (~' + (used/1e6).toFixed(2) + 'MB).');
         }
       } catch {}
     }
-    function safeSave(key, val) {
+    async function safeSave(key, val) {
       warnIfNearLimit();
-      try { localStorage.setItem(key, JSON.stringify(val)); }
-      catch {
-        if (key === STORAGE_KEYS.LOGS && logs.length > 10) {
-          logs = logs.slice(-10);
-          localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
-          alert('⚠️ Storage full. Kept last 10 logs.');
-        } else {
-          alert('⚠️ Storage full. Data not saved.');
-        }
-      }
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+      try { await idbSet(key, val); } catch {}
     }
 
-    // Fallback phrases (guaranteed present)
+    // Rule-based fallback phrases
     function ruleFeedback(a) {
       const m = {
         Eat:'🍽️ Good to stay nourished!', Sleep:'😴 Rest is essential.', Work:'💼 Keep focused!',
@@ -341,7 +400,7 @@
       return m[a] || 'Great job — keep the momentum going!';
     }
 
-    // Activity counts / chart
+    // Chart helpers
     let activityChart = null;
     function getActivityCounts(list = logs) {
       const counts = {};
@@ -398,7 +457,7 @@
       });
     }
 
-    // Filtering / Sorting
+    // Filtering / Sorting (with date range)
     function applyFilterAndSort() {
       const q = searchInput.value.trim().toLowerCase();
       const fa = filterActivity.value;
@@ -410,9 +469,23 @@
         l.activity.toLowerCase().includes(q) || (l.feedback||'').toLowerCase().includes(q)
       );
 
+      // Date filtering (ISO preferred)
+      const s = startDate.value ? new Date(startDate.value + 'T00:00:00') : null;
+      const e = endDate.value   ? new Date(endDate.value   + 'T23:59:59') : null;
+      if (s || e) {
+        view = view.filter(l => {
+          const t = l.iso || l.time;
+          const d = t ? new Date(t) : null;
+          if (!d || isNaN(d)) return false;
+          if (s && d < s) return false;
+          if (e && d > e) return false;
+          return true;
+        });
+      }
+
       view.sort((a,b) => {
-        if (sort === 'timeAsc') return new Date(a.time) - new Date(b.time);
-        if (sort === 'timeDesc') return new Date(b.time) - new Date(a.time);
+        if (sort === 'timeAsc') return new Date(a.iso || a.time) - new Date(b.iso || b.time);
+        if (sort === 'timeDesc') return new Date(b.iso || b.time) - new Date(a.iso || a.time);
         if (sort === 'activityAsc') return a.activity.localeCompare(b.activity);
         if (sort === 'activityDesc') return b.activity.localeCompare(a.activity);
         return 0;
@@ -422,7 +495,7 @@
       updateChart(view);
     }
 
-    // Renders
+    // Renderers
     function renderActivities() {
       const current = activitySelect.value;
       activitySelect.innerHTML = '<option value="" disabled>Select activity</option>';
@@ -476,7 +549,7 @@
           <div class="flex justify-between gap-3">
             <div>
               <div class="font-semibold">${sanitize(l.activity)}</div>
-              <div class="text-xs text-gray-400">${l.time}</div>
+              <div class="text-xs text-gray-400">${sanitize(l.time)}</div>
               <div class="text-[11px] text-yellow-400 mt-0.5">AI Model: ${sanitize(l.model || 'N/A')}</div>
             </div>
             <div class="flex items-start gap-2">
@@ -513,20 +586,22 @@
       });
     }
 
-    // Model selection -> config
+    // Model selection -> config (respects low-memory mode)
     function applyModelSelection() {
       const key = modelSelect.value;
-      activeModelKey = key;
-      const cfg = MODELS[key];
+      if (settings.lowMem && key === 't5small') {
+        modelSelect.value = 'smollm135';
+      }
+      const cfgKey = modelSelect.value;
+      activeModelKey = cfgKey;
+      const cfg = MODELS[cfgKey];
       activeModelId = cfg.id;
       activeTask   = cfg.task;
       modelBadge.textContent = cfg.badge;
       spinnerSub.textContent = `${cfg.note}, cached after first load`;
     }
-    applyModelSelection();
-    modelSelect.onchange = applyModelSelection;
 
-    // Focus trap for modals
+    // Modal focus trap
     function trapFocus(modal) {
       const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
       if (!focusable.length) return () => {};
@@ -550,9 +625,14 @@
     // Download cancel (soft)
     cancelDownloadBtn.onclick = () => { cancelFlag = true; spinner.classList.add('hidden'); };
 
+    // Model loader with WASM guard and backoff
     async function loadModel() {
       if (!navigator.onLine) { alert('⚠️ Offline. AI Coach needs internet.'); aiToggle.checked = false; return null; }
-      if (!window.WebAssembly) { alert('⚠️ Browser lacks WebAssembly. Use Chrome/Firefox/Edge.'); aiToggle.checked = false; return null; }
+      if (!window.WebAssembly || !WebAssembly.compile) {
+        alert('⚠️ WebAssembly unsupported. AI Coach unavailable. Falling back to rule-based feedback.');
+        aiToggle.checked = false;
+        return null;
+      }
 
       const { pipeline } = await importTransformers();
       const attempts = [0, 2000, 5000]; // backoff (ms)
@@ -578,7 +658,7 @@
               }
             }
           };
-          // Attempt 1 uses WebGPU if available; later attempts force CPU/wasm to reduce crashes
+          // Prefer WebGPU first; then CPU/WASM to reduce crashes
           opts.device = (i === 0 && navigator.gpu) ? 'webgpu' : 'cpu';
           Object.assign(opts, cfg.opts);
 
@@ -599,7 +679,8 @@
           setTimeout(() => spinner.classList.add('hidden'), 300);
         }
       }
-      // Fallback: if T5-small fails, auto-switch to SmolLM2-135M
+
+      // Fallback: if T5-small fails, switch to SmolLM2-135M
       if (activeModelKey === 't5small') {
         console.warn('Falling back to SmolLM2-135M due to load failure.');
         activeModelKey = 'smollm135';
@@ -613,21 +694,21 @@
           return generator;
         }
       }
+
       alert('⚠️ Failed to load AI Coach after multiple attempts. Using rule-based feedback.');
       aiToggle.checked = false;
       return null;
     }
 
-    // Prompt builders — emphasize completion-only and ban preambles
+    // Prompt builder
     function buildPrompt(activity) {
       const act = String(activity).trim();
-      const base = [
+      return [
         'You are a wellbeing coach.',
         `Write 2–4 short, specific, encouraging sentences focused on momentum, the next tiny step, and consistency for the activity: "${act}".`,
         'Do not repeat the instruction or the quoted text. No preamble. No self-reference.',
         '### Response:'
       ].join(' ');
-      return base;
     }
 
     async function aiCoachFeedback(activity) {
@@ -635,13 +716,14 @@
       const cores = navigator.hardwareConcurrency || 4;
       const GEN_MS = Math.min(28000, Math.max(10000, cores < 4 ? 18000 : BASE_GEN_TIMEOUT));
       try {
+        const lowMem = !!settings.lowMem;
         const genOpts = {
-          max_new_tokens: 80,
+          max_new_tokens: lowMem ? 48 : 80,
           return_full_text: false,
           do_sample: true,
-          temperature: 0.7,
-          top_p: 0.92,
-          repetition_penalty: 1.12
+          temperature: lowMem ? 0.6 : 0.7,
+          top_p: 0.9,
+          repetition_penalty: 1.15
         };
 
         const out = await Promise.race([
@@ -679,7 +761,7 @@
       downloadBlob(blob, 'activity_logs.json');
     };
     exportCsvBtn.onclick = () => {
-      const rows = [['Time','Activity','Model','Status','Feedback'], ...logs.map(l => [l.time, l.activity, l.model||'', l.status||'', l.feedback||''])];
+      const rows = [['Time','ISO','Activity','Model','Status','Feedback'], ...logs.map(l => [l.time, l.iso || '', l.activity, l.model||'', l.status||'', l.feedback||''])];
       const csv = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\r\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, 'activity_logs.csv');
@@ -691,12 +773,12 @@
         const text = await f.text();
         const data = JSON.parse(text);
         if (!Array.isArray(data)) throw new Error('Invalid file format.');
-        const validLog = l => l.activity && l.time && typeof l.feedback === 'string' && typeof l.status === 'string';
+        const validLog = l => l.activity && (l.time || l.iso) && typeof l.feedback === 'string' && typeof l.status === 'string';
         const validData = data.filter(validLog);
         if (!validData.length) throw new Error('No valid logs in file.');
         const mode = confirm('Replace existing logs? (OK = Replace, Cancel = Merge)') ? 'replace' : 'merge';
         logs = (mode === 'replace') ? validData : logs.concat(validData);
-        safeSave(STORAGE_KEYS.LOGS, logs);
+        await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
         alert(`Imported ${validData.length} valid logs.`);
       } catch (e) { alert('Import failed: ' + e.message); }
@@ -751,7 +833,7 @@
     modelLinksBtn.onclick = () => { linksModal.classList.remove('hidden'); untrap = trapFocus(linksModal); };
     closeLinks.onclick = () => { linksModal.classList.add('hidden'); untrap(); };
     prefetchBtn.onclick = async () => {
-      if (!aiToggle.checked) aiToggle.checked = true;
+      if (!aiToggle.checked) aiToggle.checked = true; // will show spinner during load
       generator = await loadModel();
       if (generator) {
         const cfg = MODELS[activeModelKey];
@@ -770,7 +852,7 @@
     backBtn.onclick = () => { manageModal.classList.add('hidden'); untrap(); };
 
     // Close on ESC / outside (modals)
-    document.addEventListener('keydown', e => {
+    document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { logModal.classList.add('hidden'); manageModal.classList.add('hidden'); linksModal.classList.add('hidden'); untrap(); }
     });
     window.addEventListener('click', (e) => {
@@ -780,30 +862,45 @@
     });
 
     // Clear logs
-    clearBtn.onclick = () => {
+    clearBtn.onclick = async () => {
       if (confirm('Clear all logs?')) {
         logs = [];
-        safeSave(STORAGE_KEYS.LOGS, logs);
+        await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
       }
     };
 
     // Add activity (debounced)
-    addActivityBtn.onclick = debounce(() => {
+    addActivityBtn.onclick = debounce(async () => {
       const val = newActivityInput.value.trim();
       if (!val) { alert('Enter activity.'); return; }
       if (activities.includes(val)) { alert('Activity exists.'); return; }
       activities.push(val);
-      safeSave(STORAGE_KEYS.ACTIVITIES, activities);
+      await safeSave(STORAGE_KEYS.ACTIVITIES, activities);
       newActivityInput.value = '';
       renderActivities();
       applyFilterAndSort();
     }, 250);
 
+    // Low-memory toggle persist
+    lowMemToggle.onchange = async () => {
+      settings.lowMem = lowMemToggle.checked;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      if (settings.lowMem) {
+        modelSelect.value = 'smollm135';
+        applyModelSelection();
+        generator = null; // free model; will lazy-load smaller one if needed
+        alert('Low-memory mode ON: using smaller model or rule-based.');
+      }
+    };
+
     // AI toggle -> lazy load model
     aiToggle.onchange = async () => {
       if (!aiToggle.checked) return;
-      if (!generator) generator = await loadModel();
+      if (!generator) {
+        applyModelSelection();
+        generator = await loadModel();
+      }
       if (generator) {
         const cfg = MODELS[activeModelKey];
         modelInfo.textContent = `Active: ${cfg.badge}`;
@@ -811,7 +908,7 @@
       }
     };
 
-    // Log flow with correct fallbacks
+    // Log flow with correct fallbacks (includes ISO timestamp)
     logBtn.onclick = async () => {
       if (logBusy) return;
       logBusy = true;
@@ -823,30 +920,34 @@
 
         // Rule-based path
         if (!aiOn || !generator) {
+          const now = new Date();
           const entry = {
             activity: act,
-            time: new Date().toLocaleString(),
+            time: now.toLocaleString(),
+            iso: now.toISOString(),
             model: aiOn && !generator ? 'AI unavailable' : 'N/A',
             feedback: aiOn && !generator ? `⚠️ AI Coach unavailable. ${ruleFeedback(act)}` : ruleFeedback(act),
             status: aiOn && !generator ? 'fail' : 'done'
           };
           logs.push(entry);
-          safeSave(STORAGE_KEYS.LOGS, logs);
+          await safeSave(STORAGE_KEYS.LOGS, logs);
           applyFilterAndSort();
           logModal.classList.add('hidden');
           return;
         }
 
         // AI path
+        const start = new Date();
         const entry = {
           activity: act,
-          time: new Date().toLocaleString(),
+          time: start.toLocaleString(),
+          iso: start.toISOString(),
           model: MODELS[activeModelKey].badge,
           feedback: '🤖 AI Coach is thinking…',
           status: 'thinking'
         };
         logs.push(entry);
-        safeSave(STORAGE_KEYS.LOGS, logs);
+        await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
 
         try {
@@ -858,7 +959,7 @@
           entry.status = 'fail';
         }
 
-        safeSave(STORAGE_KEYS.LOGS, logs);
+        await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
         logModal.classList.add('hidden');
       } finally {
@@ -866,13 +967,17 @@
       }
     };
 
-    // Filters/sort handlers (in Tools Panel)
+    // Filters/sort handlers
     searchInput.oninput = debounce(applyFilterAndSort, 150);
     filterActivity.onchange = applyFilterAndSort;
     sortSelect.onchange = applyFilterAndSort;
+    startDate.onchange = applyFilterAndSort;
+    endDate.onchange = applyFilterAndSort;
 
-    // Init
-    function init() {
+    // ---------- Init ----------
+    applyModelSelection(); // prime model labels
+    async function init() {
+      await hydrateFromStorage();
       renderActivities();
       applyFilterAndSort();
     }
