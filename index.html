@@ -162,7 +162,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.37</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.38</footer>
 
   <script type="module">
     // Elements
@@ -224,7 +224,7 @@
 
     // AI state
     let generator = null;
-    let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm42' | 't5tiny'
+    let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm135' | 't5small'
     let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
     const TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes hard cap
@@ -232,7 +232,7 @@
     let logBusy = false;
     let cancelFlag = false;            // soft-cancel for downloads
 
-    // Model config (MobileBERT removed; added SmolLM-42M + T5-efficient-tiny)
+    // Model config
     const MODELS = {
       distilgpt2: {
         id: 'Xenova/distilgpt2',
@@ -264,12 +264,22 @@
     const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#x27;','&':'&amp;'}[c]));
     const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
     function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-    function warnIfNearLimit() {
+
+    // PATCH: Smarter storage warning with navigator.storage.estimate()
+    async function warnIfNearLimit() {
       try {
-        const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
-        if (used > 4.5e6) {
-          const approxMB = (used/1e6).toFixed(2);
-          alert(`⚠️ Local storage almost full (~${approxMB}MB). Older logs may be truncated.`);
+        if (navigator.storage?.estimate) {
+          const { quota, usage } = await navigator.storage.estimate();
+          if (usage / quota > 0.8) {
+            const percent = ((usage / quota) * 100).toFixed(1);
+            alert(`⚠️ Storage at ${percent}% (~${(usage / 1e6).toFixed(1)}MB). Clear logs or cache.`);
+          }
+        } else {
+          const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
+          if (used > 4.5e6) {
+            const approxMB = (used / 1e6).toFixed(2);
+            alert(`⚠️ Local storage almost full (~${approxMB}MB).`);
+          }
         }
       } catch {}
     }
@@ -341,11 +351,12 @@
       }
 
       const ctx = chartCanvas.getContext('2d');
+      // PATCH: Faster chart update with no animation
       if (activityChart) {
         activityChart.data.labels = labels;
         activityChart.data.datasets[0].data = data;
         activityChart.data.datasets[0].backgroundColor = colors;
-        activityChart.update();
+        activityChart.update('none'); // no animation
         return;
       }
       activityChart = new Chart(ctx, {
@@ -408,9 +419,11 @@
         li.innerHTML = `<span>${sanitize(a)}</span>
                         <button class="text-red-300 hover:text-red-200" aria-label="Delete activity ${sanitize(a)}" tabindex="0">✖</button>`;
         const delBtn = li.querySelector('button');
+        // PATCH: Prevent deleting last activity
         delBtn.onclick = () => {
+          if (activities.length === 1) { alert('Cannot delete the last activity.'); return; }
           if (!confirm(`Delete "${a}"?`)) return;
-          activities.splice(i,1);
+          activities.splice(i, 1);
           safeSave(STORAGE_KEYS.ACTIVITIES, activities);
           renderActivities();
           applyFilterAndSort();
@@ -532,7 +545,8 @@
                 const pct = Math.floor((p.loaded / p.total) * 100);
                 progressBar.style.width = pct + '%';
                 spinnerText.textContent = `Downloading… ${pct}%`;
-                spinnerSub.textContent = `${(p.loaded/1e6).toFixed(1)}MB / ${(p.total/1e6).toFixed(1)}MB`;
+                // PATCH: Clearer spinner text
+                spinnerSub.textContent = `Loaded ${(p.loaded / 1e6).toFixed(1)}MB of ${(p.total / 1e6).toFixed(1)}MB`;
                 spinner.setAttribute('aria-valuenow', String(pct));
               }
             }
@@ -556,6 +570,20 @@
           await new Promise(r => setTimeout(r, attempts[i]));
         } finally {
           setTimeout(() => spinner.classList.add('hidden'), 300);
+        }
+      }
+      // PATCH: Fallback to SmolLM2-135M if T5-small fails
+      if (activeModelKey === 't5small') {
+        console.warn('Falling back to SmolLM2-135M due to load failure.');
+        activeModelKey = 'smollm135';
+        modelSelect.value = 'smollm135';
+        applyModelSelection();
+        generator = await loadModel(); // Retry with smaller model
+        if (generator) {
+          const cfg = MODELS[activeModelKey];
+          modelInfo.textContent = `Active: ${cfg.badge}`;
+          modelInfo.classList.remove('hidden');
+          return generator;
         }
       }
       alert('⚠️ Failed to load AI Coach after multiple attempts. Using rule-based feedback.');
@@ -607,6 +635,7 @@
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, 'activity_logs.csv');
     };
+    // PATCH: Validate imported JSON logs
     importJsonBtn.onclick = () => importFile.click();
     importFile.onchange = async () => {
       const f = importFile.files[0]; if (!f) return;
@@ -614,12 +643,14 @@
         const text = await f.text();
         const data = JSON.parse(text);
         if (!Array.isArray(data)) throw new Error('Invalid file format.');
+        const validLog = l => l.activity && l.time && typeof l.feedback === 'string' && typeof l.status === 'string';
+        const validData = data.filter(validLog);
+        if (!validData.length) throw new Error('No valid logs in file.');
         const mode = confirm('Replace existing logs? (OK = Replace, Cancel = Merge)') ? 'replace' : 'merge';
-        if (mode === 'replace') logs = data;
-        else logs = logs.concat(data);
+        logs = (mode === 'replace') ? validData : logs.concat(validData);
         safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
-        alert('Import complete.');
+        alert(`Imported ${validData.length} valid logs.`);
       } catch (e) { alert('Import failed: ' + e.message); }
       importFile.value = '';
     };
@@ -672,7 +703,6 @@
     modelLinksBtn.onclick = () => { linksModal.classList.remove('hidden'); trapFocus(linksModal); };
     closeLinks.onclick = () => { linksModal.classList.add('hidden'); untrap(); };
     prefetchBtn.onclick = async () => {
-      // open spinner + try to fetch model artifacts for the selected model
       if (!aiToggle.checked) aiToggle.checked = true; // will show spinner during load
       generator = await loadModel();
       if (generator) {
