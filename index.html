@@ -162,7 +162,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.38</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.39</footer>
 
   <script type="module">
     // Elements
@@ -264,6 +264,58 @@
     const sanitize = (s) => String(s).replace(/[<>"'&]/g, c => ({'<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#x27;','&':'&amp;'}[c]));
     const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
     function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
+    // Text cleanup to prevent prompt echo & rambles
+    function cleanAIText(txt, inputPrompt) {
+      if (!txt) return '';
+      // Remove any exact prompt echoes (case-insensitive)
+      let out = txt;
+      const needle = inputPrompt.trim();
+      if (needle) {
+        const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        out = out.replace(re, ' ').trim();
+      }
+      // Remove common prompt boilerplate if leaked
+      out = out
+        .replace(/^\s*you are a .*?coach.*?:?/i, ' ')
+        .replace(/^\s*i am a .*?coach.*?:?/i, ' ')
+        .replace(/^\s*activity:\s*".*?"\s*/i, ' ')
+        .replace(/^\s*output:.*$/im, ' ')
+        .replace(/^\s*###\s*response:\s*/i, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+      // Split to sentences; drop empties; dedupe while keeping order
+      let sentences = out
+        .split(/(?<=[.!?])\s+|\n+/)
+        .map(s => s.replace(/^[-•\s]+/,'').trim())
+        .filter(Boolean);
+
+      const seen = new Set();
+      sentences = sentences.filter(s => {
+        const key = s.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Enforce 2–4 short sentences; fix punctuation
+      sentences = sentences.map(s => {
+        const trimmed = s.replace(/^["'“”]+|["'“”]+$/g,'').trim();
+        return /[.!?]$/.test(trimmed) ? trimmed : trimmed + '.';
+      });
+
+      // Guard against models that output lists/headers
+      sentences = sentences.filter(s => !/^#+\s/.test(s) && !/^response:/i.test(s));
+
+      // Heuristic: if sentences are too long, keep shorter ones first
+      sentences.sort((a,b) => a.length - b.length);
+
+      // Keep 2–4; if fewer than 2, just keep what we have
+      if (sentences.length > 4) sentences = sentences.slice(0,4);
+
+      return sentences.join(' ');
+    }
 
     // PATCH: Smarter storage warning with navigator.storage.estimate()
     async function warnIfNearLimit() {
@@ -591,12 +643,16 @@
       return null;
     }
 
-    // Prompt builders
+    // Prompt builders — emphasize completion-only and ban preambles
     function buildPrompt(activity) {
-      const ask = `Give 2–4 short, specific, encouraging sentences about: "${activity}". Focus on momentum, next tiny step, and consistency.`;
-      if (activeTask === 'text2text-generation') return ask;
-      if (activeTask === 'text-generation')     return `You are a concise wellbeing coach. ${ask}`;
-      return '';
+      const act = String(activity).trim();
+      const base = [
+        'You are a wellbeing coach.',
+        `Write 2–4 short, specific, encouraging sentences focused on momentum, the next tiny step, and consistency for the activity: "${act}".`,
+        'Do not repeat the instruction or the quoted text. No preamble. No self-reference.',
+        '### Response:'
+      ].join(' ');
+      return base;
     }
 
     async function aiCoachFeedback(activity) {
@@ -604,13 +660,37 @@
       const cores = navigator.hardwareConcurrency || 4;
       const GEN_MS = Math.min(28000, Math.max(10000, cores < 4 ? 18000 : BASE_GEN_TIMEOUT));
       try {
+        // Prefer completion-only when supported; plus anti-rambles settings
+        const genOpts = {
+          max_new_tokens: 80,
+          // Many transformers.js pipelines accept this for text-generation
+          return_full_text: false,
+          do_sample: true,
+          temperature: 0.7,
+          top_p: 0.92,
+          repetition_penalty: 1.12
+        };
+
         const out = await Promise.race([
-          generator(input, { max_new_tokens: 64 }),
+          generator(input, genOpts),
           new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_MS))
         ]);
-        let txt = out?.[0]?.generated_text || '';
-        if (txt.startsWith(input)) txt = txt.slice(input.length);
-        return limitSentences(txt.trim(), 4) || 'Keep it up!';
+
+        // Transformers.js returns array; prefer first
+        let txt = Array.isArray(out) ? (out[0]?.generated_text ?? '') : (out?.generated_text ?? '');
+        // Safety net: if provider ignored return_full_text, strip prompt echoes
+        if (txt && input && txt.toLowerCase().startsWith(input.toLowerCase())) {
+          txt = txt.slice(input.length);
+        }
+        txt = cleanAIText(txt, input).trim();
+
+        // Final guardrails
+        if (!txt || /^i am\b/i.test(txt) || /^you are\b/i.test(txt)) {
+          txt = ruleFeedback(activity);
+        }
+        // Enforce max 4 sentences
+        txt = limitSentences(txt, 4);
+        return txt || 'Keep it up!';
       } catch (e) {
         console.error('AI feedback fail:', e);
         return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
@@ -700,7 +780,7 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toolsPanel.classList.add('hidden'); });
 
     // Model Links modal
-    modelLinksBtn.onclick = () => { linksModal.classList.remove('hidden'); trapFocus(linksModal); };
+    modelLinksBtn.onclick = () => { linksModal.classList.remove('hidden'); untrap = trapFocus(linksModal); };
     closeLinks.onclick = () => { linksModal.classList.add('hidden'); untrap(); };
     prefetchBtn.onclick = async () => {
       if (!aiToggle.checked) aiToggle.checked = true; // will show spinner during load
