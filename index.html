@@ -104,8 +104,8 @@
       <label class="block text-sm mb-1">Choose AI Model</label>
       <select id="modelSelect" class="w-full p-2 text-black rounded mb-3">
         <option value="distilgpt2">DistilGPT-2 (82M, ~70–80MB)</option>
-        <option value="smollm42">SmolLM-42M (quantized ~55–70MB)</option>
-        <option value="t5tiny">T5-efficient-tiny (~60–90MB)</option>
+        <option value="smollm135">SmolLM2-135M-Instruct (q4, ~80–120MB)</option>
+        <option value="t5small">T5-small (text2text, ~200–240MB)</option>
       </select>
 
       <div id="modelInfo" class="text-xs text-yellow-400 mb-3 hidden"></div>
@@ -134,8 +134,8 @@
       <h2 id="linksTitle" class="text-lg font-bold mb-3">Model download pages</h2>
       <ul class="list-disc list-inside space-y-1 text-sm">
         <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/Xenova/distilgpt2">Xenova/distilgpt2</a></li>
-        <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/HuggingFaceTB/SmolLM-42M">HuggingFaceTB/SmolLM-42M</a></li>
-        <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/google/t5-efficient-tiny">google/t5-efficient-tiny</a></li>
+        <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct">HuggingFaceTB/SmolLM2-135M-Instruct</a></li>
+        <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/Xenova/t5-small">Xenova/t5-small</a></li>
       </ul>
       <div class="text-[11px] text-gray-400 mt-2">Tip: first load caches the model locally (IndexedDB + Cache Storage). If the browser struggles, use the Cancel button below and try a smaller model.</div>
       <div class="flex gap-2 mt-4">
@@ -162,7 +162,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.36</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.37</footer>
 
   <script type="module">
     // Elements
@@ -241,18 +241,18 @@
         badge: 'DistilGPT-2',
         opts: {}
       },
-      smollm42: {
-        id: 'HuggingFaceTB/SmolLM-42M',
+      smollm135: {
+        id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
         task: 'text-generation',
-        note: 'quantized ONNX ~55–70MB (bnb4)',
-        badge: 'SmolLM-42M (quantized)',
-        opts: { dtype: 'bnb4' }
+        note: 'ONNX q4 ~80–120MB',
+        badge: 'SmolLM2-135M (q4)',
+        opts: { dtype: 'q4' }
       },
-      t5tiny: {
-        id: 'google/t5-efficient-tiny',
+      t5small: {
+        id: 'Xenova/t5-small',
         task: 'text2text-generation',
-        note: '~60–90MB first load (experimental)',
-        badge: 'T5-efficient-tiny',
+        note: '~200–240MB first load',
+        badge: 'T5-small',
         opts: {}
       }
     };
