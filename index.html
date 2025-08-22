@@ -103,7 +103,6 @@
 
       <label class="block text-sm mb-1">Choose AI Model</label>
       <select id="modelSelect" class="w-full p-2 text-black rounded mb-3">
-        <option value="distilgpt2">DistilGPT-2 (82M, ~70–80MB)</option>
         <option value="smollm135">SmolLM2-135M-Instruct (q4, ~80–120MB)</option>
         <option value="t5small">T5-small (text2text, ~200–240MB)</option>
       </select>
@@ -133,11 +132,10 @@
     <div class="bg-gray-800 p-6 rounded-lg w-[28rem] max-w-[90vw]">
       <h2 id="linksTitle" class="text-lg font-bold mb-3">Model download pages</h2>
       <ul class="list-disc list-inside space-y-1 text-sm">
-        <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/Xenova/distilgpt2">Xenova/distilgpt2</a></li>
         <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct">HuggingFaceTB/SmolLM2-135M-Instruct</a></li>
         <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/Xenova/t5-small">Xenova/t5-small</a></li>
       </ul>
-      <div class="text-[11px] text-gray-400 mt-2">Tip: first load caches the model locally (IndexedDB + Cache Storage). If the browser struggles, use the Cancel button below and try a smaller model.</div>
+      <div class="text-[11px] text-gray-400 mt-2">Tip: first load caches the model locally (IndexedDB + Cache Storage). If the browser struggles, use the Cancel button below and try the smaller model.</div>
       <div class="flex gap-2 mt-4">
         <button id="closeLinks" class="w-1/2 bg-gray-700 hover:bg-gray-600 py-2 rounded">Close</button>
         <button id="prefetchBtn" class="w-1/2 bg-amber-600 hover:bg-amber-500 py-2 rounded">Prefetch selected model</button>
@@ -162,7 +160,7 @@
   </div>
 
   <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.39</footer>
+  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.40</footer>
 
   <script type="module">
     // Elements
@@ -224,7 +222,7 @@
 
     // AI state
     let generator = null;
-    let activeModelKey = 'distilgpt2'; // 'distilgpt2' | 'smollm135' | 't5small'
+    let activeModelKey = 'smollm135';  // 'smollm135' | 't5small'
     let activeModelId = null;          // HF repo id
     let activeTask = null;             // 'text-generation' | 'text2text-generation'
     const TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes hard cap
@@ -232,15 +230,8 @@
     let logBusy = false;
     let cancelFlag = false;            // soft-cancel for downloads
 
-    // Model config
+    // Model config (GPT-2 removed)
     const MODELS = {
-      distilgpt2: {
-        id: 'Xenova/distilgpt2',
-        task: 'text-generation',
-        note: '~70–80MB first load',
-        badge: 'DistilGPT-2',
-        opts: {}
-      },
       smollm135: {
         id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
         task: 'text-generation',
@@ -268,14 +259,12 @@
     // Text cleanup to prevent prompt echo & rambles
     function cleanAIText(txt, inputPrompt) {
       if (!txt) return '';
-      // Remove any exact prompt echoes (case-insensitive)
       let out = txt;
       const needle = inputPrompt.trim();
       if (needle) {
         const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
         out = out.replace(re, ' ').trim();
       }
-      // Remove common prompt boilerplate if leaked
       out = out
         .replace(/^\s*you are a .*?coach.*?:?/i, ' ')
         .replace(/^\s*i am a .*?coach.*?:?/i, ' ')
@@ -285,7 +274,6 @@
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-      // Split to sentences; drop empties; dedupe while keeping order
       let sentences = out
         .split(/(?<=[.!?])\s+|\n+/)
         .map(s => s.replace(/^[-•\s]+/,'').trim())
@@ -299,25 +287,19 @@
         return true;
       });
 
-      // Enforce 2–4 short sentences; fix punctuation
       sentences = sentences.map(s => {
         const trimmed = s.replace(/^["'“”]+|["'“”]+$/g,'').trim();
         return /[.!?]$/.test(trimmed) ? trimmed : trimmed + '.';
       });
 
-      // Guard against models that output lists/headers
       sentences = sentences.filter(s => !/^#+\s/.test(s) && !/^response:/i.test(s));
-
-      // Heuristic: if sentences are too long, keep shorter ones first
       sentences.sort((a,b) => a.length - b.length);
-
-      // Keep 2–4; if fewer than 2, just keep what we have
       if (sentences.length > 4) sentences = sentences.slice(0,4);
 
       return sentences.join(' ');
     }
 
-    // PATCH: Smarter storage warning with navigator.storage.estimate()
+    // Storage warning
     async function warnIfNearLimit() {
       try {
         if (navigator.storage?.estimate) {
@@ -389,7 +371,6 @@
       chartEmpty.classList.toggle('hidden', !isEmpty);
       if (isEmpty) return;
 
-      // Colors from palette (cycle if needed)
       const colors = labels.map((_, i) => PALETTE[i % PALETTE.length]);
 
       if (!window.Chart) {
@@ -403,12 +384,11 @@
       }
 
       const ctx = chartCanvas.getContext('2d');
-      // PATCH: Faster chart update with no animation
       if (activityChart) {
         activityChart.data.labels = labels;
         activityChart.data.datasets[0].data = data;
         activityChart.data.datasets[0].backgroundColor = colors;
-        activityChart.update('none'); // no animation
+        activityChart.update('none');
         return;
       }
       activityChart = new Chart(ctx, {
@@ -444,7 +424,6 @@
 
     // Renders
     function renderActivities() {
-      // Activity select (modal)
       const current = activitySelect.value;
       activitySelect.innerHTML = '<option value="" disabled>Select activity</option>';
       activities.forEach(a => {
@@ -455,7 +434,6 @@
       if (current && activities.includes(current)) activitySelect.value = current;
       else activitySelect.selectedIndex = 0;
 
-      // Filter dropdown (in tools panel)
       filterActivity.innerHTML = '<option value="">All activities</option>';
       activities.forEach(a => {
         const opt = document.createElement('option');
@@ -463,7 +441,6 @@
         filterActivity.appendChild(opt);
       });
 
-      // Manage list
       activityList.innerHTML = '';
       activities.forEach((a,i) => {
         const li = document.createElement('li');
@@ -471,7 +448,6 @@
         li.innerHTML = `<span>${sanitize(a)}</span>
                         <button class="text-red-300 hover:text-red-200" aria-label="Delete activity ${sanitize(a)}" tabindex="0">✖</button>`;
         const delBtn = li.querySelector('button');
-        // PATCH: Prevent deleting last activity
         delBtn.onclick = () => {
           if (activities.length === 1) { alert('Cannot delete the last activity.'); return; }
           if (!confirm(`Delete "${a}"?`)) return;
@@ -592,12 +568,11 @@
           const cfg = MODELS[activeModelKey];
           const opts = {
             progress_callback: (p) => {
-              if (cancelFlag) return; // UI soft-cancel
+              if (cancelFlag) return;
               if (p && p.loaded && p.total) {
                 const pct = Math.floor((p.loaded / p.total) * 100);
                 progressBar.style.width = pct + '%';
                 spinnerText.textContent = `Downloading… ${pct}%`;
-                // PATCH: Clearer spinner text
                 spinnerSub.textContent = `Loaded ${(p.loaded / 1e6).toFixed(1)}MB of ${(p.total / 1e6).toFixed(1)}MB`;
                 spinner.setAttribute('aria-valuenow', String(pct));
               }
@@ -624,13 +599,13 @@
           setTimeout(() => spinner.classList.add('hidden'), 300);
         }
       }
-      // PATCH: Fallback to SmolLM2-135M if T5-small fails
+      // Fallback: if T5-small fails, auto-switch to SmolLM2-135M
       if (activeModelKey === 't5small') {
         console.warn('Falling back to SmolLM2-135M due to load failure.');
         activeModelKey = 'smollm135';
         modelSelect.value = 'smollm135';
         applyModelSelection();
-        generator = await loadModel(); // Retry with smaller model
+        generator = await loadModel();
         if (generator) {
           const cfg = MODELS[activeModelKey];
           modelInfo.textContent = `Active: ${cfg.badge}`;
@@ -660,10 +635,8 @@
       const cores = navigator.hardwareConcurrency || 4;
       const GEN_MS = Math.min(28000, Math.max(10000, cores < 4 ? 18000 : BASE_GEN_TIMEOUT));
       try {
-        // Prefer completion-only when supported; plus anti-rambles settings
         const genOpts = {
           max_new_tokens: 80,
-          // Many transformers.js pipelines accept this for text-generation
           return_full_text: false,
           do_sample: true,
           temperature: 0.7,
@@ -676,19 +649,15 @@
           new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_MS))
         ]);
 
-        // Transformers.js returns array; prefer first
         let txt = Array.isArray(out) ? (out[0]?.generated_text ?? '') : (out?.generated_text ?? '');
-        // Safety net: if provider ignored return_full_text, strip prompt echoes
         if (txt && input && txt.toLowerCase().startsWith(input.toLowerCase())) {
           txt = txt.slice(input.length);
         }
         txt = cleanAIText(txt, input).trim();
 
-        // Final guardrails
         if (!txt || /^i am\b/i.test(txt) || /^you are\b/i.test(txt)) {
           txt = ruleFeedback(activity);
         }
-        // Enforce max 4 sentences
         txt = limitSentences(txt, 4);
         return txt || 'Keep it up!';
       } catch (e) {
@@ -715,7 +684,6 @@
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, 'activity_logs.csv');
     };
-    // PATCH: Validate imported JSON logs
     importJsonBtn.onclick = () => importFile.click();
     importFile.onchange = async () => {
       const f = importFile.files[0]; if (!f) return;
@@ -783,7 +751,7 @@
     modelLinksBtn.onclick = () => { linksModal.classList.remove('hidden'); untrap = trapFocus(linksModal); };
     closeLinks.onclick = () => { linksModal.classList.add('hidden'); untrap(); };
     prefetchBtn.onclick = async () => {
-      if (!aiToggle.checked) aiToggle.checked = true; // will show spinner during load
+      if (!aiToggle.checked) aiToggle.checked = true;
       generator = await loadModel();
       if (generator) {
         const cfg = MODELS[activeModelKey];
