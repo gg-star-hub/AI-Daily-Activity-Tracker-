@@ -3,235 +3,320 @@
 <head>
   <meta charset="UTF-8" />
   <title>AI Daily Activity Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Tailwind & Chart.js -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-
-  <!-- DOMPurify for robust sanitization -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <style>
-    html, body { height: 100%; }
+    html, body { height: 100%; margin: 0; }
+    :root {
+      --primary: #10b981;
+      --primary-hover: #059669;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --bg-dark: #1f2937;
+      --bg-darker: #111827;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+    }
+    .modal-enter { opacity: 0; transform: translateY(20px); }
+    .modal-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms ease-out, transform 300ms ease-out; }
+    .modal-exit { opacity: 1; transform: translateY(0); }
+    .modal-exit-active { opacity: 0; transform: translateY(20px); transition: opacity 300ms ease-in, transform 300ms ease-in; }
+    button { transition: background-color 200ms ease, transform 100ms ease; }
+    button:hover:not(:disabled) { transform: scale(1.05); }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--primary-hover); }
+    .indeterminate-bar {
+      background: linear-gradient(to right, var(--primary) 0%, var(--primary-hover) 50%, var(--primary) 100%);
+      background-size: 200% 100%;
+      animation: indeterminate 1.5s linear infinite;
+    }
+    @keyframes indeterminate {
+      0% { background-position: 200% 0; }
+      100% { background-position: 0 0; }
+    }
+    .toast {
+      animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+    }
+    @keyframes slideIn { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
+    .btn-loading::after {
+      content: '';
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
-<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+<body class="bg-[var(--bg-darker)] text-[var(--text-primary)] font-sans flex flex-col min-h-screen antialiased">
   <!-- Header -->
-  <header class="bg-gray-800 p-4 text-center text-xl font-bold">
+  <header class="bg-[var(--bg-dark)] p-4 text-center text-xl font-semibold shadow-sm">
     AI Daily Activity Tracker
   </header>
 
-  <!-- Logs -->
-  <main class="flex-1 p-4 overflow-y-auto">
-    <div id="log" class="space-y-3" aria-live="polite"></div>
+  <!-- Main Content -->
+  <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
+    <div id="log" class="space-y-4" aria-live="polite"></div>
 
     <!-- Activity Chart Section -->
-    <section id="chartSection" class="mt-6 bg-gray-800 rounded-lg p-4">
-      <h3 class="text-sm font-semibold mb-3 text-gray-200">Activity Breakdown</h3>
+    <section id="chartSection" class="mt-6 bg-[var(--bg-dark)] rounded-xl p-4 sm:p-6 shadow-md">
+      <h3 class="text-base sm:text-lg font-semibold mb-4 text-[var(--text-primary)]">Activity Breakdown</h3>
       <div class="flex items-center justify-center">
-        <canvas id="activityChart" aria-label="Activity breakdown chart" role="img" style="max-height:300px; width:100%"></canvas>
+        <canvas id="activityChart" aria-label="Activity breakdown chart" role="img" style="max-height: 300px; width: 100%;"></canvas>
       </div>
-      <div id="chartFallback" class="hidden text-sm mt-3"></div>
-      <p id="chartEmpty" class="text-xs text-gray-400 mt-3 hidden">No logs yet. Log some activities to see the chart.</p>
+      <div id="chartFallback" class="hidden text-sm mt-4 text-[var(--text-secondary)]"></div>
+      <p id="chartEmpty" class="text-sm text-[var(--text-secondary)] mt-4 hidden text-center">No logs yet. Log some activities to see the chart.</p>
     </section>
   </main>
 
-  <!-- Floating buttons (right) -->
-  <div class="fixed bottom-4 right-4 space-y-2 z-40">
-    <button id="fabBtn" class="bg-green-600 hover:bg-green-700 p-4 rounded-full shadow text-xl" aria-label="Log activity">➕</button>
-    <button id="clearBtn" class="bg-red-600 hover:bg-red-700 p-4 rounded-full shadow" aria-label="Clear logs">🗑️</button>
-    <button id="manageBtn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-full shadow" aria-label="Manage activities">⚙️</button>
+  <!-- Floating Action Buttons (Right) -->
+  <div class="fixed bottom-4 right-4 sm:right-6 space-y-3 z-40">
+    <button id="fabBtn" class="bg-[var(--primary)] hover:bg-[var(--primary-hover)] p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Log new activity">
+      ➕
+    </button>
+    <button id="clearBtn" class="bg-[var(--danger)] hover:bg-[var(--danger-hover)] p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Clear all logs">
+      🗑️
+    </button>
+    <button id="manageBtn" class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Manage activities">
+      ⚙️
+    </button>
   </div>
 
-  <!-- Tools FAB (left) -->
-  <div class="fixed bottom-4 left-4 z-50">
-    <button id="toolsFab" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-full shadow text-xl" aria-label="Open tools panel">☰</button>
+  <!-- Tools FAB (Left) -->
+  <div class="fixed bottom-4 left-4 sm:left-6 z-50">
+    <button id="toolsFab" class="bg-[var(--bg-dark)] hover:bg-gray-600 p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Open tools panel">
+      ☰
+    </button>
 
     <!-- Tools Panel -->
-    <div id="toolsPanel" class="hidden absolute bottom-16 left-0 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-xl p-4">
-      <div class="flex items-center justify-between mb-2">
-        <h3 class="font-semibold text-sm">Tools</h3>
-        <button id="closeTools" class="text-gray-300 hover:text-white" aria-label="Close tools">✖</button>
+    <div id="toolsPanel" class="hidden absolute bottom-16 left-0 w-80 sm:w-96 bg-[var(--bg-dark)] border border-gray-700 rounded-xl shadow-xl p-4 sm:p-5 transition-all duration-300">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base sm:text-lg font-semibold">Tools</h3>
+        <button id="closeTools" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm" aria-label="Close tools panel">✖</button>
       </div>
 
       <!-- Search / Filter / Sort -->
-      <div class="space-y-2 mb-3">
-        <input id="searchInput" class="w-full p-2 rounded text-black" placeholder="Search feedback or activity…" aria-label="Search logs" />
-        <select id="filterActivity" class="w-full p-2 rounded text-black" aria-label="Filter by activity">
-          <option value="">All activities</option>
-        </select>
-        <select id="sortSelect" class="w-full p-2 rounded text-black" aria-label="Sort logs">
-          <option value="timeDesc">Newest first</option>
-          <option value="timeAsc">Oldest first</option>
-          <option value="activityAsc">Activity A→Z</option>
-          <option value="activityDesc">Activity Z→A</option>
-        </select>
+      <div class="space-y-3">
+        <div>
+          <label for="searchInput" class="text-sm sm:text-base mb-1 block">Search Logs</label>
+          <input id="searchInput" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" placeholder="Search logs..." aria-describedby="searchHelp" />
+          <div id="searchHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Search by activity or feedback</div>
+        </div>
+        <div>
+          <label for="filterActivity" class="text-sm sm:text-base mb-1 block">Filter by Activity</label>
+          <select id="filterActivity" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="filterHelp">
+            <option value="">All activities</option>
+          </select>
+          <div id="filterHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Select an activity to filter logs</div>
+        </div>
+        <div>
+          <label for="sortSelect" class="text-sm sm:text-base mb-1 block">Sort Logs</label>
+          <select id="sortSelect" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="sortHelp">
+            <option value="timeDesc">Newest first</option>
+            <option value="timeAsc">Oldest first</option>
+            <option value="activityAsc">Activity A→Z</option>
+            <option value="activityDesc">Activity Z→A</option>
+          </select>
+          <div id="sortHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Choose how to sort logs</div>
+        </div>
 
-        <!-- Date range -->
+        <!-- Date Range -->
         <div class="grid grid-cols-2 gap-2">
-          <input id="startDate" type="date" class="w-full p-2 rounded text-black" aria-label="Start date (filter)" />
-          <input id="endDate"   type="date" class="w-full p-2 rounded text-black" aria-label="End date (filter)" />
+          <div>
+            <label for="startDate" class="text-sm sm:text-base mb-1 block">Start Date</label>
+            <input id="startDate" type="date" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="startDateHelp" />
+            <div id="startDateHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Filter logs from this date</div>
+          </div>
+          <div>
+            <label for="endDate" class="text-sm sm:text-base mb-1 block">End Date</label>
+            <input id="endDate" type="date" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="endDateHelp" />
+            <div id="endDateHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Filter logs up to this date</div>
+          </div>
         </div>
 
         <!-- Low-memory mode -->
-        <label class="mt-1 flex items-center gap-2 text-sm">
-          <input id="lowMemToggle" type="checkbox" />
-          <span>Low-memory mode (rule-based or smaller AI)</span>
+        <label class="mt-2 flex items-center gap-2 text-sm">
+          <input id="lowMemToggle" type="checkbox" class="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)]" />
+          <span>Low-memory mode (smaller AI model)</span>
         </label>
       </div>
 
-      <hr class="border-gray-700 my-3" />
+      <hr class="border-gray-700 my-4" />
 
       <!-- Export / Import -->
-      <div class="grid grid-cols-2 gap-2 mb-2">
-        <button id="exportJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as JSON">Export JSON</button>
-        <button id="exportCsvBtn"  class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs" aria-label="Export logs as CSV">Export CSV</button>
-        <button id="importJsonBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs col-span-2" aria-label="Import logs from JSON">Import</button>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <button id="exportJsonBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm" aria-label="Export logs as JSON">Export JSON</button>
+        <button id="exportCsvBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm" aria-label="Export logs as CSV">Export CSV</button>
+        <button id="importJsonBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm col-span-2" aria-label="Import logs from JSON">Import JSON</button>
         <input id="importFile" type="file" accept="application/json" class="hidden" />
       </div>
 
-      <!-- AI cache / retry / model links -->
+      <!-- AI Cache / Retry -->
       <div class="grid grid-cols-2 gap-2">
-        <button id="retryLoadBtn" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded shadow text-xs" aria-label="Retry AI model load">Retry AI Load</button>
-        <button id="clearAICacheBtn" class="bg-amber-700 hover:bg-amber-600 px-3 py-2 rounded shadow text-xs" aria-label="Clear AI cache">Clear AI cache</button>
-        <button id="modelLinksBtn" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded shadow text-xs col-span-2" aria-label="Show model links">Model download links</button>
+        <button id="retryLoadBtn" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded-md shadow text-sm" aria-label="Retry AI model load">Retry AI Load</button>
+        <button id="clearAICacheBtn" class="bg-amber-700 hover:bg-amber-600 px-3 py-2 rounded-md shadow text-sm" aria-label="Clear AI cache">Clear AI Cache</button>
+        <button id="modelLinksBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm col-span-2" aria-label="Show model download links">Model Links</button>
       </div>
     </div>
   </div>
 
   <!-- Log Modal -->
-  <div id="logModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="logTitle">
-    <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 id="logTitle" class="text-lg font-bold mb-3">Log Activity</h2>
+  <div id="logModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="logTitle">
+    <div class="bg-[var(--bg-dark)] p-5 sm:p-6 rounded-xl w-80 sm:w-96 max-w-[90vw] modal-enter">
+      <h2 id="logTitle" class="text-lg sm:text-xl font-semibold mb-4">Log Activity</h2>
 
-      <label class="block text-sm mb-1">Activity</label>
-      <select id="activitySelect" class="w-full p-2 text-black rounded mb-3">
-        <option value="" disabled selected>Select activity</option>
-      </select>
-
-      <div class="flex items-center justify-between mb-3">
-        <label class="flex items-center space-x-2 text-sm">
-          <input type="checkbox" id="aiToggle" />
-          <span>Enable AI Coach</span>
-        </label>
-        <span id="modelBadge" class="text-xs text-yellow-400"></span>
+      <div>
+        <label for="activitySelect" class="block text-sm sm:text-base mb-2">Activity</label>
+        <select id="activitySelect" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base mb-4 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="activityHelp">
+          <option value="" disabled selected>Select activity</option>
+        </select>
+        <div id="activityHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Choose an activity to log</div>
       </div>
 
-      <label class="block text-sm mb-1">Choose AI Model</label>
-      <select id="modelSelect" class="w-full p-2 text-black rounded mb-3">
-        <option value="smollm135">SmolLM2-135M-Instruct (q4, ~80–120MB)</option>
-        <option value="t5small">T5-small (text2text, ~200–240MB)</option>
-      </select>
+      <div class="flex items-center justify-between mb-4">
+        <label class="flex items-center space-x-2 text-sm sm:text-base">
+          <input type="checkbox" id="aiToggle" class="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)]" />
+          <span>Enable AI Coach</span>
+        </label>
+        <span id="modelBadge" class="text-xs sm:text-sm text-amber-400"></span>
+      </div>
 
-      <div id="modelInfo" class="text-xs text-yellow-400 mb-3 hidden"></div>
+      <div>
+        <label for="modelSelect" class="block text-sm sm:text-base mb-2">AI Model</label>
+        <select id="modelSelect" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base mb-4 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="modelHelp">
+          <option value="smollm135">SmolLM2-135M-Instruct (q4, ~80–120MB)</option>
+          <option value="t5small">T5-small (text2text, ~200–240MB)</option>
+        </select>
+        <div id="modelHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Select the AI model for feedback</div>
+      </div>
 
-      <div class="flex gap-2">
-        <button id="closeLog" class="w-1/2 bg-gray-700 hover:bg-gray-600 py-2 rounded">Close</button>
-        <button id="logBtn" class="w-1/2 bg-green-600 hover:bg-green-700 py-2 rounded">Log</button>
+      <div id="modelInfo" class="text-xs sm:text-sm text-amber-400 mb-4 hidden"></div>
+
+      <div class="flex gap-3">
+        <button id="closeLog" class="w-1/2 bg-[var(--bg-dark)] hover:bg-gray-600 py-2 rounded-md text-sm sm:text-base">Close</button>
+        <button id="logBtn" class="w-1/2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] py-2 rounded-md text-sm sm:text-base">Log</button>
       </div>
     </div>
   </div>
 
   <!-- Manage Modal -->
-  <div id="manageModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
-    <div class="bg-gray-800 p-6 rounded-lg w-80">
-      <h2 id="manageTitle" class="text-lg font-bold mb-3">Manage Activities</h2>
-      <input id="newActivityInput" type="text" placeholder="New activity" class="w-full p-2 text-black rounded mb-2" />
-      <button id="addActivityBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded mb-4">Add</button>
-      <ul id="activityList" class="space-y-1 max-h-40 overflow-y-auto mb-3"></ul>
-      <button id="backBtn" class="w-full bg-gray-600 hover:bg-gray-500 py-2 rounded">⬅ Go Back</button>
+  <div id="manageModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
+    <div class="bg-[var(--bg-dark)] p-5 sm:p-6 rounded-xl w-80 sm:w-96 max-w-[90vw] modal-enter">
+      <h2 id="manageTitle" class="text-lg sm:text-xl font-semibold mb-4">Manage Activities</h2>
+      <div>
+        <label for="newActivityInput" class="block text-sm sm:text-base mb-2">New Activity</label>
+        <input id="newActivityInput" type="text" placeholder="Add new activity" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base mb-3 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="newActivityHelp" />
+        <div id="newActivityHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Enter a unique activity name</div>
+        <div id="newActivityError" class="text-xs text-[var(--danger)] mt-1 hidden"></div>
+      </div>
+      <button id="addActivityBtn" class="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] py-2 rounded-md text-sm sm:text-base mb-4">Add Activity</button>
+      <ul id="activityList" class="space-y-2 max-h-40 overflow-y-auto mb-4"></ul>
+      <button id="backBtn" class="w-full bg-[var(--bg-dark)] hover:bg-gray-600 py-2 rounded-md text-sm sm:text-base">⬅ Go Back</button>
     </div>
   </div>
 
   <!-- Model Links Modal -->
-  <div id="linksModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="linksTitle">
-    <div class="bg-gray-800 p-6 rounded-lg w-[28rem] max-w-[90vw]">
-      <h2 id="linksTitle" class="text-lg font-bold mb-3">Model download pages</h2>
-      <ul class="list-disc list-inside space-y-1 text-sm">
-        <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct">HuggingFaceTB/SmolLM2-135M-Instruct</a></li>
-        <li><a class="text-blue-300 hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/Xenova/t5-small">Xenova/t5-small</a></li>
+  <div id="linksModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="linksTitle">
+    <div class="bg-[var(--bg-dark)] p-5 sm:p-6 rounded-xl w-[28rem] max-w-[90vw] modal-enter">
+      <h2 id="linksTitle" class="text-lg sm:text-xl font-semibold mb-4">Model Download Links</h2>
+      <ul class="list-disc list-inside space-y-2 text-sm sm:text-base">
+        <li><a class="text-[var(--accent)] hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct">HuggingFaceTB/SmolLM2-135M-Instruct</a></li>
+        <li><a class="text-[var(--accent)] hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/Xenova/t5-small">Xenova/t5-small</a></li>
       </ul>
-      <div class="text-[11px] text-gray-400 mt-2">Tip: first load caches the model locally (IndexedDB + Cache Storage). If the browser struggles, use the Cancel button below and try the smaller model.</div>
-      <div class="flex gap-2 mt-4">
-        <button id="closeLinks" class="w-1/2 bg-gray-700 hover:bg-gray-600 py-2 rounded">Close</button>
-        <button id="prefetchBtn" class="w-1/2 bg-amber-600 hover:bg-amber-500 py-2 rounded">Prefetch selected model</button>
+      <div class="text-xs sm:text-sm text-[var(--text-secondary)] mt-3">Tip: First load caches models locally (IndexedDB + Cache Storage). If loading fails, try the smaller model or clear cache.</div>
+      <div class="flex gap-3 mt-4">
+        <button id="closeLinks" class="w-1/2 bg-[var(--bg-dark)] hover:bg-gray-600 py-2 rounded-md text-sm sm:text-base">Close</button>
+        <button id="prefetchBtn" class="w-1/2 bg-amber-600 hover:bg-amber-500 py-2 rounded-md text-sm sm:text-base">Prefetch Model</button>
       </div>
     </div>
   </div>
 
-  <!-- Spinner / progress -->
-  <div id="spinner"
-       class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-yellow-500 text-black px-3 py-2 rounded shadow text-sm z-50"
-       role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
-    <div class="flex items-center justify-between gap-4">
+  <!-- Spinner / Progress -->
+  <div id="spinner" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-3 rounded-lg shadow-lg text-sm sm:text-base z-50" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
+    <div class="flex items-center justify-between gap-4 max-w-md">
       <div>
         <div id="spinnerText" class="font-semibold">Downloading AI Coach…</div>
-        <div class="w-52 bg-gray-300 h-2 mt-1 rounded">
-          <div id="progressBar" class="bg-green-700 h-2 rounded" style="width:0%"></div>
+        <div class="w-52 sm:w-64 bg-gray-300 h-2 mt-2 rounded-full overflow-hidden">
+          <div id="progressBar" class="bg-[var(--primary)] h-2 rounded-full transition-all duration-300" style="width:0%"></div>
         </div>
-        <div id="spinnerSub" class="text-[11px] mt-1 opacity-80"></div>
+        <div id="spinnerSub" class="text-xs mt-2 opacity-80"></div>
       </div>
-      <button id="cancelDownloadBtn" class="bg-black/70 text-white px-3 py-1 rounded">Cancel</button>
+      <button id="cancelDownloadBtn" class="bg-black/70 text-white px-3 py-1 rounded-md text-sm hover:bg-black/90">Cancel</button>
     </div>
   </div>
 
-  <!-- Footer/version -->
-  <footer class="text-xs text-gray-400 absolute bottom-1 left-2">Testversion 0.41</footer>
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 left-4 sm:left-6 z-50 space-y-2"></div>
+
+  <!-- Footer -->
+  <footer class="text-xs text-[var(--text-secondary)] absolute bottom-2 left-4 sm:left-6">Version 0.44</footer>
 
   <script type="module">
     // ---------- Elements ----------
-    const logDiv = document.getElementById('log');
-    const fabBtn = document.getElementById('fabBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const manageBtn = document.getElementById('manageBtn');
-    const logModal = document.getElementById('logModal');
-    const manageModal = document.getElementById('manageModal');
-    const closeLog = document.getElementById('closeLog');
-    const backBtn = document.getElementById('backBtn');
-    const logBtn = document.getElementById('logBtn');
-    const activitySelect = document.getElementById('activitySelect');
-    const aiToggle = document.getElementById('aiToggle');
-    const modelSelect = document.getElementById('modelSelect');
-    const modelBadge = document.getElementById('modelBadge');
-    const modelInfo = document.getElementById('modelInfo');
-    const newActivityInput = document.getElementById('newActivityInput');
-    const addActivityBtn = document.getElementById('addActivityBtn');
-    const activityList = document.getElementById('activityList');
-    const spinner = document.getElementById('spinner');
-    const spinnerText = document.getElementById('spinnerText');
-    const spinnerSub = document.getElementById('spinnerSub');
-    const progressBar = document.getElementById('progressBar');
-    const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
-    const chartSection = document.getElementById('chartSection');
-    const chartEmpty = document.getElementById('chartEmpty');
-    const chartCanvas = document.getElementById('activityChart');
-    const chartFallback = document.getElementById('chartFallback');
-
-    const toolsFab = document.getElementById('toolsFab');
-    const toolsPanel = document.getElementById('toolsPanel');
-    const closeTools = document.getElementById('closeTools');
-    const modelLinksBtn = document.getElementById('modelLinksBtn');
-
-    const exportJsonBtn = document.getElementById('exportJsonBtn');
-    const exportCsvBtn  = document.getElementById('exportCsvBtn');
-    const importJsonBtn = document.getElementById('importJsonBtn');
-    const importFile    = document.getElementById('importFile');
-    const retryLoadBtn  = document.getElementById('retryLoadBtn');
-    const clearAICacheBtn = document.getElementById('clearAICacheBtn');
-
-    const searchInput   = document.getElementById('searchInput');
-    const filterActivity = document.getElementById('filterActivity');
-    const sortSelect    = document.getElementById('sortSelect');
-
-    // New elements
-    const lowMemToggle = document.getElementById('lowMemToggle');
-    const startDate = document.getElementById('startDate');
-    const endDate   = document.getElementById('endDate');
-
-    const linksModal = document.getElementById('linksModal');
-    const closeLinks = document.getElementById('closeLinks');
-    const prefetchBtn = document.getElementById('prefetchBtn');
+    const elements = {
+      logDiv: document.getElementById('log'),
+      fabBtn: document.getElementById('fabBtn'),
+      clearBtn: document.getElementById('clearBtn'),
+      manageBtn: document.getElementById('manageBtn'),
+      logModal: document.getElementById('logModal'),
+      manageModal: document.getElementById('manageModal'),
+      closeLog: document.getElementById('closeLog'),
+      backBtn: document.getElementById('backBtn'),
+      logBtn: document.getElementById('logBtn'),
+      activitySelect: document.getElementById('activitySelect'),
+      aiToggle: document.getElementById('aiToggle'),
+      modelSelect: document.getElementById('modelSelect'),
+      modelBadge: document.getElementById('modelBadge'),
+      modelInfo: document.getElementById('modelInfo'),
+      newActivityInput: document.getElementById('newActivityInput'),
+      newActivityError: document.getElementById('newActivityError'),
+      addActivityBtn: document.getElementById('addActivityBtn'),
+      activityList: document.getElementById('activityList'),
+      spinner: document.getElementById('spinner'),
+      spinnerText: document.getElementById('spinnerText'),
+      spinnerSub: document.getElementById('spinnerSub'),
+      progressBar: document.getElementById('progressBar'),
+      cancelDownloadBtn: document.getElementById('cancelDownloadBtn'),
+      chartSection: document.getElementById('chartSection'),
+      chartEmpty: document.getElementById('chartEmpty'),
+      chartCanvas: document.getElementById('activityChart'),
+      chartFallback: document.getElementById('chartFallback'),
+      toolsFab: document.getElementById('toolsFab'),
+      toolsPanel: document.getElementById('toolsPanel'),
+      closeTools: document.getElementById('closeTools'),
+      modelLinksBtn: document.getElementById('modelLinksBtn'),
+      exportJsonBtn: document.getElementById('exportJsonBtn'),
+      exportCsvBtn: document.getElementById('exportCsvBtn'),
+      importJsonBtn: document.getElementById('importJsonBtn'),
+      importFile: document.getElementById('importFile'),
+      retryLoadBtn: document.getElementById('retryLoadBtn'),
+      clearAICacheBtn: document.getElementById('clearAICacheBtn'),
+      searchInput: document.getElementById('searchInput'),
+      filterActivity: document.getElementById('filterActivity'),
+      sortSelect: document.getElementById('sortSelect'),
+      lowMemToggle: document.getElementById('lowMemToggle'),
+      startDate: document.getElementById('startDate'),
+      endDate: document.getElementById('endDate'),
+      linksModal: document.getElementById('linksModal'),
+      closeLinks: document.getElementById('closeLinks'),
+      prefetchBtn: document.getElementById('prefetchBtn'),
+      toastContainer: document.getElementById('toastContainer')
+    };
 
     // ---------- Storage / DB ----------
     const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
@@ -239,64 +324,24 @@
     const DB_VER = 1;
     const STORE = 'kvs';
     const SETTINGS_KEY = 'settings';
-
-    // IndexedDB helpers
-    function openDB() {
-      return new Promise((resolve) => {
-        if (!('indexedDB' in window)) return resolve(null);
-        const req = indexedDB.open(DB_NAME, DB_VER);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'key' });
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null); // soft fallback
-      });
-    }
-    async function idbSet(key, value) {
-      const db = await openDB(); if (!db) return false;
-      return new Promise((resolve) => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put({ key, value });
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      });
-    }
-    async function idbGet(key) {
-      const db = await openDB(); if (!db) return null;
-      return new Promise((resolve) => {
-        const tx = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).get(key);
-        req.onsuccess = () => resolve(req.result?.value ?? null);
-        req.onerror = () => resolve(null);
-      });
-    }
+    const DATA_VERSION = '0.44';
 
     // ---------- Data ----------
     let activities = [];
     let logs = [];
     let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"lowMem":false}');
-    lowMemToggle.checked = !!settings.lowMem;
-
-    async function hydrateFromStorage() {
-      const idbActs = await idbGet(STORAGE_KEYS.ACTIVITIES);
-      const idbLogs = await idbGet(STORAGE_KEYS.LOGS);
-      activities = Array.isArray(idbActs) ? idbActs
-        : JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES) || '[]');
-      if (!activities.length) activities = ['Eat','Sleep','Work','Exercise','Study','Commute','Socialize','Relax','Shop','Cook'];
-      logs = Array.isArray(idbLogs) ? idbLogs
-        : JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
-    }
+    elements.lowMemToggle.checked = !!settings.lowMem;
 
     // ---------- AI state ----------
     let generator = null;
-    let activeModelKey = 'smollm135';  // 'smollm135' | 't5small'
-    let activeModelId = null;          // HF repo id
-    let activeTask = null;             // 'text-generation' | 'text2text-generation'
-    const TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes hard cap
-    const BASE_GEN_TIMEOUT = 14000;    // 14s inference
+    let activeModelKey = 'smollm135';
+    let activeModelId = null;
+    let activeTask = null;
+    const TIMEOUT_MS = 12 * 60 * 1000;
+    const BASE_GEN_TIMEOUT = 14000;
     let logBusy = false;
-    let cancelFlag = false;            // soft-cancel for downloads
+    let cancelFlag = false;
+    let transformersModule = null;
 
     // ---------- Model config ----------
     const MODELS = {
@@ -319,103 +364,145 @@
     // ---------- Chart palette ----------
     const PALETTE = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'];
 
-    // ---------- Utils ----------
-    const sanitize = (s) => DOMPurify.sanitize(String(s), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-    const limitSentences = (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' ');
-    function debounce(fn, ms=300){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-
-    // Clean / de-echo AI output
-    function cleanAIText(txt, inputPrompt) {
-      if (!txt) return '';
-      let out = txt;
-
-      // Strip prompt echoes
-      const needle = inputPrompt.trim();
-      if (needle) {
-        const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        out = out.replace(re, ' ').trim();
+    // ---------- Utilities ----------
+    const utils = {
+      sanitize: (s) => DOMPurify.sanitize(String(s), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }),
+      limitSentences: (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' '),
+      debounce: (fn, ms=300) => {
+        let t;
+        return (...a) => {
+          clearTimeout(t);
+          t = setTimeout(() => fn(...a), ms);
+        };
+      },
+      throttle: (fn, ms=1000) => {
+        let last = 0;
+        return (...a) => {
+          const now = Date.now();
+          if (now - last < ms) return;
+          last = now;
+          fn(...a);
+        };
+      },
+      showToast: (message, type = 'success') => {
+        const toast = document.createElement('div');
+        toast.className = `toast bg-${type === 'success' ? '[var(--primary)]' : '[var(--danger)]'} text-white px-4 py-2 rounded-md shadow-lg text-sm`;
+        toast.textContent = message;
+        elements.toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      },
+      validateActivity: (val) => {
+        val = val.trim();
+        if (!val) return 'Please enter an activity.';
+        if (activities.includes(val)) return 'Activity already exists.';
+        if (val.length > 50) return 'Activity name too long (max 50 characters).';
+        return '';
       }
-      // Remove boilerplate / headers / preambles
-      out = out
-        .replace(/^\s*you are a .*?coach.*?:?/i, ' ')
-        .replace(/^\s*i am a .*?coach.*?:?/i, ' ')
-        .replace(/\b(?:i am|you are)\b[^.!?]{0,80}\bcoach\b[^.!?]*[.!?]/gi, ' ')
-        .replace(/^\s*activity:\s*".*?"\s*/i, ' ')
-        .replace(/^\s*output:.*$/im, ' ')
-        .replace(/^\s*###\s*response:\s*/i, ' ')
-        .replace(/^#+.*$/gmi, ' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+    };
 
-      // Split, sanitize, dedupe
-      let sentences = out
-        .split(/(?<=[.!?])\s+|\n+/)
-        .map(s => s.replace(/^[-•\s]+/,'').trim())
-        .filter(Boolean);
-
-      const seen = new Set();
-      sentences = sentences.filter(s => { const k = s.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
-
-      // Normalize punctuation
-      sentences = sentences.map(s => {
-        const trimmed = s.replace(/^["'“”]+|["'“”]+$/g,'').trim();
-        return /[.!?]$/.test(trimmed) ? trimmed : trimmed + '.';
+    // IndexedDB helpers
+    async function openDB() {
+      return new Promise((resolve) => {
+        if (!('indexedDB' in window)) return resolve(null);
+        const req = indexedDB.open(DB_NAME, DB_VER);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'key' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
       });
+    }
+    async function idbSet(key, value) {
+      const db = await openDB();
+      if (!db) return false;
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put({ key, value });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      });
+    }
+    async function idbGet(key) {
+      const db = await openDB();
+      if (!db) return null;
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = () => resolve(req.result?.value ?? null);
+        req.onerror = () => resolve(null);
+      });
+    }
 
-      // Keep 2–4 short sentences
-      sentences.sort((a,b) => a.length - b.length);
-      if (sentences.length > 4) sentences = sentences.slice(0,4);
-
-      return sentences.join(' ');
+    async function hydrateFromStorage() {
+      const idbActs = await idbGet(STORAGE_KEYS.ACTIVITIES);
+      const idbLogs = await idbGet(STORAGE_KEYS.LOGS);
+      activities = Array.isArray(idbActs) ? idbActs : JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES) || '[]');
+      if (!activities.length) activities = ['Eat','Sleep','Work','Exercise','Study','Commute','Socialize','Relax','Shop','Cook'];
+      logs = Array.isArray(idbLogs) ? idbLogs : JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
+      // Version check
+      if (idbLogs && !idbLogs.every(l => l.dataVersion === DATA_VERSION)) {
+        logs = logs.map(l => ({ ...l, dataVersion: DATA_VERSION }));
+        await safeSave(STORAGE_KEYS.LOGS, logs);
+      }
     }
 
     // Storage warnings
-    async function warnIfNearLimit() {
+    const warnIfNearLimit = utils.throttle(async () => {
       try {
         if (navigator.storage?.estimate) {
           const { quota, usage } = await navigator.storage.estimate();
           if (usage / quota > 0.8) {
             const percent = ((usage / quota) * 100).toFixed(1);
-            alert(`⚠️ Storage at ${percent}% (~${(usage / 1e6).toFixed(1)}MB). Clear logs or cache.`);
+            utils.showToast(`Storage at ${percent}% (~${(usage / 1e6).toFixed(1)}MB). Clear logs or cache.`, 'error');
           }
         } else {
           const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
-          if (used > 4.5e6) alert('⚠️ Local storage almost full (~' + (used/1e6).toFixed(2) + 'MB).');
+          if (used > 4.5e6) utils.showToast('Local storage almost full (~' + (used/1e6).toFixed(2) + 'MB).', 'error');
         }
       } catch {}
-    }
+    }, 5000);
+
     async function safeSave(key, val) {
       warnIfNearLimit();
       try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
       try { await idbSet(key, val); } catch {}
     }
 
-    // Rule-based fallback phrases
+    // Rule-based feedback
     function ruleFeedback(a) {
       const m = {
-        Eat:'🍽️ Good to stay nourished!', Sleep:'😴 Rest is essential.', Work:'💼 Keep focused!',
-        Exercise:'🏃 Great energy boost.', Study:'📚 Knowledge is power.', Commute:'🚌 Time well spent traveling.',
-        Socialize:'🤝 Stay connected.', Relax:'🧘 Calm and balanced.', Shop:'🛒 Don’t overspend!', Cook:'👩‍🍳 Healthy eating starts here.'
+        Eat: '🍽️ Good to stay nourished!',
+        Sleep: '😴 Rest is essential.',
+        Work: '💼 Keep focused!',
+        Exercise: '🏃 Great energy boost.',
+        Study: '📚 Knowledge is power.',
+        Commute: '🚌 Time well spent traveling.',
+        Socialize: '🤝 Stay connected.',
+        Relax: '🧘 Calm and balanced.',
+        Shop: '🛒 Don’t overspend!',
+        Cook: '👩‍🍳 Healthy eating starts here.'
       };
       return m[a] || 'Great job — keep the momentum going!';
     }
 
     // Chart helpers
     let activityChart = null;
+    let lastChartData = null;
     function getActivityCounts(list = logs) {
       const counts = {};
       for (const l of list) counts[l.activity] = (counts[l.activity] || 0) + 1;
       return counts;
     }
     function renderCountsTable(counts) {
-      const total = Object.values(counts).reduce((a,b)=>a+b,0);
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
       const rows = Object.entries(counts)
-        .sort((a,b)=>b[1]-a[1])
-        .map(([k,v]) => `<tr><td class="pr-4 py-1">${sanitize(k)}</td><td class="text-right py-1">${v}</td><td class="text-right text-gray-300 py-1">${((v/total)*100).toFixed(1)}%</td></tr>`)
+        .sort((a, b) => b[1] - a[1])
+        .map(([k, v]) => `<tr><td class="pr-4 py-1">${utils.sanitize(k)}</td><td class="text-right py-1">${v}</td><td class="text-right text-[var(--text-secondary)] py-1">${((v / total) * 100).toFixed(1)}%</td></tr>`)
         .join('');
-      chartFallback.innerHTML = `
-        <div class="rounded border border-gray-700 p-3">
-          <div class="text-xs text-gray-400 mb-2">Chart unavailable — showing table.</div>
+      elements.chartFallback.innerHTML = `
+        <div class="rounded-md border border-gray-700 p-4">
+          <div class="text-xs text-[var(--text-secondary)] mb-3">Chart unavailable — showing table</div>
           <table class="text-sm w-full"><tbody>${rows}</tbody></table>
         </div>`;
     }
@@ -424,25 +511,24 @@
       const counts = getActivityCounts(list);
       const labels = Object.keys(counts);
       const data = Object.values(counts);
-
       const isEmpty = data.length === 0;
-      chartSection.classList.toggle('hidden', isEmpty);
-      chartEmpty.classList.toggle('hidden', !isEmpty);
+      elements.chartSection.classList.toggle('hidden', isEmpty);
+      elements.chartEmpty.classList.toggle('hidden', !isEmpty);
       if (isEmpty) return;
-
       const colors = labels.map((_, i) => PALETTE[i % PALETTE.length]);
-
+      const newData = JSON.stringify({ labels, data });
+      if (newData === lastChartData) return; // Skip if no data change
+      lastChartData = newData;
       if (!window.Chart) {
-        chartCanvas.parentElement.classList.add('hidden');
-        chartFallback.classList.remove('hidden');
+        elements.chartCanvas.parentElement.classList.add('hidden');
+        elements.chartFallback.classList.remove('hidden');
         renderCountsTable(counts);
         return;
       } else {
-        chartCanvas.parentElement.classList.remove('hidden');
-        chartFallback.classList.add('hidden');
+        elements.chartCanvas.parentElement.classList.remove('hidden');
+        elements.chartFallback.classList.add('hidden');
       }
-
-      const ctx = chartCanvas.getContext('2d');
+      const ctx = elements.chartCanvas.getContext('2d');
       if (activityChart) {
         activityChart.data.labels = labels;
         activityChart.data.datasets[0].data = data;
@@ -453,25 +539,26 @@
       activityChart = new Chart(ctx, {
         type: 'doughnut',
         data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#e5e7eb' } } } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#e5e7eb', font: { size: 12 } } } }
+        }
       });
     }
 
-    // Filtering / Sorting (with date range)
+    // Filtering / Sorting
     function applyFilterAndSort() {
-      const q = searchInput.value.trim().toLowerCase();
-      const fa = filterActivity.value;
-      const sort = sortSelect.value;
-
+      const q = elements.searchInput.value.trim().toLowerCase();
+      const fa = elements.filterActivity.value;
+      const sort = elements.sortSelect.value;
       let view = logs.slice();
       if (fa) view = view.filter(l => l.activity === fa);
       if (q) view = view.filter(l =>
-        l.activity.toLowerCase().includes(q) || (l.feedback||'').toLowerCase().includes(q)
+        l.activity.toLowerCase().includes(q) || (l.feedback || '').toLowerCase().includes(q)
       );
-
-      // Date filtering (ISO preferred)
-      const s = startDate.value ? new Date(startDate.value + 'T00:00:00') : null;
-      const e = endDate.value   ? new Date(endDate.value   + 'T23:59:59') : null;
+      const s = elements.startDate.value ? new Date(elements.startDate.value + 'T00:00:00') : null;
+      const e = elements.endDate.value ? new Date(elements.endDate.value + 'T23:59:59') : null;
       if (s || e) {
         view = view.filter(l => {
           const t = l.iso || l.time;
@@ -482,97 +569,115 @@
           return true;
         });
       }
-
-      view.sort((a,b) => {
+      view.sort((a, b) => {
         if (sort === 'timeAsc') return new Date(a.iso || a.time) - new Date(b.iso || b.time);
         if (sort === 'timeDesc') return new Date(b.iso || b.time) - new Date(a.iso || a.time);
         if (sort === 'activityAsc') return a.activity.localeCompare(b.activity);
         if (sort === 'activityDesc') return b.activity.localeCompare(a.activity);
         return 0;
       });
-
       renderLogs(view);
       updateChart(view);
     }
 
     // Renderers
     function renderActivities() {
-      const current = activitySelect.value;
-      activitySelect.innerHTML = '<option value="" disabled>Select activity</option>';
+      const current = elements.activitySelect.value;
+      elements.activitySelect.innerHTML = '<option value="" disabled selected>Select activity</option>';
       activities.forEach(a => {
         const opt = document.createElement('option');
-        opt.value = a; opt.textContent = a;
-        activitySelect.appendChild(opt);
+        opt.value = a;
+        opt.textContent = a;
+        elements.activitySelect.appendChild(opt);
       });
-      if (current && activities.includes(current)) activitySelect.value = current;
-      else activitySelect.selectedIndex = 0;
-
-      filterActivity.innerHTML = '<option value="">All activities</option>';
+      if (current && activities.includes(current)) elements.activitySelect.value = current;
+      else elements.activitySelect.selectedIndex = 0;
+      elements.filterActivity.innerHTML = '<option value="">All activities</option>';
       activities.forEach(a => {
         const opt = document.createElement('option');
-        opt.value = a; opt.textContent = a;
-        filterActivity.appendChild(opt);
+        opt.value = a;
+        opt.textContent = a;
+        elements.filterActivity.appendChild(opt);
       });
-
-      activityList.innerHTML = '';
-      activities.forEach((a,i) => {
+      elements.activityList.innerHTML = '';
+      activities.forEach((a, i) => {
         const li = document.createElement('li');
-        li.className = 'flex justify-between items-center bg-gray-700 rounded px-2 py-1';
-        li.innerHTML = `<span>${sanitize(a)}</span>
-                        <button class="text-red-300 hover:text-red-200" aria-label="Delete activity ${sanitize(a)}" tabindex="0">✖</button>`;
+        li.className = 'flex justify-between items-center bg-[var(--bg-dark)] rounded-md px-3 py-2';
+        li.innerHTML = `<span class="text-sm">${utils.sanitize(a)}</span>
+                        <button class="text-[var(--danger)] hover:text-[var(--danger-hover)] text-sm" aria-label="Delete activity ${utils.sanitize(a)}" tabindex="0">✖</button>`;
         const delBtn = li.querySelector('button');
         delBtn.onclick = () => {
-          if (activities.length === 1) { alert('Cannot delete the last activity.'); return; }
+          if (activities.length === 1) {
+            utils.showToast('Cannot delete the last activity.', 'error');
+            return;
+          }
           if (!confirm(`Delete "${a}"?`)) return;
           activities.splice(i, 1);
           safeSave(STORAGE_KEYS.ACTIVITIES, activities);
           renderActivities();
           applyFilterAndSort();
+          utils.showToast(`Activity "${a}" deleted.`);
         };
         delBtn.onkeydown = (e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); delBtn.click(); }
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            delBtn.click();
+          }
         };
-        activityList.appendChild(li);
+        elements.activityList.appendChild(li);
       });
     }
 
     function renderLogs(list = logs) {
-      logDiv.innerHTML = '';
-      list.forEach((l) => {
+      elements.logDiv.innerHTML = '';
+      list.forEach((l, index) => {
         const isThinking = l.status === 'thinking';
         const isFail = l.status === 'fail';
-        const border = isThinking ? 'border-yellow-400' : isFail ? 'border-red-400' : 'border-green-400';
-        const titleC = isThinking ? 'text-yellow-300' : isFail ? 'text-red-300' : 'text-green-300';
+        const border = isThinking ? 'border-yellow-400' : isFail ? 'border-red-400' : 'border-[var(--primary)]';
+        const titleC = isThinking ? 'text-yellow-300' : isFail ? 'text-red-300' : 'text-[var(--primary)]';
         const card = document.createElement('div');
-        card.className = `bg-gray-800 p-3 rounded border-l-4 ${border}`;
+        card.className = `bg-[var(--bg-dark)] p-4 rounded-xl border-l-4 ${border} shadow-sm hover:shadow-md transition-shadow duration-200`;
+        card.setAttribute('aria-labelledby', `log-title-${index}`);
         card.innerHTML = `
           <div class="flex justify-between gap-3">
             <div>
-              <div class="font-semibold">${sanitize(l.activity)}</div>
-              <div class="text-xs text-gray-400">${sanitize(l.time)}</div>
-              <div class="text-[11px] text-yellow-400 mt-0.5">AI Model: ${sanitize(l.model || 'N/A')}</div>
+              <div id="log-title-${index}" class="font-semibold text-sm sm:text-base">${utils.sanitize(l.activity)}</div>
+              <div class="text-xs text-[var(--text-secondary)]">${utils.sanitize(l.time)}</div>
+              <div class="text-xs text-amber-400 mt-1">AI Model: ${utils.sanitize(l.model || 'N/A')}</div>
             </div>
             <div class="flex items-start gap-2">
-              <button class="text-gray-300 hover:text-white" title="Copy feedback" aria-label="Copy feedback">📋</button>
-              <button class="text-gray-300 hover:text-white" title="Share" aria-label="Share log">📤</button>
-              <button class="text-red-400 hover:text-red-300" title="Delete log" aria-label="Delete log">🗑️</button>
+              <button class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" title="Copy feedback" aria-label="Copy feedback for ${utils.sanitize(l.activity)}">📋</button>
+              <button class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" title="Share log" aria-label="Share log for ${utils.sanitize(l.activity)}">📤</button>
+              <button class="text-[var(--danger)] hover:text-[var(--danger-hover)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" title="Delete log" aria-label="Delete log for ${utils.sanitize(l.activity)}">🗑️</button>
             </div>
           </div>
-          <div class="${titleC} mt-2">${sanitize(l.feedback || '')}</div>
+          <div class="${titleC} mt-2 text-sm sm:text-base" id="log-feedback-${index}">${utils.sanitize(l.feedback || '')}</div>
         `;
         const [copyBtn, shareBtn, delBtn] = card.querySelectorAll('button');
-
         copyBtn.onclick = async () => {
-          try { await navigator.clipboard.writeText(l.feedback || ''); alert('Copied to clipboard.'); }
-          catch { alert('Could not copy.'); }
+          try {
+            await navigator.clipboard.writeText(l.feedback || '');
+            utils.showToast('Feedback copied to clipboard!');
+          } catch {
+            utils.showToast('Failed to copy feedback.', 'error');
+          }
         };
         shareBtn.onclick = async () => {
           const text = `Activity: ${l.activity}\nTime: ${l.time}\nFeedback: ${l.feedback || ''}`;
           if (navigator.share) {
-            try { await navigator.share({ title: 'My Activity Log', text }); } catch {}
+            try {
+              await navigator.share({ title: 'Activity Log', text });
+              utils.showToast('Log shared successfully!');
+            } catch {
+              utils.showToast('Failed to share log.', 'error');
+            }
           } else {
-            try { await navigator.clipboard.writeText(text); alert('Copied (no native share on this device).'); }
-            catch { alert('Could not share or copy.'); }
+            try {
+              await navigator.clipboard.writeText(text);
+              utils.showToast('Log copied to clipboard (share unavailable).');
+            } catch {
+              utils.showToast('Failed to share or copy log.', 'error');
+            }
           }
         };
         delBtn.onclick = () => {
@@ -581,122 +686,140 @@
           if (ix >= 0) logs.splice(ix, 1);
           safeSave(STORAGE_KEYS.LOGS, logs);
           applyFilterAndSort();
+          utils.showToast('Log deleted.');
         };
-        logDiv.appendChild(card);
+        elements.logDiv.appendChild(card);
       });
     }
 
-    // Model selection -> config (respects low-memory mode)
+    // Model selection
     function applyModelSelection() {
-      const key = modelSelect.value;
+      const key = elements.modelSelect.value;
       if (settings.lowMem && key === 't5small') {
-        modelSelect.value = 'smollm135';
+        elements.modelSelect.value = 'smollm135';
       }
-      const cfgKey = modelSelect.value;
+      const cfgKey = elements.modelSelect.value;
       activeModelKey = cfgKey;
       const cfg = MODELS[cfgKey];
       activeModelId = cfg.id;
-      activeTask   = cfg.task;
-      modelBadge.textContent = cfg.badge;
-      spinnerSub.textContent = `${cfg.note}, cached after first load`;
+      activeTask = cfg.task;
+      elements.modelBadge.textContent = cfg.badge;
+      elements.spinnerSub.textContent = `${cfg.note}, cached after first load`;
     }
 
     // Modal focus trap
-    function trapFocus(modal) {
+    function trapFocus(modal, triggerElement) {
       const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
       if (!focusable.length) return () => {};
       const first = focusable[0], last = focusable[focusable.length - 1];
       function handler(e) {
         if (e.key !== 'Tab') return;
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
       modal.addEventListener('keydown', handler);
       first.focus();
-      return () => modal.removeEventListener('keydown', handler);
+      return () => {
+        modal.removeEventListener('keydown', handler);
+        if (triggerElement) triggerElement.focus();
+      };
     }
     let untrap = () => {};
 
-    // Transformers.js loader
-    async function importTransformers() {
-      return await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
+    // Modal animation handler
+    function animateModal(modal, show, triggerElement) {
+      const inner = modal.querySelector('div');
+      inner.classList.remove('modal-enter', 'modal-enter-active', 'modal-exit', 'modal-exit-active');
+      if (show) {
+        inner.classList.add('modal-enter');
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+          inner.classList.remove('modal-enter');
+          inner.classList.add('modal-enter-active');
+        });
+      } else {
+        inner.classList.add('modal-exit');
+        inner.classList.add('modal-exit-active');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+          inner.classList.remove('modal-exit', 'modal-exit-active');
+        }, 300);
+      }
     }
 
-    // Download cancel (soft)
-    cancelDownloadBtn.onclick = () => { cancelFlag = true; spinner.classList.add('hidden'); };
+    // Transformers.js loader
+    async function importTransformers() {
+      if (!transformersModule) {
+        transformersModule = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
+      }
+      return transformersModule;
+    }
 
-    // Model loader with WASM guard and backoff
+    // Model loader
     async function loadModel() {
-      if (!navigator.onLine) { alert('⚠️ Offline. AI Coach needs internet.'); aiToggle.checked = false; return null; }
-      if (!window.WebAssembly || !WebAssembly.compile) {
-        alert('⚠️ WebAssembly unsupported. AI Coach unavailable. Falling back to rule-based feedback.');
-        aiToggle.checked = false;
+      if (!navigator.onLine) {
+        utils.showToast('Offline. AI Coach requires internet.', 'error');
+        elements.aiToggle.checked = false;
         return null;
       }
-
+      if (!window.WebAssembly || !WebAssembly.compile) {
+        utils.showToast('WebAssembly unsupported. Falling back to rule-based feedback.', 'error');
+        elements.aiToggle.checked = false;
+        return null;
+      }
+      if (generator && MODELS[activeModelKey].id === activeModelId) {
+        return generator;
+      }
       const { pipeline } = await importTransformers();
-      const attempts = [0, 2000, 5000]; // backoff (ms)
+      const attempts = [0, 2000, 5000];
       cancelFlag = false;
-
       for (let i = 0; i < attempts.length; i++) {
         try {
-          spinner.classList.remove('hidden');
-          spinnerText.textContent = `Downloading ${activeModelId}…`;
-          progressBar.style.width = '0%';
-          spinner.setAttribute('aria-valuenow', '0');
-
+          elements.spinner.classList.remove('hidden');
+          elements.spinnerText.textContent = `Downloading ${activeModelId}…`;
+          elements.progressBar.style.width = '0%';
+          elements.progressBar.classList.remove('indeterminate-bar');
+          elements.spinner.setAttribute('aria-valuenow', '0');
           const cfg = MODELS[activeModelKey];
           const opts = {
             progress_callback: (p) => {
               if (cancelFlag) return;
               if (p && p.loaded && p.total) {
                 const pct = Math.floor((p.loaded / p.total) * 100);
-                progressBar.style.width = pct + '%';
-                spinnerText.textContent = `Downloading… ${pct}%`;
-                spinnerSub.textContent = `Loaded ${(p.loaded / 1e6).toFixed(1)}MB of ${(p.total / 1e6).toFixed(1)}MB`;
-                spinner.setAttribute('aria-valuenow', String(pct));
+                elements.progressBar.style.width = pct + '%';
+                elements.spinnerText.textContent = `Downloading… ${pct}%`;
+                elements.spinnerSub.textContent = `Loaded ${(p.loaded / 1e6).toFixed(1)}MB of ${(p.total / 1e6).toFixed(1)}MB`;
+                elements.spinner.setAttribute('aria-valuenow', String(pct));
               }
             }
           };
-          // Prefer WebGPU first; then CPU/WASM to reduce crashes
           opts.device = (i === 0 && navigator.gpu) ? 'webgpu' : 'cpu';
           Object.assign(opts, cfg.opts);
-
           const gen = await Promise.race([
             pipeline(cfg.task, cfg.id, opts),
             new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_MS))
           ]);
-
-          if (cancelFlag) { cancelFlag = false; return null; }
-
-          spinnerText.textContent = '✅ AI Coach ready (cached)';
-          setTimeout(() => spinner.classList.add('hidden'), 300);
+          if (cancelFlag) {
+            cancelFlag = false;
+            return null;
+          }
+          elements.spinnerText.textContent = '✅ AI Coach ready (cached)';
+          setTimeout(() => elements.spinner.classList.add('hidden'), 300);
           return gen;
         } catch (e) {
-          console.warn(`Model load attempt ${i+1} failed:`, e.message);
+          console.warn(`Model load attempt ${i + 1} failed:`, e.message);
           await new Promise(r => setTimeout(r, attempts[i]));
         } finally {
-          setTimeout(() => spinner.classList.add('hidden'), 300);
+          setTimeout(() => elements.spinner.classList.add('hidden'), 300);
         }
       }
-
-      // Fallback: if T5-small fails, switch to SmolLM2-135M
-      if (activeModelKey === 't5small') {
-        console.warn('Falling back to SmolLM2-135M due to load failure.');
-        activeModelKey = 'smollm135';
-        modelSelect.value = 'smollm135';
-        applyModelSelection();
-        generator = await loadModel();
-        if (generator) {
-          const cfg = MODELS[activeModelKey];
-          modelInfo.textContent = `Active: ${cfg.badge}`;
-          modelInfo.classList.remove('hidden');
-          return generator;
-        }
-      }
-
-      alert('⚠️ Failed to load AI Coach after multiple attempts. Using rule-based feedback.');
-      aiToggle.checked = false;
+      utils.showToast('Failed to load AI Coach. Using rule-based feedback.', 'error');
+      elements.aiToggle.checked = false;
       return null;
     }
 
@@ -711,6 +834,7 @@
       ].join(' ');
     }
 
+    // AI Coach feedback
     async function aiCoachFeedback(activity) {
       const input = buildPrompt(activity);
       const cores = navigator.hardwareConcurrency || 4;
@@ -725,75 +849,129 @@
           top_p: 0.9,
           repetition_penalty: 1.15
         };
-
+        elements.spinner.classList.remove('hidden');
+        elements.spinnerText.textContent = 'AI Coach is thinking…';
+        elements.progressBar.style.width = '100%';
+        elements.progressBar.classList.add('indeterminate-bar');
+        elements.spinnerSub.textContent = '';
+        elements.spinner.setAttribute('aria-valuenow', '0');
         const out = await Promise.race([
           generator(input, genOpts),
           new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_MS))
         ]);
-
         let txt = Array.isArray(out) ? (out[0]?.generated_text ?? '') : (out?.generated_text ?? '');
         if (txt && input && txt.toLowerCase().startsWith(input.toLowerCase())) {
           txt = txt.slice(input.length);
         }
-        txt = cleanAIText(txt, input).trim();
-
+        txt = utils.cleanAIText(txt, input).trim();
         if (!txt || /^i am\b/i.test(txt) || /^you are\b/i.test(txt)) {
           txt = ruleFeedback(activity);
         }
-        txt = limitSentences(txt, 4);
+        txt = utils.limitSentences(txt, 4);
         return txt || 'Keep it up!';
       } catch (e) {
         console.error('AI feedback fail:', e);
         return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
+      } finally {
+        elements.spinner.classList.add('hidden');
+        elements.progressBar.classList.remove('indeterminate-bar');
       }
     }
+
+    // Clean AI output
+    utils.cleanAIText = (txt, inputPrompt) => {
+      if (!txt) return '';
+      let out = txt;
+      const needle = inputPrompt.trim();
+      if (needle) {
+        const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        out = out.replace(re, ' ').trim();
+      }
+      out = out
+        .replace(/^\s*you are a .*?coach.*?:?/i, ' ')
+        .replace(/^\s*i am a .*?coach.*?:?/i, ' ')
+        .replace(/\b(?:i am|you are)\b[^.!?]{0,80}\bcoach\b[^.!?]*[.!?]/gi, ' ')
+        .replace(/^\s*activity:\s*".*?"\s*/i, ' ')
+        .replace(/^\s*output:.*$/im, ' ')
+        .replace(/^\s*###\s*response:\s*/i, ' ')
+        .replace(/^#+.*$/gmi, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      let sentences = out
+        .split(/(?<=[.!?])\s+|\n+/)
+        .map(s => s.replace(/^[-•\s]+/, '').trim())
+        .filter(Boolean);
+      const seen = new Set();
+      sentences = sentences.filter(s => {
+        const k = s.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      sentences = sentences.map(s => {
+        const trimmed = s.replace(/^["'“”]+|["'“”]+$/g, '').trim();
+        return /[.!?]$/.test(trimmed) ? trimmed : trimmed + '.';
+      });
+      sentences.sort((a, b) => a.length - b.length);
+      if (sentences.length > 4) sentences = sentences.slice(0, 4);
+      return sentences.join(' ');
+    };
 
     // Export / Import
     function downloadBlob(blob, filename) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click();
-      URL.revokeObjectURL(url); a.remove();
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
     }
-    exportJsonBtn.onclick = () => {
+    elements.exportJsonBtn.onclick = () => {
       const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json;charset=utf-8' });
       downloadBlob(blob, 'activity_logs.json');
+      utils.showToast('Logs exported as JSON.');
     };
-    exportCsvBtn.onclick = () => {
-      const rows = [['Time','ISO','Activity','Model','Status','Feedback'], ...logs.map(l => [l.time, l.iso || '', l.activity, l.model||'', l.status||'', l.feedback||''])];
-      const csv = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    elements.exportCsvBtn.onclick = () => {
+      const rows = [['Time', 'ISO', 'Activity', 'Model', 'Status', 'Feedback'], ...logs.map(l => [l.time, l.iso || '', l.activity, l.model || '', l.status || '', l.feedback || ''])];
+      const csv = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\r\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       downloadBlob(blob, 'activity_logs.csv');
+      utils.showToast('Logs exported as CSV.');
     };
-    importJsonBtn.onclick = () => importFile.click();
-    importFile.onchange = async () => {
-      const f = importFile.files[0]; if (!f) return;
+    elements.importJsonBtn.onclick = () => elements.importFile.click();
+    elements.importFile.onchange = async () => {
+      const f = elements.importFile.files[0];
+      if (!f) return;
       try {
         const text = await f.text();
         const data = JSON.parse(text);
         if (!Array.isArray(data)) throw new Error('Invalid file format.');
         const validLog = l => l.activity && (l.time || l.iso) && typeof l.feedback === 'string' && typeof l.status === 'string';
-        const validData = data.filter(validLog);
+        const validData = data.filter(validLog).map(l => ({ ...l, dataVersion: DATA_VERSION }));
         if (!validData.length) throw new Error('No valid logs in file.');
         const mode = confirm('Replace existing logs? (OK = Replace, Cancel = Merge)') ? 'replace' : 'merge';
         logs = (mode === 'replace') ? validData : logs.concat(validData);
         await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
-        alert(`Imported ${validData.length} valid logs.`);
-      } catch (e) { alert('Import failed: ' + e.message); }
-      importFile.value = '';
+        utils.showToast(`Imported ${validData.length} logs successfully.`);
+      } catch (e) {
+        utils.showToast(`Import failed: ${e.message}`, 'error');
+      }
+      elements.importFile.value = '';
     };
 
-    // AI Cache clear (best effort)
-    clearAICacheBtn.onclick = async () => {
+    // AI Cache clear
+    elements.clearAICacheBtn.onclick = async () => {
       let cleared = false;
       try {
         if ('caches' in window) {
           const names = await caches.keys();
           for (const n of names) {
             if (/transformers|huggingface|hf|onnx|model/i.test(n)) {
-              await caches.delete(n); cleared = true;
+              await caches.delete(n);
+              cleared = true;
             }
           }
         }
@@ -803,122 +981,201 @@
           const dbs = await indexedDB.databases();
           for (const db of dbs) {
             if (db.name && /transformers|huggingface|hf|onnx|model/i.test(db.name)) {
-              indexedDB.deleteDatabase(db.name); cleared = true;
+              indexedDB.deleteDatabase(db.name);
+              cleared = true;
             }
           }
         }
       } catch {}
       generator = null;
-      alert((cleared ? '✅' : 'ℹ️') + ' AI cache cleared (best effort). Models will re-download when needed.');
+      utils.showToast(cleared ? 'AI cache cleared successfully.' : 'No AI cache found to clear.');
     };
 
     // Retry load
-    retryLoadBtn.onclick = async () => {
-      if (!aiToggle.checked) aiToggle.checked = true;
+    elements.retryLoadBtn.onclick = async () => {
+      if (!elements.aiToggle.checked) elements.aiToggle.checked = true;
+      applyModelSelection();
+      elements.retryLoadBtn.classList.add('btn-loading');
       generator = await loadModel();
+      elements.retryLoadBtn.classList.remove('btn-loading');
       if (generator) {
         const cfg = MODELS[activeModelKey];
-        modelInfo.textContent = `Active: ${cfg.badge}`;
-        modelInfo.classList.remove('hidden');
+        elements.modelInfo.textContent = `Active: ${cfg.badge}`;
+        elements.modelInfo.classList.remove('hidden');
+        utils.showToast('AI model loaded successfully.');
       }
     };
 
     // Tools Panel interactions
-    toolsFab.onclick = (e) => { e.stopPropagation(); toolsPanel.classList.toggle('hidden'); };
-    closeTools.onclick = () => toolsPanel.classList.add('hidden');
-    window.addEventListener('click', (e) => { if (!toolsPanel.contains(e.target) && e.target !== toolsFab) toolsPanel.classList.add('hidden'); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toolsPanel.classList.add('hidden'); });
+    elements.toolsFab.onclick = (e) => {
+      e.stopPropagation();
+      elements.toolsPanel.classList.toggle('hidden');
+    };
+    elements.closeTools.onclick = () => elements.toolsPanel.classList.add('hidden');
+    window.addEventListener('click', (e) => {
+      if (!elements.toolsPanel.contains(e.target) && e.target !== elements.toolsFab) elements.toolsPanel.classList.add('hidden');
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') elements.toolsPanel.classList.add('hidden');
+    });
 
     // Model Links modal
-    modelLinksBtn.onclick = () => { linksModal.classList.remove('hidden'); untrap = trapFocus(linksModal); };
-    closeLinks.onclick = () => { linksModal.classList.add('hidden'); untrap(); };
-    prefetchBtn.onclick = async () => {
-      if (!aiToggle.checked) aiToggle.checked = true; // will show spinner during load
+    elements.modelLinksBtn.onclick = () => {
+      animateModal(elements.linksModal, true, elements.modelLinksBtn);
+      untrap = trapFocus(elements.linksModal, elements.modelLinksBtn);
+    };
+    elements.closeLinks.onclick = () => {
+      animateModal(elements.linksModal, false, elements.modelLinksBtn);
+      untrap();
+    };
+    elements.prefetchBtn.onclick = async () => {
+      if (!elements.aiToggle.checked) elements.aiToggle.checked = true;
+      applyModelSelection();
+      elements.prefetchBtn.classList.add('btn-loading');
       generator = await loadModel();
+      elements.prefetchBtn.classList.remove('btn-loading');
       if (generator) {
         const cfg = MODELS[activeModelKey];
-        modelInfo.textContent = `Active: ${cfg.badge}`;
-        modelInfo.classList.remove('hidden');
-        linksModal.classList.add('hidden');
+        elements.modelInfo.textContent = `Active: ${cfg.badge}`;
+        elements.modelInfo.classList.remove('hidden');
+        animateModal(elements.linksModal, false, elements.prefetchBtn);
         untrap();
+        utils.showToast('Model prefetched successfully.');
       }
     };
 
-    // Events: open/close modals
-    const openLog = () => { logModal.classList.remove('hidden'); untrap = trapFocus(logModal); };
-    fabBtn.onclick = openLog;
-    manageBtn.onclick = () => { manageModal.classList.remove('hidden'); untrap = trapFocus(manageModal); };
-    closeLog.onclick = () => { logModal.classList.add('hidden'); untrap(); };
-    backBtn.onclick = () => { manageModal.classList.add('hidden'); untrap(); };
-
-    // Close on ESC / outside (modals)
+    // Modal interactions
+    elements.fabBtn.onclick = () => {
+      animateModal(elements.logModal, true, elements.fabBtn);
+      untrap = trapFocus(elements.logModal, elements.fabBtn);
+    };
+    elements.manageBtn.onclick = () => {
+      animateModal(elements.manageModal, true, elements.manageBtn);
+      untrap = trapFocus(elements.manageModal, elements.manageBtn);
+    };
+    elements.closeLog.onclick = () => {
+      animateModal(elements.logModal, false, elements.fabBtn);
+      untrap();
+    };
+    elements.backBtn.onclick = () => {
+      animateModal(elements.manageModal, false, elements.manageBtn);
+      untrap();
+    };
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { logModal.classList.add('hidden'); manageModal.classList.add('hidden'); linksModal.classList.add('hidden'); untrap(); }
+      if (e.key === 'Escape') {
+        animateModal(elements.logModal, false, elements.fabBtn);
+        animateModal(elements.manageModal, false, elements.manageBtn);
+        animateModal(elements.linksModal, false, elements.modelLinksBtn);
+        untrap();
+      }
     });
     window.addEventListener('click', (e) => {
-      if (e.target === logModal) { logModal.classList.add('hidden'); untrap(); }
-      if (e.target === manageModal) { manageModal.classList.add('hidden'); untrap(); }
-      if (e.target === linksModal) { linksModal.classList.add('hidden'); untrap(); }
+      if (e.target === elements.logModal) {
+        animateModal(elements.logModal, false, elements.fabBtn);
+        untrap();
+      }
+      if (e.target === elements.manageModal) {
+        animateModal(elements.manageModal, false, elements.manageBtn);
+        untrap();
+      }
+      if (e.target === elements.linksModal) {
+        animateModal(elements.linksModal, false, elements.modelLinksBtn);
+        untrap();
+      }
     });
 
     // Clear logs
-    clearBtn.onclick = async () => {
+    elements.clearBtn.onclick = async () => {
       if (confirm('Clear all logs?')) {
         logs = [];
         await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
+        utils.showToast('All logs cleared.');
       }
     };
 
-    // Add activity (debounced)
-    addActivityBtn.onclick = debounce(async () => {
-      const val = newActivityInput.value.trim();
-      if (!val) { alert('Enter activity.'); return; }
-      if (activities.includes(val)) { alert('Activity exists.'); return; }
+    // Add activity
+    elements.newActivityInput.oninput = utils.debounce(() => {
+      const error = utils.validateActivity(elements.newActivityInput.value);
+      elements.newActivityError.textContent = error;
+      elements.newActivityError.classList.toggle('hidden', !error);
+      elements.addActivityBtn.disabled = !!error;
+    }, 150);
+    elements.addActivityBtn.onclick = utils.debounce(async () => {
+      const val = elements.newActivityInput.value.trim();
+      const error = utils.validateActivity(val);
+      if (error) {
+        elements.newActivityError.textContent = error;
+        elements.newActivityError.classList.remove('hidden');
+        return;
+      }
+      elements.addActivityBtn.classList.add('btn-loading');
       activities.push(val);
       await safeSave(STORAGE_KEYS.ACTIVITIES, activities);
-      newActivityInput.value = '';
+      elements.newActivityInput.value = '';
+      elements.newActivityError.classList.add('hidden');
+      elements.addActivityBtn.disabled = false;
       renderActivities();
       applyFilterAndSort();
+      elements.addActivityBtn.classList.remove('btn-loading');
+      utils.showToast(`Activity "${val}" added.`);
     }, 250);
 
-    // Low-memory toggle persist
-    lowMemToggle.onchange = async () => {
-      settings.lowMem = lowMemToggle.checked;
+    // Low-memory toggle
+    elements.lowMemToggle.onchange = async () => {
+      settings.lowMem = elements.lowMemToggle.checked;
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       if (settings.lowMem) {
-        modelSelect.value = 'smollm135';
+        elements.modelSelect.value = 'smollm135';
         applyModelSelection();
-        generator = null; // free model; will lazy-load smaller one if needed
-        alert('Low-memory mode ON: using smaller model or rule-based.');
+        generator = null;
+        utils.showToast('Low-memory mode enabled: using smaller model.');
       }
     };
 
-    // AI toggle -> lazy load model
-    aiToggle.onchange = async () => {
-      if (!aiToggle.checked) return;
-      if (!generator) {
-        applyModelSelection();
+    // Model select change
+    elements.modelSelect.onchange = async () => {
+      applyModelSelection();
+      if (elements.aiToggle.checked) {
+        elements.modelSelect.classList.add('btn-loading');
+        generator = await loadModel();
+        elements.modelSelect.classList.remove('btn-loading');
+        if (generator) {
+          const cfg = MODELS[activeModelKey];
+          elements.modelInfo.textContent = `Active: ${cfg.badge}`;
+          elements.modelInfo.classList.remove('hidden');
+          utils.showToast(`Switched to ${cfg.badge} model.`);
+        }
+      }
+    };
+
+    // AI toggle
+    elements.aiToggle.onchange = async () => {
+      if (!elements.aiToggle.checked) return;
+      applyModelSelection();
+      if (!generator || MODELS[activeModelKey].id !== activeModelId) {
         generator = await loadModel();
       }
       if (generator) {
         const cfg = MODELS[activeModelKey];
-        modelInfo.textContent = `Active: ${cfg.badge}`;
-        modelInfo.classList.remove('hidden');
+        elements.modelInfo.textContent = `Active: ${cfg.badge}`;
+        elements.modelInfo.classList.remove('hidden');
+        utils.showToast('AI Coach enabled.');
       }
     };
 
-    // Log flow with correct fallbacks (includes ISO timestamp)
-    logBtn.onclick = async () => {
+    // Log flow
+    elements.logBtn.onclick = async () => {
       if (logBusy) return;
       logBusy = true;
+      elements.logBtn.classList.add('btn-loading');
       try {
-        const act = activitySelect.value;
-        if (!act) { alert('Please select an activity.'); return; }
-
-        const aiOn = aiToggle.checked;
-
-        // Rule-based path
+        const act = elements.activitySelect.value;
+        if (!act) {
+          utils.showToast('Please select an activity.', 'error');
+          return;
+        }
+        const aiOn = elements.aiToggle.checked;
         if (!aiOn || !generator) {
           const now = new Date();
           const entry = {
@@ -927,16 +1184,16 @@
             iso: now.toISOString(),
             model: aiOn && !generator ? 'AI unavailable' : 'N/A',
             feedback: aiOn && !generator ? `⚠️ AI Coach unavailable. ${ruleFeedback(act)}` : ruleFeedback(act),
-            status: aiOn && !generator ? 'fail' : 'done'
+            status: aiOn && !generator ? 'fail' : 'done',
+            dataVersion: DATA_VERSION
           };
           logs.push(entry);
           await safeSave(STORAGE_KEYS.LOGS, logs);
           applyFilterAndSort();
-          logModal.classList.add('hidden');
+          animateModal(elements.logModal, false, elements.fabBtn);
+          utils.showToast('Activity logged.');
           return;
         }
-
-        // AI path
         const start = new Date();
         const entry = {
           activity: act,
@@ -944,12 +1201,12 @@
           iso: start.toISOString(),
           model: MODELS[activeModelKey].badge,
           feedback: '🤖 AI Coach is thinking…',
-          status: 'thinking'
+          status: 'thinking',
+          dataVersion: DATA_VERSION
         };
         logs.push(entry);
         await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
-
         try {
           const feedback = await aiCoachFeedback(act);
           entry.feedback = feedback;
@@ -958,24 +1215,33 @@
           entry.feedback = `⚠️ AI Coach error. ${ruleFeedback(act)}`;
           entry.status = 'fail';
         }
-
         await safeSave(STORAGE_KEYS.LOGS, logs);
         applyFilterAndSort();
-        logModal.classList.add('hidden');
+        animateModal(elements.logModal, false, elements.fabBtn);
+        utils.showToast('Activity logged with AI feedback.');
       } finally {
         logBusy = false;
+        elements.logBtn.classList.remove('btn-loading');
       }
     };
 
     // Filters/sort handlers
-    searchInput.oninput = debounce(applyFilterAndSort, 150);
-    filterActivity.onchange = applyFilterAndSort;
-    sortSelect.onchange = applyFilterAndSort;
-    startDate.onchange = applyFilterAndSort;
-    endDate.onchange = applyFilterAndSort;
+    elements.searchInput.oninput = utils.debounce(applyFilterAndSort, 150);
+    elements.filterActivity.onchange = applyFilterAndSort;
+    elements.sortSelect.onchange = applyFilterAndSort;
+    elements.startDate.onchange = applyFilterAndSort;
+    elements.endDate.onchange = applyFilterAndSort;
 
-    // ---------- Init ----------
-    applyModelSelection(); // prime model labels
+    // Cancel download
+    elements.cancelDownloadBtn.onclick = () => {
+      cancelFlag = true;
+      elements.spinner.classList.add('hidden');
+      elements.progressBar.classList.remove('indeterminate-bar');
+      utils.showToast('Model download canceled.');
+    };
+
+    // Init
+    applyModelSelection();
     async function init() {
       await hydrateFromStorage();
       renderActivities();
