@@ -2,1251 +2,653 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AI Daily Activity Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Daily Activity Planner</title>
 
-  <!-- Tailwind & Chart.js -->
+  <!-- Tailwind CSS CDN (pinned) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <style>
-    html, body { height: 100%; margin: 0; }
     :root {
-      --primary: #10b981;
-      --primary-hover: #059669;
+      --bg: #0b0f17;
+      --panel: #121826;
+      --panel-2: #0f1523;
+      --text: #e6edf3;
+      --muted: #9fb0c0;
+      --primary: #3b82f6;
+      --accent: #10b981;
       --danger: #ef4444;
-      --danger-hover: #dc2626;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --bg-dark: #1f2937;
-      --bg-darker: #111827;
-      --text-primary: #f3f4f6;
-      --text-secondary: #9ca3af;
+      --warning: #f59e0b;
+      --surface: #1b2336;
+      --ring: 0 0 0 3px rgba(59, 130, 246, .35);
     }
-    .modal-enter { opacity: 0; transform: translateY(20px); }
-    .modal-enter-active { opacity: 1; transform: translateY(0); transition: opacity 300ms ease-out, transform 300ms ease-out; }
-    .modal-exit { opacity: 1; transform: translateY(0); }
-    .modal-exit-active { opacity: 0; transform: translateY(20px); transition: opacity 300ms ease-in, transform 300ms ease-in; }
-    button { transition: background-color 200ms ease, transform 100ms ease; }
-    button:hover:not(:disabled) { transform: scale(1.05); }
-    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: var(--bg-dark); }
-    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--primary-hover); }
-    .indeterminate-bar {
-      background: linear-gradient(to right, var(--primary) 0%, var(--primary-hover) 50%, var(--primary) 100%);
-      background-size: 200% 100%;
-      animation: indeterminate 1.5s linear infinite;
+
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); }
+
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: #0b1220; }
+    *::-webkit-scrollbar-thumb { background: #243b55; border-radius: 9999px; }
+    *::-webkit-scrollbar-thumb:hover { background: #2f4c6f; }
+
+    .btn {
+      @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold transition transform active:scale-95 focus:outline-none;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.1));
+      box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 10px 20px rgba(0,0,0,.15);
     }
-    @keyframes indeterminate {
-      0% { background-position: 200% 0; }
-      100% { background-position: 0 0; }
+    .btn:hover { transform: translateY(-1px) scale(1.02); }
+    .btn:focus-visible { box-shadow: var(--ring); }
+    .btn-primary { background-color: var(--primary); color: white; }
+    .btn-accent { background-color: var(--accent); color: black; }
+    .btn-danger { background-color: var(--danger); color: white; }
+    .btn-ghost { background-color: transparent; color: var(--text); border: 1px solid rgba(255,255,255,.08); }
+
+    .input, .select, .textarea {
+      @apply w-full rounded-xl px-3 py-2 text-sm;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--text);
     }
-    .toast {
-      animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
-    }
-    @keyframes slideIn { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
-    .btn-loading::after {
-      content: '';
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border: 2px solid #fff;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-left: 8px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .input:focus-visible, .select:focus-visible, .textarea:focus-visible { box-shadow: var(--ring); outline: none; }
+
+    .panel { background: var(--panel); border: 1px solid rgba(255,255,255,.06); }
+    .panel-2 { background: var(--panel-2); border: 1px solid rgba(255,255,255,.06); }
+
+    .modal-backdrop { background: rgba(2, 6, 23, 0.75); opacity: 0; transition: opacity .2s ease; }
+    .modal-backdrop[data-open="true"] { opacity: 1; }
+    .modal-panel { transform: translateY(12px) scale(.98); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
+    .modal-panel[data-open="true"] { transform: translateY(0) scale(1); opacity: 1; }
+
+    .handle { cursor: grab; }
+    .handle:active { cursor: grabbing; }
+
+    .progress-track { height: 6px; background: rgba(255,255,255,.1); border-radius: 9999px; overflow: hidden; }
+    .progress-indeterminate { height: 100%; width: 30%; border-radius: 9999px; background: linear-gradient(90deg, var(--primary), var(--accent)); animation: slide 1.1s infinite ease-in-out; }
+    @keyframes slide { 0% { transform: translateX(-120%);} 50% { transform: translateX(40%);} 100% { transform: translateX(120%);} }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   </style>
 </head>
-<body class="bg-[var(--bg-darker)] text-[var(--text-primary)] font-sans flex flex-col min-h-screen antialiased">
+<body class="min-h-screen flex flex-col">
   <!-- Header -->
-  <header class="bg-[var(--bg-dark)] p-4 text-center text-xl font-semibold shadow-sm">
-    AI Daily Activity Tracker
+  <header class="sticky top-0 z-20 border-b border-white/10 backdrop-blur supports-[backdrop-filter]:bg-black/30">
+    <div class="mx-auto max-w-5xl px-4 sm:px-6 py-3 flex items-center justify-between">
+      <h1 class="text-lg sm:text-2xl font-bold tracking-tight">AI Daily Activity Planner</h1>
+      <div class="flex items-center gap-2">
+        <button id="openManage" class="btn btn-ghost" aria-haspopup="dialog" aria-controls="manageModal" aria-expanded="false" title="Manage activities list">Manage</button>
+      </div>
+    </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="flex-1 p-4 sm:p-6 overflow-y-auto">
-    <div id="log" class="space-y-4" aria-live="polite"></div>
+  <!-- Main -->
+  <main class="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 py-6 space-y-6">
+    <!-- Planner Controls -->
+    <section class="panel rounded-2xl p-4 sm:p-6">
+      <h2 class="text-xl font-semibold mb-4" id="plannerHeading">Plan an activity</h2>
+      <form id="planForm" class="grid gap-3 sm:grid-cols-12" aria-labelledby="plannerHeading">
+        <div class="sm:col-span-4">
+          <label for="activitySelect" class="block text-sm mb-1">Activity</label>
+          <div class="relative">
+            <select id="activitySelect" class="select" aria-label="Select activity"></select>
+          </div>
+        </div>
+        <div class="sm:col-span-3">
+          <label for="durationInput" class="block text-sm mb-1">Duration (hours)</label>
+          <input id="durationInput" class="input" type="number" min="0.25" max="24" step="0.25" value="1" aria-label="Duration in hours" />
+        </div>
+        <div class="sm:col-span-5">
+          <label for="notesInput" class="block text-sm mb-1">Notes (optional)</label>
+          <input id="notesInput" class="input" type="text" placeholder="e.g., after lunch, low intensity" maxlength="100" aria-label="Notes" />
+        </div>
+        <div class="sm:col-span-12 flex gap-2 pt-2">
+          <button id="addPlanBtn" class="btn btn-primary" type="submit" aria-label="Add item to plan">Add to plan</button>
+          <button id="clearPlanBtn" class="btn btn-danger" type="button" aria-label="Clear plan">Clear plan</button>
+        </div>
+      </form>
+    </section>
 
-    <!-- Activity Chart Section -->
-    <section id="chartSection" class="mt-6 bg-[var(--bg-dark)] rounded-xl p-4 sm:p-6 shadow-md">
-      <h3 class="text-base sm:text-lg font-semibold mb-4 text-[var(--text-primary)]">Activity Breakdown</h3>
-      <div class="flex items-center justify-center">
-        <canvas id="activityChart" aria-label="Activity breakdown chart" role="img" style="max-height: 300px; width: 100%;"></canvas>
+    <!-- Plan List -->
+    <section class="panel rounded-2xl p-4 sm:p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold">Today's plan</h2>
+        <div class="text-sm text-[color:var(--muted)]" id="totalDuration" aria-live="polite"></div>
       </div>
-      <div id="chartFallback" class="hidden text-sm mt-4 text-[var(--text-secondary)]"></div>
-      <p id="chartEmpty" class="text-sm text-[var(--text-secondary)] mt-4 hidden text-center">No logs yet. Log some activities to see the chart.</p>
+      <ul id="planList" class="space-y-3 relative" role="list" aria-label="Planned activities"></ul>
+      <p id="emptyState" class="text-sm text-[color:var(--muted)]">No items yet. Add an activity above.</p>
+    </section>
+
+    <!-- AI Coach -->
+    <section class="panel rounded-2xl p-4 sm:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 class="text-xl font-semibold">AI Coach</h2>
+        <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <label class="text-sm" for="modelSelect">Model</label>
+          <select id="modelSelect" class="select sm:w-64" aria-label="Select AI model">
+            <option value="t5-small">T5-small (text2text)</option>
+            <option value="smollm2-135m">SmolLM2-135M (q4, instruct)</option>
+          </select>
+          <button id="runCoachBtn" class="btn btn-accent" type="button" aria-label="Run AI Coach">Get feedback</button>
+        </div>
+      </div>
+      <div id="aiThinking" class="mt-4 hidden" aria-live="assertive">
+        <div class="progress-track" role="progressbar" aria-label="AI Coach is thinking" aria-busy="true">
+          <div class="progress-indeterminate"></div>
+        </div>
+        <p class="mt-2 text-sm text-[color:var(--muted)]">AI Coach is thinking… First run may take a moment to initialize.</p>
+      </div>
+      <div id="aiOutput" class="mt-4 panel-2 rounded-xl p-3 text-sm whitespace-pre-wrap" aria-live="polite"></div>
     </section>
   </main>
 
-  <!-- Floating Action Buttons (Right) -->
-  <div class="fixed bottom-4 right-4 sm:right-6 space-y-3 z-40">
-    <button id="fabBtn" class="bg-[var(--primary)] hover:bg-[var(--primary-hover)] p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Log new activity">
-      ➕
-    </button>
-    <button id="clearBtn" class="bg-[var(--danger)] hover:bg-[var(--danger-hover)] p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Clear all logs">
-      🗑️
-    </button>
-    <button id="manageBtn" class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Manage activities">
-      ⚙️
-    </button>
-  </div>
-
-  <!-- Tools FAB (Left) -->
-  <div class="fixed bottom-4 left-4 sm:left-6 z-50">
-    <button id="toolsFab" class="bg-[var(--bg-dark)] hover:bg-gray-600 p-3 sm:p-4 rounded-full shadow-lg text-lg sm:text-xl transform transition-transform" aria-label="Open tools panel">
-      ☰
-    </button>
-
-    <!-- Tools Panel -->
-    <div id="toolsPanel" class="hidden absolute bottom-16 left-0 w-80 sm:w-96 bg-[var(--bg-dark)] border border-gray-700 rounded-xl shadow-xl p-4 sm:p-5 transition-all duration-300">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-base sm:text-lg font-semibold">Tools</h3>
-        <button id="closeTools" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm" aria-label="Close tools panel">✖</button>
-      </div>
-
-      <!-- Search / Filter / Sort -->
-      <div class="space-y-3">
-        <div>
-          <label for="searchInput" class="text-sm sm:text-base mb-1 block">Search Logs</label>
-          <input id="searchInput" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" placeholder="Search logs..." aria-describedby="searchHelp" />
-          <div id="searchHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Search by activity or feedback</div>
-        </div>
-        <div>
-          <label for="filterActivity" class="text-sm sm:text-base mb-1 block">Filter by Activity</label>
-          <select id="filterActivity" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="filterHelp">
-            <option value="">All activities</option>
-          </select>
-          <div id="filterHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Select an activity to filter logs</div>
-        </div>
-        <div>
-          <label for="sortSelect" class="text-sm sm:text-base mb-1 block">Sort Logs</label>
-          <select id="sortSelect" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="sortHelp">
-            <option value="timeDesc">Newest first</option>
-            <option value="timeAsc">Oldest first</option>
-            <option value="activityAsc">Activity A→Z</option>
-            <option value="activityDesc">Activity Z→A</option>
-          </select>
-          <div id="sortHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Choose how to sort logs</div>
-        </div>
-
-        <!-- Date Range -->
-        <div class="grid grid-cols-2 gap-2">
+  <!-- Manage Activities Modal -->
+  <div id="manageModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="manageTitle" aria-describedby="manageDesc">
+    <div class="modal-backdrop absolute inset-0" data-open="false"></div>
+    <div class="relative mx-auto max-w-[90vw] sm:w-96 mt-16">
+      <div class="modal-panel panel rounded-2xl p-4 sm:p-6" data-open="false">
+        <div class="flex items-start justify-between gap-3">
           <div>
-            <label for="startDate" class="text-sm sm:text-base mb-1 block">Start Date</label>
-            <input id="startDate" type="date" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="startDateHelp" />
-            <div id="startDateHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Filter logs from this date</div>
+            <h2 id="manageTitle" class="text-lg font-semibold">Manage activities</h2>
+            <p id="manageDesc" class="text-sm text-[color:var(--muted)]">Add or remove activities available in the planner.</p>
+          </div>
+          <button id="closeManage" class="btn btn-ghost" aria-label="Close manage activities modal">✕</button>
+        </div>
+        <div class="mt-4 space-y-3">
+          <div>
+            <label for="newActivityInput" class="block text-sm mb-1">Add new activity</label>
+            <div class="flex gap-2">
+              <input id="newActivityInput" class="input" type="text" placeholder="e.g., Read" maxlength="20" aria-label="New activity" />
+              <button id="addActivityBtn" class="btn btn-primary" type="button">Add</button>
+            </div>
           </div>
           <div>
-            <label for="endDate" class="text-sm sm:text-base mb-1 block">End Date</label>
-            <input id="endDate" type="date" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="endDateHelp" />
-            <div id="endDateHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Filter logs up to this date</div>
+            <h3 class="text-sm font-semibold mb-2">Current activities</h3>
+            <ul id="activityList" class="space-y-2 max-h-64 overflow-auto" aria-label="Current activities"></ul>
           </div>
         </div>
-
-        <!-- Low-memory mode -->
-        <label class="mt-2 flex items-center gap-2 text-sm">
-          <input id="lowMemToggle" type="checkbox" class="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)]" />
-          <span>Low-memory mode (smaller AI model)</span>
-        </label>
-      </div>
-
-      <hr class="border-gray-700 my-4" />
-
-      <!-- Export / Import -->
-      <div class="grid grid-cols-2 gap-2 mb-3">
-        <button id="exportJsonBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm" aria-label="Export logs as JSON">Export JSON</button>
-        <button id="exportCsvBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm" aria-label="Export logs as CSV">Export CSV</button>
-        <button id="importJsonBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm col-span-2" aria-label="Import logs from JSON">Import JSON</button>
-        <input id="importFile" type="file" accept="application/json" class="hidden" />
-      </div>
-
-      <!-- AI Cache / Retry -->
-      <div class="grid grid-cols-2 gap-2">
-        <button id="retryLoadBtn" class="bg-amber-600 hover:bg-amber-500 px-3 py-2 rounded-md shadow text-sm" aria-label="Retry AI model load">Retry AI Load</button>
-        <button id="clearAICacheBtn" class="bg-amber-700 hover:bg-amber-600 px-3 py-2 rounded-md shadow text-sm" aria-label="Clear AI cache">Clear AI Cache</button>
-        <button id="modelLinksBtn" class="bg-[var(--bg-dark)] hover:bg-gray-600 px-3 py-2 rounded-md shadow text-sm col-span-2" aria-label="Show model download links">Model Links</button>
       </div>
     </div>
   </div>
 
-  <!-- Log Modal -->
-  <div id="logModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="logTitle">
-    <div class="bg-[var(--bg-dark)] p-5 sm:p-6 rounded-xl w-80 sm:w-96 max-w-[90vw] modal-enter">
-      <h2 id="logTitle" class="text-lg sm:text-xl font-semibold mb-4">Log Activity</h2>
+  <!-- Templates -->
+  <template id="activityChipTpl">
+    <li class="flex items-center justify-between rounded-xl px-3 py-2 panel-2">
+      <span class="text-sm"></span>
+      <button class="btn btn-danger text-xs" type="button" aria-label="Delete activity">Delete</button>
+    </li>
+  </template>
 
-      <div>
-        <label for="activitySelect" class="block text-sm sm:text-base mb-2">Activity</label>
-        <select id="activitySelect" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base mb-4 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="activityHelp">
-          <option value="" disabled selected>Select activity</option>
-        </select>
-        <div id="activityHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Choose an activity to log</div>
-      </div>
-
-      <div class="flex items-center justify-between mb-4">
-        <label class="flex items-center space-x-2 text-sm sm:text-base">
-          <input type="checkbox" id="aiToggle" class="h-4 w-4 text-[var(--accent)] focus:ring-[var(--accent)]" />
-          <span>Enable AI Coach</span>
-        </label>
-        <span id="modelBadge" class="text-xs sm:text-sm text-amber-400"></span>
-      </div>
-
-      <div>
-        <label for="modelSelect" class="block text-sm sm:text-base mb-2">AI Model</label>
-        <select id="modelSelect" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base mb-4 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="modelHelp">
-          <option value="smollm135">SmolLM2-135M-Instruct (q4, ~80–120MB)</option>
-          <option value="t5small">T5-small (text2text, ~200–240MB)</option>
-        </select>
-        <div id="modelHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Select the AI model for feedback</div>
-      </div>
-
-      <div id="modelInfo" class="text-xs sm:text-sm text-amber-400 mb-4 hidden"></div>
-
-      <div class="flex gap-3">
-        <button id="closeLog" class="w-1/2 bg-[var(--bg-dark)] hover:bg-gray-600 py-2 rounded-md text-sm sm:text-base">Close</button>
-        <button id="logBtn" class="w-1/2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] py-2 rounded-md text-sm sm:text-base">Log</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Manage Modal -->
-  <div id="manageModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
-    <div class="bg-[var(--bg-dark)] p-5 sm:p-6 rounded-xl w-80 sm:w-96 max-w-[90vw] modal-enter">
-      <h2 id="manageTitle" class="text-lg sm:text-xl font-semibold mb-4">Manage Activities</h2>
-      <div>
-        <label for="newActivityInput" class="block text-sm sm:text-base mb-2">New Activity</label>
-        <input id="newActivityInput" type="text" placeholder="Add new activity" class="w-full p-2 rounded-md bg-gray-200 text-black text-sm sm:text-base mb-3 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" aria-describedby="newActivityHelp" />
-        <div id="newActivityHelp" class="text-xs text-[var(--text-secondary)] mt-1 hidden">Enter a unique activity name</div>
-        <div id="newActivityError" class="text-xs text-[var(--danger)] mt-1 hidden"></div>
-      </div>
-      <button id="addActivityBtn" class="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] py-2 rounded-md text-sm sm:text-base mb-4">Add Activity</button>
-      <ul id="activityList" class="space-y-2 max-h-40 overflow-y-auto mb-4"></ul>
-      <button id="backBtn" class="w-full bg-[var(--bg-dark)] hover:bg-gray-600 py-2 rounded-md text-sm sm:text-base">⬅ Go Back</button>
-    </div>
-  </div>
-
-  <!-- Model Links Modal -->
-  <div id="linksModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="linksTitle">
-    <div class="bg-[var(--bg-dark)] p-5 sm:p-6 rounded-xl w-[28rem] max-w-[90vw] modal-enter">
-      <h2 id="linksTitle" class="text-lg sm:text-xl font-semibold mb-4">Model Download Links</h2>
-      <ul class="list-disc list-inside space-y-2 text-sm sm:text-base">
-        <li><a class="text-[var(--accent)] hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct">HuggingFaceTB/SmolLM2-135M-Instruct</a></li>
-        <li><a class="text-[var(--accent)] hover:underline" target="_blank" rel="noopener" href="https://huggingface.co/Xenova/t5-small">Xenova/t5-small</a></li>
-      </ul>
-      <div class="text-xs sm:text-sm text-[var(--text-secondary)] mt-3">Tip: First load caches models locally (IndexedDB + Cache Storage). If loading fails, try the smaller model or clear cache.</div>
-      <div class="flex gap-3 mt-4">
-        <button id="closeLinks" class="w-1/2 bg-[var(--bg-dark)] hover:bg-gray-600 py-2 rounded-md text-sm sm:text-base">Close</button>
-        <button id="prefetchBtn" class="w-1/2 bg-amber-600 hover:bg-amber-500 py-2 rounded-md text-sm sm:text-base">Prefetch Model</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Spinner / Progress -->
-  <div id="spinner" class="hidden fixed bottom-16 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-4 py-3 rounded-lg shadow-lg text-sm sm:text-base z-50" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
-    <div class="flex items-center justify-between gap-4 max-w-md">
-      <div>
-        <div id="spinnerText" class="font-semibold">Downloading AI Coach…</div>
-        <div class="w-52 sm:w-64 bg-gray-300 h-2 mt-2 rounded-full overflow-hidden">
-          <div id="progressBar" class="bg-[var(--primary)] h-2 rounded-full transition-all duration-300" style="width:0%"></div>
+  <template id="planItemTpl">
+    <li class="panel-2 rounded-xl p-3 flex items-start gap-3" draggable="true" tabindex="0">
+      <div class="select-none handle text-xl leading-none mt-1" title="Drag to reorder" aria-hidden="true">⋮⋮</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex flex-wrap items-center gap-2">
+          <button class="switch-activity btn btn-ghost px-2 py-1 text-sm" type="button" title="Switch activity"></button>
+          <span class="text-sm text-[color:var(--muted)]">•</span>
+          <span class="duration text-sm"></span>
         </div>
-        <div id="spinnerSub" class="text-xs mt-2 opacity-80"></div>
+        <div class="notes text-xs text-[color:var(--muted)] mt-1 break-words"></div>
       </div>
-      <button id="cancelDownloadBtn" class="bg-black/70 text-white px-3 py-1 rounded-md text-sm hover:bg-black/90">Cancel</button>
-    </div>
-  </div>
+      <div class="flex items-center gap-2">
+        <button class="edit btn btn-ghost" type="button" aria-label="Edit">✎</button>
+        <button class="del btn btn-danger" type="button" aria-label="Delete">🗑</button>
+      </div>
+    </li>
+  </template>
 
-  <!-- Toast Container -->
-  <div id="toastContainer" class="fixed bottom-4 left-4 sm:left-6 z-50 space-y-2"></div>
-
-  <!-- Footer -->
-  <footer class="text-xs text-[var(--text-secondary)] absolute bottom-2 left-4 sm:left-6">Version 0.44</footer>
-
+  <!-- App Script -->
   <script type="module">
-    // ---------- Elements ----------
-    const elements = {
-      logDiv: document.getElementById('log'),
-      fabBtn: document.getElementById('fabBtn'),
-      clearBtn: document.getElementById('clearBtn'),
-      manageBtn: document.getElementById('manageBtn'),
-      logModal: document.getElementById('logModal'),
-      manageModal: document.getElementById('manageModal'),
-      closeLog: document.getElementById('closeLog'),
-      backBtn: document.getElementById('backBtn'),
-      logBtn: document.getElementById('logBtn'),
-      activitySelect: document.getElementById('activitySelect'),
-      aiToggle: document.getElementById('aiToggle'),
-      modelSelect: document.getElementById('modelSelect'),
-      modelBadge: document.getElementById('modelBadge'),
-      modelInfo: document.getElementById('modelInfo'),
-      newActivityInput: document.getElementById('newActivityInput'),
-      newActivityError: document.getElementById('newActivityError'),
-      addActivityBtn: document.getElementById('addActivityBtn'),
-      activityList: document.getElementById('activityList'),
-      spinner: document.getElementById('spinner'),
-      spinnerText: document.getElementById('spinnerText'),
-      spinnerSub: document.getElementById('spinnerSub'),
-      progressBar: document.getElementById('progressBar'),
-      cancelDownloadBtn: document.getElementById('cancelDownloadBtn'),
-      chartSection: document.getElementById('chartSection'),
-      chartEmpty: document.getElementById('chartEmpty'),
-      chartCanvas: document.getElementById('activityChart'),
-      chartFallback: document.getElementById('chartFallback'),
-      toolsFab: document.getElementById('toolsFab'),
-      toolsPanel: document.getElementById('toolsPanel'),
-      closeTools: document.getElementById('closeTools'),
-      modelLinksBtn: document.getElementById('modelLinksBtn'),
-      exportJsonBtn: document.getElementById('exportJsonBtn'),
-      exportCsvBtn: document.getElementById('exportCsvBtn'),
-      importJsonBtn: document.getElementById('importJsonBtn'),
-      importFile: document.getElementById('importFile'),
-      retryLoadBtn: document.getElementById('retryLoadBtn'),
-      clearAICacheBtn: document.getElementById('clearAICacheBtn'),
-      searchInput: document.getElementById('searchInput'),
-      filterActivity: document.getElementById('filterActivity'),
-      sortSelect: document.getElementById('sortSelect'),
-      lowMemToggle: document.getElementById('lowMemToggle'),
-      startDate: document.getElementById('startDate'),
-      endDate: document.getElementById('endDate'),
-      linksModal: document.getElementById('linksModal'),
-      closeLinks: document.getElementById('closeLinks'),
-      prefetchBtn: document.getElementById('prefetchBtn'),
-      toastContainer: document.getElementById('toastContainer')
+    // ===== State & Persistence =====
+    const DEFAULT_ACTIVITIES = ["Eat", "Sleep", "Sport", "Laptop", "Bath", "Family"]; // changed from McDonalds -> Family
+    const store = {
+      get activities() {
+        const raw = localStorage.getItem('planner.activities');
+        try { return raw ? JSON.parse(raw) : [...DEFAULT_ACTIVITIES]; }
+        catch { return [...DEFAULT_ACTIVITIES]; }
+      },
+      set activities(list) {
+        localStorage.setItem('planner.activities', JSON.stringify(list));
+      },
+      get plan() {
+        const raw = localStorage.getItem('planner.plan');
+        try { return raw ? JSON.parse(raw) : []; }
+        catch { return []; }
+      },
+      set plan(list) {
+        localStorage.setItem('planner.plan', JSON.stringify(list));
+      },
+      get model() { return localStorage.getItem('planner.model') || 't5-small'; },
+      set model(val) { localStorage.setItem('planner.model', val); }
     };
 
-    // ---------- Storage / DB ----------
-    const STORAGE_KEYS = { ACTIVITIES: 'activityList', LOGS: 'activityLogs' };
-    const DB_NAME = 'ADAT_DB';
-    const DB_VER = 1;
-    const STORE = 'kvs';
-    const SETTINGS_KEY = 'settings';
-    const DATA_VERSION = '0.44';
+    let activities = store.activities;
+    let plan = store.plan;
+    let lastPlan = null; // For undo functionality
 
-    // ---------- Data ----------
-    let activities = [];
-    let logs = [];
-    let settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{"lowMem":false}');
-    elements.lowMemToggle.checked = !!settings.lowMem;
+    // ===== Elements =====
+    const $ = (sel, el = document) => el.querySelector(sel);
+    const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
 
-    // ---------- AI state ----------
-    let generator = null;
-    let activeModelKey = 'smollm135';
-    let activeModelId = null;
-    let activeTask = null;
-    const TIMEOUT_MS = 12 * 60 * 1000;
-    const BASE_GEN_TIMEOUT = 14000;
-    let logBusy = false;
-    let cancelFlag = false;
-    let transformersModule = null;
+    const planForm = $('#planForm');
+    const activitySelect = $('#activitySelect');
+    const durationInput = $('#durationInput');
+    const notesInput = $('#notesInput');
+    const addPlanBtn = $('#addPlanBtn');
+    const clearPlanBtn = $('#clearPlanBtn');
+    const planList = $('#planList');
+    const emptyState = $('#emptyState');
+    const totalDuration = $('#totalDuration');
+    const runCoachBtn = $('#runCoachBtn');
+    const modelSelect = $('#modelSelect');
+    const aiThinking = $('#aiThinking');
+    const aiOutput = $('#aiOutput');
+    const manageModal = $('#manageModal');
+    const openManage = $('#openManage');
+    const closeManage = $('#closeManage');
+    const newActivityInput = $('#newActivityInput');
+    const addActivityBtn = $('#addActivityBtn');
+    const activityList = $('#activityList');
+    const activityChipTpl = $('#activityChipTpl');
+    const planItemTpl = $('#planItemTpl');
 
-    // ---------- Model config ----------
-    const MODELS = {
-      smollm135: {
-        id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
-        task: 'text-generation',
-        note: 'ONNX q4 ~80–120MB',
-        badge: 'SmolLM2-135M (q4)',
-        opts: { dtype: 'q4' }
-      },
-      t5small: {
-        id: 'Xenova/t5-small',
-        task: 'text2text-generation',
-        note: '~200–240MB first load',
-        badge: 'T5-small',
-        opts: {}
-      }
-    };
+    modelSelect.value = store.model;
 
-    // ---------- Chart palette ----------
-    const PALETTE = ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'];
-
-    // ---------- Utilities ----------
-    const utils = {
-      sanitize: (s) => DOMPurify.sanitize(String(s), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }),
-      limitSentences: (t, n=4) => t.split(/(?<=[.!?])\s+/).slice(0, n).join(' '),
-      debounce: (fn, ms=300) => {
-        let t;
-        return (...a) => {
-          clearTimeout(t);
-          t = setTimeout(() => fn(...a), ms);
-        };
-      },
-      throttle: (fn, ms=1000) => {
-        let last = 0;
-        return (...a) => {
-          const now = Date.now();
-          if (now - last < ms) return;
-          last = now;
-          fn(...a);
-        };
-      },
-      showToast: (message, type = 'success') => {
-        const toast = document.createElement('div');
-        toast.className = `toast bg-${type === 'success' ? '[var(--primary)]' : '[var(--danger)]'} text-white px-4 py-2 rounded-md shadow-lg text-sm`;
-        toast.textContent = message;
-        elements.toastContainer.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-      },
-      validateActivity: (val) => {
-        val = val.trim();
-        if (!val) return 'Please enter an activity.';
-        if (activities.includes(val)) return 'Activity already exists.';
-        if (val.length > 50) return 'Activity name too long (max 50 characters).';
-        return '';
-      }
-    };
-
-    // IndexedDB helpers
-    async function openDB() {
-      return new Promise((resolve) => {
-        if (!('indexedDB' in window)) return resolve(null);
-        const req = indexedDB.open(DB_NAME, DB_VER);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'key' });
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
-      });
-    }
-    async function idbSet(key, value) {
-      const db = await openDB();
-      if (!db) return false;
-      return new Promise((resolve) => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put({ key, value });
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      });
-    }
-    async function idbGet(key) {
-      const db = await openDB();
-      if (!db) return null;
-      return new Promise((resolve) => {
-        const tx = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).get(key);
-        req.onsuccess = () => resolve(req.result?.value ?? null);
-        req.onerror = () => resolve(null);
-      });
-    }
-
-    async function hydrateFromStorage() {
-      const idbActs = await idbGet(STORAGE_KEYS.ACTIVITIES);
-      const idbLogs = await idbGet(STORAGE_KEYS.LOGS);
-      activities = Array.isArray(idbActs) ? idbActs : JSON.parse(localStorage.getItem(STORAGE_KEYS.ACTIVITIES) || '[]');
-      if (!activities.length) activities = ['Eat','Sleep','Work','Exercise','Study','Commute','Socialize','Relax','Shop','Cook'];
-      logs = Array.isArray(idbLogs) ? idbLogs : JSON.parse(localStorage.getItem(STORAGE_KEYS.LOGS) || '[]');
-      // Version check
-      if (idbLogs && !idbLogs.every(l => l.dataVersion === DATA_VERSION)) {
-        logs = logs.map(l => ({ ...l, dataVersion: DATA_VERSION }));
-        await safeSave(STORAGE_KEYS.LOGS, logs);
+    // ===== Modal Accessibility =====
+    let lastFocused = null;
+    function trapFocus(container, e) {
+      const focusables = $$('[tabindex]:not([tabindex="-1"]), button, input, select, textarea', container)
+        .filter(el => !el.hasAttribute('disabled') && !el.closest('[hidden]'));
+      if (!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey && document.activeElement === first) last.focus();
+        else if (!e.shiftKey && document.activeElement === last) first.focus();
+        else if (!focusables.includes(document.activeElement)) first.focus();
+      } else if (e.key === 'Escape') {
+        closeModal(manageModal);
       }
     }
 
-    // Storage warnings
-    const warnIfNearLimit = utils.throttle(async () => {
-      try {
-        if (navigator.storage?.estimate) {
-          const { quota, usage } = await navigator.storage.estimate();
-          if (usage / quota > 0.8) {
-            const percent = ((usage / quota) * 100).toFixed(1);
-            utils.showToast(`Storage at ${percent}% (~${(usage / 1e6).toFixed(1)}MB). Clear logs or cache.`, 'error');
-          }
-        } else {
-          const used = Object.keys(localStorage).reduce((sum, k) => sum + (localStorage.getItem(k)?.length || 0), 0);
-          if (used > 4.5e6) utils.showToast('Local storage almost full (~' + (used/1e6).toFixed(2) + 'MB).', 'error');
-        }
-      } catch {}
-    }, 5000);
-
-    async function safeSave(key, val) {
-      warnIfNearLimit();
-      try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
-      try { await idbSet(key, val); } catch {}
+    function openModal(modal) {
+      lastFocused = document.activeElement;
+      modal.classList.remove('hidden');
+      $('.modal-backdrop', modal).setAttribute('data-open', 'true');
+      $('.modal-panel', modal).setAttribute('data-open', 'true');
+      modal.addEventListener('keydown', onModalKeydown);
+      setTimeout(() => { ($('#newActivityInput') || $('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])', modal)).focus({ preventScroll: true }); }, 0);
+      openManage.setAttribute('aria-expanded', 'true');
     }
 
-    // Rule-based feedback
-    function ruleFeedback(a) {
-      const m = {
-        Eat: '🍽️ Good to stay nourished!',
-        Sleep: '😴 Rest is essential.',
-        Work: '💼 Keep focused!',
-        Exercise: '🏃 Great energy boost.',
-        Study: '📚 Knowledge is power.',
-        Commute: '🚌 Time well spent traveling.',
-        Socialize: '🤝 Stay connected.',
-        Relax: '🧘 Calm and balanced.',
-        Shop: '🛒 Don’t overspend!',
-        Cook: '👩‍🍳 Healthy eating starts here.'
-      };
-      return m[a] || 'Great job — keep the momentum going!';
+    function closeModal(modal) {
+      $('.modal-backdrop', modal).setAttribute('data-open', 'false');
+      $('.modal-panel', modal).setAttribute('data-open', 'false');
+      modal.removeEventListener('keydown', onModalKeydown);
+      setTimeout(() => { modal.classList.add('hidden'); }, 180);
+      if (lastFocused) lastFocused.focus();
+      openManage.setAttribute('aria-expanded', 'false');
     }
 
-    // Chart helpers
-    let activityChart = null;
-    let lastChartData = null;
-    function getActivityCounts(list = logs) {
-      const counts = {};
-      for (const l of list) counts[l.activity] = (counts[l.activity] || 0) + 1;
-      return counts;
-    }
-    function renderCountsTable(counts) {
-      const total = Object.values(counts).reduce((a, b) => a + b, 0);
-      const rows = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .map(([k, v]) => `<tr><td class="pr-4 py-1">${utils.sanitize(k)}</td><td class="text-right py-1">${v}</td><td class="text-right text-[var(--text-secondary)] py-1">${((v / total) * 100).toFixed(1)}%</td></tr>`)
-        .join('');
-      elements.chartFallback.innerHTML = `
-        <div class="rounded-md border border-gray-700 p-4">
-          <div class="text-xs text-[var(--text-secondary)] mb-3">Chart unavailable — showing table</div>
-          <table class="text-sm w-full"><tbody>${rows}</tbody></table>
-        </div>`;
-    }
-    function updateChart(filtered = null) {
-      const list = filtered || logs;
-      const counts = getActivityCounts(list);
-      const labels = Object.keys(counts);
-      const data = Object.values(counts);
-      const isEmpty = data.length === 0;
-      elements.chartSection.classList.toggle('hidden', isEmpty);
-      elements.chartEmpty.classList.toggle('hidden', !isEmpty);
-      if (isEmpty) return;
-      const colors = labels.map((_, i) => PALETTE[i % PALETTE.length]);
-      const newData = JSON.stringify({ labels, data });
-      if (newData === lastChartData) return; // Skip if no data change
-      lastChartData = newData;
-      if (!window.Chart) {
-        elements.chartCanvas.parentElement.classList.add('hidden');
-        elements.chartFallback.classList.remove('hidden');
-        renderCountsTable(counts);
-        return;
-      } else {
-        elements.chartCanvas.parentElement.classList.remove('hidden');
-        elements.chartFallback.classList.add('hidden');
-      }
-      const ctx = elements.chartCanvas.getContext('2d');
-      if (activityChart) {
-        activityChart.data.labels = labels;
-        activityChart.data.datasets[0].data = data;
-        activityChart.data.datasets[0].backgroundColor = colors;
-        activityChart.update('none');
-        return;
-      }
-      activityChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { color: '#e5e7eb', font: { size: 12 } } } }
-        }
-      });
-    }
+    function onModalKeydown(e) { trapFocus(manageModal, e); }
 
-    // Filtering / Sorting
-    function applyFilterAndSort() {
-      const q = elements.searchInput.value.trim().toLowerCase();
-      const fa = elements.filterActivity.value;
-      const sort = elements.sortSelect.value;
-      let view = logs.slice();
-      if (fa) view = view.filter(l => l.activity === fa);
-      if (q) view = view.filter(l =>
-        l.activity.toLowerCase().includes(q) || (l.feedback || '').toLowerCase().includes(q)
-      );
-      const s = elements.startDate.value ? new Date(elements.startDate.value + 'T00:00:00') : null;
-      const e = elements.endDate.value ? new Date(elements.endDate.value + 'T23:59:59') : null;
-      if (s || e) {
-        view = view.filter(l => {
-          const t = l.iso || l.time;
-          const d = t ? new Date(t) : null;
-          if (!d || isNaN(d)) return false;
-          if (s && d < s) return false;
-          if (e && d > e) return false;
-          return true;
-        });
-      }
-      view.sort((a, b) => {
-        if (sort === 'timeAsc') return new Date(a.iso || a.time) - new Date(b.iso || b.time);
-        if (sort === 'timeDesc') return new Date(b.iso || b.time) - new Date(a.iso || a.time);
-        if (sort === 'activityAsc') return a.activity.localeCompare(b.activity);
-        if (sort === 'activityDesc') return b.activity.localeCompare(a.activity);
-        return 0;
-      });
-      renderLogs(view);
-      updateChart(view);
-    }
+    $('.modal-backdrop', manageModal).addEventListener('click', () => closeModal(manageModal));
+    openManage.addEventListener('click', () => openModal(manageModal));
+    closeManage.addEventListener('click', () => closeModal(manageModal));
 
-    // Renderers
-    function renderActivities() {
-      const current = elements.activitySelect.value;
-      elements.activitySelect.innerHTML = '<option value="" disabled selected>Select activity</option>';
-      activities.forEach(a => {
+    // ===== Activities =====
+    function renderActivitySelect() {
+      activitySelect.innerHTML = '';
+      for (const name of activities) {
         const opt = document.createElement('option');
-        opt.value = a;
-        opt.textContent = a;
-        elements.activitySelect.appendChild(opt);
-      });
-      if (current && activities.includes(current)) elements.activitySelect.value = current;
-      else elements.activitySelect.selectedIndex = 0;
-      elements.filterActivity.innerHTML = '<option value="">All activities</option>';
-      activities.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a;
-        opt.textContent = a;
-        elements.filterActivity.appendChild(opt);
-      });
-      elements.activityList.innerHTML = '';
-      activities.forEach((a, i) => {
-        const li = document.createElement('li');
-        li.className = 'flex justify-between items-center bg-[var(--bg-dark)] rounded-md px-3 py-2';
-        li.innerHTML = `<span class="text-sm">${utils.sanitize(a)}</span>
-                        <button class="text-[var(--danger)] hover:text-[var(--danger-hover)] text-sm" aria-label="Delete activity ${utils.sanitize(a)}" tabindex="0">✖</button>`;
-        const delBtn = li.querySelector('button');
-        delBtn.onclick = () => {
-          if (activities.length === 1) {
-            utils.showToast('Cannot delete the last activity.', 'error');
-            return;
-          }
-          if (!confirm(`Delete "${a}"?`)) return;
-          activities.splice(i, 1);
-          safeSave(STORAGE_KEYS.ACTIVITIES, activities);
-          renderActivities();
-          applyFilterAndSort();
-          utils.showToast(`Activity "${a}" deleted.`);
-        };
-        delBtn.onkeydown = (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            delBtn.click();
-          }
-        };
-        elements.activityList.appendChild(li);
-      });
+        opt.value = name; opt.textContent = name;
+        activitySelect.appendChild(opt);
+      }
     }
 
-    function renderLogs(list = logs) {
-      elements.logDiv.innerHTML = '';
-      list.forEach((l, index) => {
-        const isThinking = l.status === 'thinking';
-        const isFail = l.status === 'fail';
-        const border = isThinking ? 'border-yellow-400' : isFail ? 'border-red-400' : 'border-[var(--primary)]';
-        const titleC = isThinking ? 'text-yellow-300' : isFail ? 'text-red-300' : 'text-[var(--primary)]';
-        const card = document.createElement('div');
-        card.className = `bg-[var(--bg-dark)] p-4 rounded-xl border-l-4 ${border} shadow-sm hover:shadow-md transition-shadow duration-200`;
-        card.setAttribute('aria-labelledby', `log-title-${index}`);
-        card.innerHTML = `
-          <div class="flex justify-between gap-3">
-            <div>
-              <div id="log-title-${index}" class="font-semibold text-sm sm:text-base">${utils.sanitize(l.activity)}</div>
-              <div class="text-xs text-[var(--text-secondary)]">${utils.sanitize(l.time)}</div>
-              <div class="text-xs text-amber-400 mt-1">AI Model: ${utils.sanitize(l.model || 'N/A')}</div>
-            </div>
-            <div class="flex items-start gap-2">
-              <button class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" title="Copy feedback" aria-label="Copy feedback for ${utils.sanitize(l.activity)}">📋</button>
-              <button class="text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" title="Share log" aria-label="Share log for ${utils.sanitize(l.activity)}">📤</button>
-              <button class="text-[var(--danger)] hover:text-[var(--danger-hover)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" title="Delete log" aria-label="Delete log for ${utils.sanitize(l.activity)}">🗑️</button>
-            </div>
-          </div>
-          <div class="${titleC} mt-2 text-sm sm:text-base" id="log-feedback-${index}">${utils.sanitize(l.feedback || '')}</div>
-        `;
-        const [copyBtn, shareBtn, delBtn] = card.querySelectorAll('button');
-        copyBtn.onclick = async () => {
-          try {
-            await navigator.clipboard.writeText(l.feedback || '');
-            utils.showToast('Feedback copied to clipboard!');
-          } catch {
-            utils.showToast('Failed to copy feedback.', 'error');
-          }
-        };
-        shareBtn.onclick = async () => {
-          const text = `Activity: ${l.activity}\nTime: ${l.time}\nFeedback: ${l.feedback || ''}`;
-          if (navigator.share) {
-            try {
-              await navigator.share({ title: 'Activity Log', text });
-              utils.showToast('Log shared successfully!');
-            } catch {
-              utils.showToast('Failed to share log.', 'error');
-            }
+    function renderActivityList() {
+      activityList.innerHTML = '';
+      for (const name of activities) {
+        const li = activityChipTpl.content.firstElementChild.cloneNode(true);
+        $('span', li).textContent = name;
+        const delBtn = $('button', li);
+        delBtn.addEventListener('click', () => {
+          if (activities.length <= 1) {
+            alert('At least one activity required. Resetting to defaults.');
+            activities = [...DEFAULT_ACTIVITIES];
+            store.activities = activities;
           } else {
-            try {
-              await navigator.clipboard.writeText(text);
-              utils.showToast('Log copied to clipboard (share unavailable).');
-            } catch {
-              utils.showToast('Failed to share or copy log.', 'error');
-            }
+            activities = activities.filter(a => a !== name);
+            store.activities = activities;
           }
-        };
-        delBtn.onclick = () => {
-          if (!confirm('Delete this log?')) return;
-          const ix = logs.indexOf(l);
-          if (ix >= 0) logs.splice(ix, 1);
-          safeSave(STORAGE_KEYS.LOGS, logs);
-          applyFilterAndSort();
-          utils.showToast('Log deleted.');
-        };
-        elements.logDiv.appendChild(card);
-      });
-    }
-
-    // Model selection
-    function applyModelSelection() {
-      const key = elements.modelSelect.value;
-      if (settings.lowMem && key === 't5small') {
-        elements.modelSelect.value = 'smollm135';
-      }
-      const cfgKey = elements.modelSelect.value;
-      activeModelKey = cfgKey;
-      const cfg = MODELS[cfgKey];
-      activeModelId = cfg.id;
-      activeTask = cfg.task;
-      elements.modelBadge.textContent = cfg.badge;
-      elements.spinnerSub.textContent = `${cfg.note}, cached after first load`;
-    }
-
-    // Modal focus trap
-    function trapFocus(modal, triggerElement) {
-      const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-      if (!focusable.length) return () => {};
-      const first = focusable[0], last = focusable[focusable.length - 1];
-      function handler(e) {
-        if (e.key !== 'Tab') return;
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-      modal.addEventListener('keydown', handler);
-      first.focus();
-      return () => {
-        modal.removeEventListener('keydown', handler);
-        if (triggerElement) triggerElement.focus();
-      };
-    }
-    let untrap = () => {};
-
-    // Modal animation handler
-    function animateModal(modal, show, triggerElement) {
-      const inner = modal.querySelector('div');
-      inner.classList.remove('modal-enter', 'modal-enter-active', 'modal-exit', 'modal-exit-active');
-      if (show) {
-        inner.classList.add('modal-enter');
-        modal.classList.remove('hidden');
-        requestAnimationFrame(() => {
-          inner.classList.remove('modal-enter');
-          inner.classList.add('modal-enter-active');
+          renderActivityList();
+          renderActivitySelect();
+          renderPlan();
         });
+        activityList.appendChild(li);
+      }
+    }
+
+    addActivityBtn.addEventListener('click', () => {
+      const raw = newActivityInput.value.trim();
+      if (!raw) return alert('Enter an activity name.');
+      const name = raw.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ' ').slice(0, 20);
+      if (!name) return alert('Invalid activity name (use letters, numbers, spaces).');
+      if (activities.some(a => a.toLowerCase() === name.toLowerCase())) { alert('Activity already exists.'); return; }
+      activities.push(name);
+      store.activities = activities;
+      newActivityInput.value = '';
+      renderActivityList();
+      renderActivitySelect();
+    });
+
+    // ===== Plan =====
+    function addToPlan(activity, duration, notes) {
+      plan.push({ id: crypto.randomUUID(), activity, duration, notes });
+      store.plan = plan;
+      renderPlan();
+    }
+
+    let editId = null;
+    planForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const activity = activitySelect.value;
+      const duration = parseFloat(durationInput.value);
+      const notes = notesInput.value.trim().slice(0, 100);
+      if (!activity) return alert('Please select an activity.');
+      if (!Number.isFinite(duration) || duration <= 0 || duration > 24) { return alert('Duration must be between 0.25 and 24 hours.'); }
+
+      if (editId) {
+        const idx = plan.findIndex(x => x.id === editId);
+        if (idx !== -1) {
+          plan[idx].activity = activity;
+          plan[idx].duration = duration;
+          plan[idx].notes = notes;
+        }
+        editId = null;
+        addPlanBtn.textContent = 'Add to plan';
       } else {
-        inner.classList.add('modal-exit');
-        inner.classList.add('modal-exit-active');
-        setTimeout(() => {
-          modal.classList.add('hidden');
-          inner.classList.remove('modal-exit', 'modal-exit-active');
-        }, 300);
+        addToPlan(activity, duration, notes);
       }
-    }
-
-    // Transformers.js loader
-    async function importTransformers() {
-      if (!transformersModule) {
-        transformersModule = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2');
-      }
-      return transformersModule;
-    }
-
-    // Model loader
-    async function loadModel() {
-      if (!navigator.onLine) {
-        utils.showToast('Offline. AI Coach requires internet.', 'error');
-        elements.aiToggle.checked = false;
-        return null;
-      }
-      if (!window.WebAssembly || !WebAssembly.compile) {
-        utils.showToast('WebAssembly unsupported. Falling back to rule-based feedback.', 'error');
-        elements.aiToggle.checked = false;
-        return null;
-      }
-      if (generator && MODELS[activeModelKey].id === activeModelId) {
-        return generator;
-      }
-      const { pipeline } = await importTransformers();
-      const attempts = [0, 2000, 5000];
-      cancelFlag = false;
-      for (let i = 0; i < attempts.length; i++) {
-        try {
-          elements.spinner.classList.remove('hidden');
-          elements.spinnerText.textContent = `Downloading ${activeModelId}…`;
-          elements.progressBar.style.width = '0%';
-          elements.progressBar.classList.remove('indeterminate-bar');
-          elements.spinner.setAttribute('aria-valuenow', '0');
-          const cfg = MODELS[activeModelKey];
-          const opts = {
-            progress_callback: (p) => {
-              if (cancelFlag) return;
-              if (p && p.loaded && p.total) {
-                const pct = Math.floor((p.loaded / p.total) * 100);
-                elements.progressBar.style.width = pct + '%';
-                elements.spinnerText.textContent = `Downloading… ${pct}%`;
-                elements.spinnerSub.textContent = `Loaded ${(p.loaded / 1e6).toFixed(1)}MB of ${(p.total / 1e6).toFixed(1)}MB`;
-                elements.spinner.setAttribute('aria-valuenow', String(pct));
-              }
-            }
-          };
-          opts.device = (i === 0 && navigator.gpu) ? 'webgpu' : 'cpu';
-          Object.assign(opts, cfg.opts);
-          const gen = await Promise.race([
-            pipeline(cfg.task, cfg.id, opts),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), TIMEOUT_MS))
-          ]);
-          if (cancelFlag) {
-            cancelFlag = false;
-            return null;
-          }
-          elements.spinnerText.textContent = '✅ AI Coach ready (cached)';
-          setTimeout(() => elements.spinner.classList.add('hidden'), 300);
-          return gen;
-        } catch (e) {
-          console.warn(`Model load attempt ${i + 1} failed:`, e.message);
-          await new Promise(r => setTimeout(r, attempts[i]));
-        } finally {
-          setTimeout(() => elements.spinner.classList.add('hidden'), 300);
-        }
-      }
-      utils.showToast('Failed to load AI Coach. Using rule-based feedback.', 'error');
-      elements.aiToggle.checked = false;
-      return null;
-    }
-
-    // Prompt builder
-    function buildPrompt(activity) {
-      const act = String(activity).trim();
-      return [
-        'You are a wellbeing coach.',
-        `Write 2–4 short, specific, encouraging sentences focused on momentum, the next tiny step, and consistency for the activity: "${act}".`,
-        'Do not repeat the instruction or the quoted text. No preamble. No self-reference.',
-        '### Response:'
-      ].join(' ');
-    }
-
-    // AI Coach feedback
-    async function aiCoachFeedback(activity) {
-      const input = buildPrompt(activity);
-      const cores = navigator.hardwareConcurrency || 4;
-      const GEN_MS = Math.min(28000, Math.max(10000, cores < 4 ? 18000 : BASE_GEN_TIMEOUT));
-      try {
-        const lowMem = !!settings.lowMem;
-        const genOpts = {
-          max_new_tokens: lowMem ? 48 : 80,
-          return_full_text: false,
-          do_sample: true,
-          temperature: lowMem ? 0.6 : 0.7,
-          top_p: 0.9,
-          repetition_penalty: 1.15
-        };
-        elements.spinner.classList.remove('hidden');
-        elements.spinnerText.textContent = 'AI Coach is thinking…';
-        elements.progressBar.style.width = '100%';
-        elements.progressBar.classList.add('indeterminate-bar');
-        elements.spinnerSub.textContent = '';
-        elements.spinner.setAttribute('aria-valuenow', '0');
-        const out = await Promise.race([
-          generator(input, genOpts),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('AI timeout')), GEN_MS))
-        ]);
-        let txt = Array.isArray(out) ? (out[0]?.generated_text ?? '') : (out?.generated_text ?? '');
-        if (txt && input && txt.toLowerCase().startsWith(input.toLowerCase())) {
-          txt = txt.slice(input.length);
-        }
-        txt = utils.cleanAIText(txt, input).trim();
-        if (!txt || /^i am\b/i.test(txt) || /^you are\b/i.test(txt)) {
-          txt = ruleFeedback(activity);
-        }
-        txt = utils.limitSentences(txt, 4);
-        return txt || 'Keep it up!';
-      } catch (e) {
-        console.error('AI feedback fail:', e);
-        return `⚠️ AI Coach error (${e.message}). ${ruleFeedback(activity)}`;
-      } finally {
-        elements.spinner.classList.add('hidden');
-        elements.progressBar.classList.remove('indeterminate-bar');
-      }
-    }
-
-    // Clean AI output
-    utils.cleanAIText = (txt, inputPrompt) => {
-      if (!txt) return '';
-      let out = txt;
-      const needle = inputPrompt.trim();
-      if (needle) {
-        const re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        out = out.replace(re, ' ').trim();
-      }
-      out = out
-        .replace(/^\s*you are a .*?coach.*?:?/i, ' ')
-        .replace(/^\s*i am a .*?coach.*?:?/i, ' ')
-        .replace(/\b(?:i am|you are)\b[^.!?]{0,80}\bcoach\b[^.!?]*[.!?]/gi, ' ')
-        .replace(/^\s*activity:\s*".*?"\s*/i, ' ')
-        .replace(/^\s*output:.*$/im, ' ')
-        .replace(/^\s*###\s*response:\s*/i, ' ')
-        .replace(/^#+.*$/gmi, ' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
-      let sentences = out
-        .split(/(?<=[.!?])\s+|\n+/)
-        .map(s => s.replace(/^[-•\s]+/, '').trim())
-        .filter(Boolean);
-      const seen = new Set();
-      sentences = sentences.filter(s => {
-        const k = s.toLowerCase();
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-      sentences = sentences.map(s => {
-        const trimmed = s.replace(/^["'“”]+|["'“”]+$/g, '').trim();
-        return /[.!?]$/.test(trimmed) ? trimmed : trimmed + '.';
-      });
-      sentences.sort((a, b) => a.length - b.length);
-      if (sentences.length > 4) sentences = sentences.slice(0, 4);
-      return sentences.join(' ');
-    };
-
-    // Export / Import
-    function downloadBlob(blob, filename) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      URL.revokeObjectURL(url);
-      a.remove();
-    }
-    elements.exportJsonBtn.onclick = () => {
-      const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json;charset=utf-8' });
-      downloadBlob(blob, 'activity_logs.json');
-      utils.showToast('Logs exported as JSON.');
-    };
-    elements.exportCsvBtn.onclick = () => {
-      const rows = [['Time', 'ISO', 'Activity', 'Model', 'Status', 'Feedback'], ...logs.map(l => [l.time, l.iso || '', l.activity, l.model || '', l.status || '', l.feedback || ''])];
-      const csv = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      downloadBlob(blob, 'activity_logs.csv');
-      utils.showToast('Logs exported as CSV.');
-    };
-    elements.importJsonBtn.onclick = () => elements.importFile.click();
-    elements.importFile.onchange = async () => {
-      const f = elements.importFile.files[0];
-      if (!f) return;
-      try {
-        const text = await f.text();
-        const data = JSON.parse(text);
-        if (!Array.isArray(data)) throw new Error('Invalid file format.');
-        const validLog = l => l.activity && (l.time || l.iso) && typeof l.feedback === 'string' && typeof l.status === 'string';
-        const validData = data.filter(validLog).map(l => ({ ...l, dataVersion: DATA_VERSION }));
-        if (!validData.length) throw new Error('No valid logs in file.');
-        const mode = confirm('Replace existing logs? (OK = Replace, Cancel = Merge)') ? 'replace' : 'merge';
-        logs = (mode === 'replace') ? validData : logs.concat(validData);
-        await safeSave(STORAGE_KEYS.LOGS, logs);
-        applyFilterAndSort();
-        utils.showToast(`Imported ${validData.length} logs successfully.`);
-      } catch (e) {
-        utils.showToast(`Import failed: ${e.message}`, 'error');
-      }
-      elements.importFile.value = '';
-    };
-
-    // AI Cache clear
-    elements.clearAICacheBtn.onclick = async () => {
-      let cleared = false;
-      try {
-        if ('caches' in window) {
-          const names = await caches.keys();
-          for (const n of names) {
-            if (/transformers|huggingface|hf|onnx|model/i.test(n)) {
-              await caches.delete(n);
-              cleared = true;
-            }
-          }
-        }
-      } catch {}
-      try {
-        if (indexedDB && indexedDB.databases) {
-          const dbs = await indexedDB.databases();
-          for (const db of dbs) {
-            if (db.name && /transformers|huggingface|hf|onnx|model/i.test(db.name)) {
-              indexedDB.deleteDatabase(db.name);
-              cleared = true;
-            }
-          }
-        }
-      } catch {}
-      generator = null;
-      utils.showToast(cleared ? 'AI cache cleared successfully.' : 'No AI cache found to clear.');
-    };
-
-    // Retry load
-    elements.retryLoadBtn.onclick = async () => {
-      if (!elements.aiToggle.checked) elements.aiToggle.checked = true;
-      applyModelSelection();
-      elements.retryLoadBtn.classList.add('btn-loading');
-      generator = await loadModel();
-      elements.retryLoadBtn.classList.remove('btn-loading');
-      if (generator) {
-        const cfg = MODELS[activeModelKey];
-        elements.modelInfo.textContent = `Active: ${cfg.badge}`;
-        elements.modelInfo.classList.remove('hidden');
-        utils.showToast('AI model loaded successfully.');
-      }
-    };
-
-    // Tools Panel interactions
-    elements.toolsFab.onclick = (e) => {
-      e.stopPropagation();
-      elements.toolsPanel.classList.toggle('hidden');
-    };
-    elements.closeTools.onclick = () => elements.toolsPanel.classList.add('hidden');
-    window.addEventListener('click', (e) => {
-      if (!elements.toolsPanel.contains(e.target) && e.target !== elements.toolsFab) elements.toolsPanel.classList.add('hidden');
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') elements.toolsPanel.classList.add('hidden');
+      notesInput.value = '';
+      renderPlan();
     });
 
-    // Model Links modal
-    elements.modelLinksBtn.onclick = () => {
-      animateModal(elements.linksModal, true, elements.modelLinksBtn);
-      untrap = trapFocus(elements.linksModal, elements.modelLinksBtn);
-    };
-    elements.closeLinks.onclick = () => {
-      animateModal(elements.linksModal, false, elements.modelLinksBtn);
-      untrap();
-    };
-    elements.prefetchBtn.onclick = async () => {
-      if (!elements.aiToggle.checked) elements.aiToggle.checked = true;
-      applyModelSelection();
-      elements.prefetchBtn.classList.add('btn-loading');
-      generator = await loadModel();
-      elements.prefetchBtn.classList.remove('btn-loading');
-      if (generator) {
-        const cfg = MODELS[activeModelKey];
-        elements.modelInfo.textContent = `Active: ${cfg.badge}`;
-        elements.modelInfo.classList.remove('hidden');
-        animateModal(elements.linksModal, false, elements.prefetchBtn);
-        untrap();
-        utils.showToast('Model prefetched successfully.');
-      }
-    };
-
-    // Modal interactions
-    elements.fabBtn.onclick = () => {
-      animateModal(elements.logModal, true, elements.fabBtn);
-      untrap = trapFocus(elements.logModal, elements.fabBtn);
-    };
-    elements.manageBtn.onclick = () => {
-      animateModal(elements.manageModal, true, elements.manageBtn);
-      untrap = trapFocus(elements.manageModal, elements.manageBtn);
-    };
-    elements.closeLog.onclick = () => {
-      animateModal(elements.logModal, false, elements.fabBtn);
-      untrap();
-    };
-    elements.backBtn.onclick = () => {
-      animateModal(elements.manageModal, false, elements.manageBtn);
-      untrap();
-    };
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        animateModal(elements.logModal, false, elements.fabBtn);
-        animateModal(elements.manageModal, false, elements.manageBtn);
-        animateModal(elements.linksModal, false, elements.modelLinksBtn);
-        untrap();
-      }
-    });
-    window.addEventListener('click', (e) => {
-      if (e.target === elements.logModal) {
-        animateModal(elements.logModal, false, elements.fabBtn);
-        untrap();
-      }
-      if (e.target === elements.manageModal) {
-        animateModal(elements.manageModal, false, elements.manageBtn);
-        untrap();
-      }
-      if (e.target === elements.linksModal) {
-        animateModal(elements.linksModal, false, elements.modelLinksBtn);
-        untrap();
-      }
-    });
-
-    // Clear logs
-    elements.clearBtn.onclick = async () => {
-      if (confirm('Clear all logs?')) {
-        logs = [];
-        await safeSave(STORAGE_KEYS.LOGS, logs);
-        applyFilterAndSort();
-        utils.showToast('All logs cleared.');
-      }
-    };
-
-    // Add activity
-    elements.newActivityInput.oninput = utils.debounce(() => {
-      const error = utils.validateActivity(elements.newActivityInput.value);
-      elements.newActivityError.textContent = error;
-      elements.newActivityError.classList.toggle('hidden', !error);
-      elements.addActivityBtn.disabled = !!error;
-    }, 150);
-    elements.addActivityBtn.onclick = utils.debounce(async () => {
-      const val = elements.newActivityInput.value.trim();
-      const error = utils.validateActivity(val);
-      if (error) {
-        elements.newActivityError.textContent = error;
-        elements.newActivityError.classList.remove('hidden');
+    clearPlanBtn.addEventListener('click', () => {
+      if (!plan.length) return;
+      if (clearPlanBtn.textContent === 'Undo') {
+        if (lastPlan) {
+          plan = lastPlan;
+          store.plan = plan;
+          renderPlan();
+          clearPlanBtn.textContent = 'Clear plan';
+        }
         return;
       }
-      elements.addActivityBtn.classList.add('btn-loading');
-      activities.push(val);
-      await safeSave(STORAGE_KEYS.ACTIVITIES, activities);
-      elements.newActivityInput.value = '';
-      elements.newActivityError.classList.add('hidden');
-      elements.addActivityBtn.disabled = false;
-      renderActivities();
-      applyFilterAndSort();
-      elements.addActivityBtn.classList.remove('btn-loading');
-      utils.showToast(`Activity "${val}" added.`);
-    }, 250);
-
-    // Low-memory toggle
-    elements.lowMemToggle.onchange = async () => {
-      settings.lowMem = elements.lowMemToggle.checked;
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-      if (settings.lowMem) {
-        elements.modelSelect.value = 'smollm135';
-        applyModelSelection();
-        generator = null;
-        utils.showToast('Low-memory mode enabled: using smaller model.');
+      if (confirm('Clear all plan items?')) {
+        lastPlan = [...plan];
+        plan = [];
+        store.plan = plan;
+        renderPlan();
+        clearPlanBtn.textContent = 'Undo';
+        setTimeout(() => { alert('Plan cleared. Click "Undo" to restore.'); }, 0);
+        setTimeout(() => { clearPlanBtn.textContent = 'Clear plan'; }, 5000);
       }
-    };
+    });
 
-    // Model select change
-    elements.modelSelect.onchange = async () => {
-      applyModelSelection();
-      if (elements.aiToggle.checked) {
-        elements.modelSelect.classList.add('btn-loading');
-        generator = await loadModel();
-        elements.modelSelect.classList.remove('btn-loading');
-        if (generator) {
-          const cfg = MODELS[activeModelKey];
-          elements.modelInfo.textContent = `Active: ${cfg.badge}`;
-          elements.modelInfo.classList.remove('hidden');
-          utils.showToast(`Switched to ${cfg.badge} model.`);
-        }
+    function renderPlan() {
+      planList.innerHTML = '';
+      if (!plan.length) emptyState.classList.remove('hidden'); else emptyState.classList.add('hidden');
+      let total = 0;
+      for (const item of plan) {
+        total += Number(item.duration) || 0;
+        const li = planItemTpl.content.firstElementChild.cloneNode(true);
+        li.dataset.id = item.id;
+        $('.switch-activity', li).textContent = item.activity;
+        $('.duration', li).textContent = `${item.duration}h`;
+        $('.notes', li).textContent = item.notes || '';
+
+        $('.switch-activity', li).addEventListener('click', (ev) => {
+          const menu = makeSwitchMenu(item, ev.currentTarget);
+          ev.currentTarget.insertAdjacentElement('afterend', menu);
+          const onDoc = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', onDoc); } };
+          setTimeout(() => document.addEventListener('click', onDoc), 0);
+        });
+
+        $('.edit', li).addEventListener('click', () => editItem(item.id));
+        $('.del', li).addEventListener('click', () => delItem(item.id));
+
+        li.addEventListener('dragstart', onDragStart);
+        li.addEventListener('dragover', onDragOver);
+        li.addEventListener('drop', onDrop);
+
+        li.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const idx = plan.findIndex(x => x.id === li.dataset.id);
+            const to = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
+            if (to >= 0 && to < plan.length) {
+              [plan[idx], plan[to]] = [plan[to], plan[idx]];
+              store.plan = plan;
+              renderPlan();
+              planList.children[to].focus();
+            }
+          }
+        });
+
+        planList.appendChild(li);
       }
-    };
-
-    // AI toggle
-    elements.aiToggle.onchange = async () => {
-      if (!elements.aiToggle.checked) return;
-      applyModelSelection();
-      if (!generator || MODELS[activeModelKey].id !== activeModelId) {
-        generator = await loadModel();
-      }
-      if (generator) {
-        const cfg = MODELS[activeModelKey];
-        elements.modelInfo.textContent = `Active: ${cfg.badge}`;
-        elements.modelInfo.classList.remove('hidden');
-        utils.showToast('AI Coach enabled.');
-      }
-    };
-
-    // Log flow
-    elements.logBtn.onclick = async () => {
-      if (logBusy) return;
-      logBusy = true;
-      elements.logBtn.classList.add('btn-loading');
-      try {
-        const act = elements.activitySelect.value;
-        if (!act) {
-          utils.showToast('Please select an activity.', 'error');
-          return;
-        }
-        const aiOn = elements.aiToggle.checked;
-        if (!aiOn || !generator) {
-          const now = new Date();
-          const entry = {
-            activity: act,
-            time: now.toLocaleString(),
-            iso: now.toISOString(),
-            model: aiOn && !generator ? 'AI unavailable' : 'N/A',
-            feedback: aiOn && !generator ? `⚠️ AI Coach unavailable. ${ruleFeedback(act)}` : ruleFeedback(act),
-            status: aiOn && !generator ? 'fail' : 'done',
-            dataVersion: DATA_VERSION
-          };
-          logs.push(entry);
-          await safeSave(STORAGE_KEYS.LOGS, logs);
-          applyFilterAndSort();
-          animateModal(elements.logModal, false, elements.fabBtn);
-          utils.showToast('Activity logged.');
-          return;
-        }
-        const start = new Date();
-        const entry = {
-          activity: act,
-          time: start.toLocaleString(),
-          iso: start.toISOString(),
-          model: MODELS[activeModelKey].badge,
-          feedback: '🤖 AI Coach is thinking…',
-          status: 'thinking',
-          dataVersion: DATA_VERSION
-        };
-        logs.push(entry);
-        await safeSave(STORAGE_KEYS.LOGS, logs);
-        applyFilterAndSort();
-        try {
-          const feedback = await aiCoachFeedback(act);
-          entry.feedback = feedback;
-          entry.status = feedback.startsWith('⚠️') ? 'fail' : 'done';
-        } catch (e) {
-          entry.feedback = `⚠️ AI Coach error. ${ruleFeedback(act)}`;
-          entry.status = 'fail';
-        }
-        await safeSave(STORAGE_KEYS.LOGS, logs);
-        applyFilterAndSort();
-        animateModal(elements.logModal, false, elements.fabBtn);
-        utils.showToast('Activity logged with AI feedback.');
-      } finally {
-        logBusy = false;
-        elements.logBtn.classList.remove('btn-loading');
-      }
-    };
-
-    // Filters/sort handlers
-    elements.searchInput.oninput = utils.debounce(applyFilterAndSort, 150);
-    elements.filterActivity.onchange = applyFilterAndSort;
-    elements.sortSelect.onchange = applyFilterAndSort;
-    elements.startDate.onchange = applyFilterAndSort;
-    elements.endDate.onchange = applyFilterAndSort;
-
-    // Cancel download
-    elements.cancelDownloadBtn.onclick = () => {
-      cancelFlag = true;
-      elements.spinner.classList.add('hidden');
-      elements.progressBar.classList.remove('indeterminate-bar');
-      utils.showToast('Model download canceled.');
-    };
-
-    // Init
-    applyModelSelection();
-    async function init() {
-      await hydrateFromStorage();
-      renderActivities();
-      applyFilterAndSort();
+      totalDuration.textContent = plan.length ? `Total: ${total.toFixed(2)} h` : '';
     }
+
+    function makeSwitchMenu(item, anchor) {
+      const menu = document.createElement('div');
+      menu.className = 'absolute z-10 mt-1 panel rounded-xl p-2 shadow-xl border border-white/10';
+      menu.role = 'menu';
+      for (const name of activities) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-ghost w-full justify-start text-sm';
+        btn.textContent = name;
+        btn.addEventListener('click', () => {
+          item.activity = name;
+          store.plan = plan;
+          renderPlan();
+          menu.remove();
+        });
+        menu.appendChild(btn);
+      }
+      const rect = anchor.getBoundingClientRect();
+      const containerRect = planList.getBoundingClientRect();
+      menu.style.minWidth = rect.width + 'px';
+      menu.style.position = 'absolute';
+      menu.style.left = (rect.left - containerRect.left) + 'px';
+      menu.style.top = (anchor.offsetTop + anchor.offsetHeight) + 'px';
+      return menu;
+    }
+
+    function editItem(id) {
+      const idx = plan.findIndex(x => x.id === id);
+      if (idx === -1) return;
+      const item = plan[idx];
+      activitySelect.value = item.activity;
+      durationInput.value = item.duration;
+      notesInput.value = item.notes || '';
+      editId = id;
+      addPlanBtn.textContent = 'Save changes';
+      activitySelect.focus();
+    }
+
+    function delItem(id) {
+      const idx = plan.findIndex(x => x.id === id);
+      if (idx === -1) return;
+      plan.splice(idx, 1);
+      store.plan = plan;
+      renderPlan();
+    }
+
+    let dragId = null;
+    function onDragStart(e) { dragId = e.currentTarget.dataset.id; e.dataTransfer.effectAllowed = 'move'; }
+    function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+    function onDrop(e) {
+      e.preventDefault();
+      const targetId = e.currentTarget.dataset.id;
+      if (!dragId || dragId === targetId) return;
+      const from = plan.findIndex(x => x.id === dragId);
+      const to = plan.findIndex(x => x.id === targetId);
+      const [moved] = plan.splice(from, 1);
+      plan.splice(to, 0, moved);
+      store.plan = plan;
+      renderPlan();
+      dragId = null;
+    }
+
+    // ===== AI Coach (Production‑ready tweaks) =====
+    let pipelineRef = null;       // current model pipeline
+    let loadedKey = null;         // which model is loaded
+    let trf = null;               // transformers.js module
+    let isRunning = false;
+
+    modelSelect.addEventListener('change', () => { store.model = modelSelect.value; });
+
+    runCoachBtn.addEventListener('click', async () => {
+      if (isRunning) return;
+      isRunning = true;
+      try { await runAICoach(); } finally { isRunning = false; }
+    });
+
+    async function runAICoach() {
+      const summary = makePlanSummary(plan);
+      if (!summary.trim()) {
+        aiOutput.textContent = 'Add some activities first.';
+        setThinking(false);
+        return;
+      }
+      setThinking(true);
+      if (!loadedKey) { aiOutput.textContent = 'Initializing AI model (first run)…'; }
+      try {
+        const selected = modelSelect.value;
+        const out = await generateWithFallback(selected, summary);
+        aiOutput.textContent = out;
+      } catch (err) {
+        aiOutput.textContent = `AI Coach failed: ${err?.message || err}. Using rule-based feedback.\n\n${ruleBasedCoach(plan)}`;
+      } finally { setThinking(false); }
+    }
+
+    async function generateWithFallback(selected, summary) {
+      // Only try the other model if the first actually throws
+      const order = selected === 't5-small' ? ['t5-small', 'smollm2-135m'] : ['smollm2-135m', 't5-small'];
+      let lastErr = null;
+      for (const key of order) {
+        try { return await generateWithModel(key, summary); }
+        catch (e) { lastErr = e; }
+      }
+      throw lastErr ?? new Error('AI failed');
+    }
+
+    function modelConfig(key) {
+      if (key === 't5-small') {
+        return {
+          task: 'text2text-generation',
+          model: 'Xenova/t5-small',           // Explicit Xenova mirror
+          opts: { dtype: 'q8' },              // small memory footprint
+          generation: { max_new_tokens: 200, temperature: 0.7, repetition_penalty: 1.1 }
+        };
+      } else { // smollm2-135m
+        return {
+          task: 'text-generation',
+          model: 'Xenova/SmolLM2-135M-Instruct', // ONNX-converted variant
+          opts: { dtype: 'q4' },
+          generation: { max_new_tokens: 220, temperature: 0.75, top_k: 40, repetition_penalty: 1.1 }
+        };
+      }
+    }
+
+    function buildPrompt(summary, key) {
+      const sys = `You are an elite productivity and wellbeing coach. Return a short, actionable review with bullets: balance, intensity, recovery, sequence, swaps, and a 10/10 score.`;
+      if (key === 't5-small') {
+        return `${sys}\nPlan:\n${summary}\nRespond:`;
+      }
+      return `${sys}\n\nPlan:\n${summary}\n\nCoach:`;
+    }
+
+    function setThinking(on) {
+      aiThinking.classList.toggle('hidden', !on);
+      runCoachBtn.disabled = on;
+      runCoachBtn.textContent = on ? 'Thinking…' : 'Get feedback';
+    }
+
+    function makePlanSummary(plan) {
+      if (!plan.length) return '';
+      const lines = plan.map((p, i) => `${i+1}. ${p.activity} — ${p.duration}h${p.notes ? ` (${p.notes})` : ''}`);
+      const total = plan.reduce((s, p) => s + (Number(p.duration)||0), 0).toFixed(2);
+      return lines.join('\n') + `\nTotal: ${total}h`;
+    }
+
+    function ruleBasedCoach(plan) {
+      if (!plan.length) return 'No items to assess.';
+      const total = plan.reduce((s, p) => s + (Number(p.duration)||0), 0);
+      const hasSleep = plan.some(p => /sleep/i.test(p.activity));
+      const hasSport = plan.some(p => /sport|run|gym|workout/i.test(p.activity));
+      const hasEat = plan.some(p => /eat|meal|breakfast|lunch|dinner|mc/i.test(p.activity));
+      const lines = [];
+      lines.push(`Rule-based feedback (offline):`);
+      lines.push(`• Total planned time: ${total.toFixed(2)}h (aim for 6–12h)`);
+      if (!hasSleep) lines.push('• Consider adding Sleep for recovery.');
+      if (!hasSport) lines.push('• Add a short Sport/Walk for energy and mood.');
+      if (!hasEat) lines.push('• Include regular meals for steady energy.');
+      lines.push('• Try alternating focus (Laptop/Work) with lighter blocks (Walk/Stretch).');
+      lines.push('• Keep blocks 0.5–2h to minimize fatigue.');
+      return lines.join('\n');
+    }
+
+    async function generateWithModel(key, summary) {
+      if (!trf) {
+        // Pinned transformers.js
+        trf = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@3.7.2');
+      }
+      const { pipeline, env } = trf;
+
+      // Robust WASM defaults that work without crossOriginIsolation
+      env.allowLocalModels = false;           // remote only
+      env.useBrowserCache = true;             // cache in IndexedDB
+      env.backends = env.backends || {};      // safety
+      env.backends.onnx = env.backends.onnx || {};
+      env.backends.onnx.wasm = env.backends.onnx.wasm || {};
+      env.backends.onnx.wasm.numThreads = 1; // avoid SharedArrayBuffer requirement
+      env.backends.onnx.wasm.proxy = true;   // offload heavy ops off main thread when possible
+
+      const config = modelConfig(key);
+
+      // (Re)load pipeline only when model changes
+      if (loadedKey !== key) {
+        try { env.clearCache?.(); } catch {}
+        pipelineRef = await pipeline(config.task, config.model, config.opts);
+        loadedKey = key;
+        // quick warmup with a tiny prompt to compile graph
+        try { await withTimeout(pipelineRef('Hello', config.generation), 15000); } catch {}
+      }
+
+      const prompt = buildPrompt(summary, key);
+      const result = await withTimeout(pipelineRef(prompt, config.generation), 45000);
+
+      const text = Array.isArray(result)
+        ? (result[0]?.generated_text ?? result[0]?.summary_text ?? '')
+        : (result?.generated_text || result?.summary_text || '');
+      return (text || '').trim() || 'AI returned empty output. Using rule-based feedback.\n\n' + ruleBasedCoach(plan);
+    }
+
+    function withTimeout(promise, ms) {
+      return new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error('Timed out.')), ms);
+        promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+      });
+    }
+
+    // ===== Init =====
+    function init() {
+      renderActivitySelect();
+      renderActivityList();
+      renderPlan();
+    }
+
     init();
   </script>
 </body>
