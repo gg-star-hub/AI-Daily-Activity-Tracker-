@@ -196,37 +196,32 @@
   </template>
 
   <!-- App Script -->
-  <script type="module">
+  <script>
     // ===== State & Persistence =====
-    const DEFAULT_ACTIVITIES = ["Eat", "Sleep", "Sport", "Laptop", "Bath", "Family"]; // changed from McDonalds -> Family
+    const DEFAULT_ACTIVITIES = ["Eat", "Sleep", "Sport", "Laptop", "Bath", "Family"]; // McDonalds -> Family
     const store = {
       get activities() {
         const raw = localStorage.getItem('planner.activities');
         try { return raw ? JSON.parse(raw) : [...DEFAULT_ACTIVITIES]; }
         catch { return [...DEFAULT_ACTIVITIES]; }
       },
-      set activities(list) {
-        localStorage.setItem('planner.activities', JSON.stringify(list));
-      },
+      set activities(list) { localStorage.setItem('planner.activities', JSON.stringify(list)); },
       get plan() {
         const raw = localStorage.getItem('planner.plan');
-        try { return raw ? JSON.parse(raw) : []; }
-        catch { return []; }
+        try { return raw ? JSON.parse(raw) : []; } catch { return []; }
       },
-      set plan(list) {
-        localStorage.setItem('planner.plan', JSON.stringify(list));
-      },
+      set plan(list) { localStorage.setItem('planner.plan', JSON.stringify(list)); },
       get model() { return localStorage.getItem('planner.model') || 't5-small'; },
-      set model(val) { localStorage.setItem('planner.model', val); }
+      set model(v) { localStorage.setItem('planner.model', v); }
     };
 
     let activities = store.activities;
     let plan = store.plan;
-    let lastPlan = null; // For undo functionality
+    let lastPlan = null;
 
     // ===== Elements =====
-    const $ = (sel, el = document) => el.querySelector(sel);
-    const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
+    const $ = (s,el=document)=>el.querySelector(s);
+    const $$ = (s,el=document)=>Array.from(el.querySelectorAll(s));
 
     const planForm = $('#planForm');
     const activitySelect = $('#activitySelect');
@@ -237,10 +232,12 @@
     const planList = $('#planList');
     const emptyState = $('#emptyState');
     const totalDuration = $('#totalDuration');
+
     const runCoachBtn = $('#runCoachBtn');
     const modelSelect = $('#modelSelect');
     const aiThinking = $('#aiThinking');
     const aiOutput = $('#aiOutput');
+
     const manageModal = $('#manageModal');
     const openManage = $('#openManage');
     const closeManage = $('#closeManage');
@@ -252,403 +249,307 @@
 
     modelSelect.value = store.model;
 
-    // ===== Modal Accessibility =====
+    // ===== Modal A11y =====
     let lastFocused = null;
-    function trapFocus(container, e) {
-      const focusables = $$('[tabindex]:not([tabindex="-1"]), button, input, select, textarea', container)
+    function trapFocus(container, e){
+      const focusables = $$('[tabindex]:not([tabindex="-1"]),button,input,select,textarea', container)
         .filter(el => !el.hasAttribute('disabled') && !el.closest('[hidden]'));
-      if (!focusables.length) return;
-      const first = focusables[0], last = focusables[focusables.length - 1];
-      if (e.key === 'Tab') {
+      if(!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length-1];
+      if(e.key==='Tab'){
         e.preventDefault();
-        if (e.shiftKey && document.activeElement === first) last.focus();
-        else if (!e.shiftKey && document.activeElement === last) first.focus();
-        else if (!focusables.includes(document.activeElement)) first.focus();
-      } else if (e.key === 'Escape') {
-        closeModal(manageModal);
-      }
+        if(e.shiftKey && document.activeElement===first) last.focus();
+        else if(!e.shiftKey && document.activeElement===last) first.focus();
+        else if(!focusables.includes(document.activeElement)) first.focus();
+      } else if(e.key==='Escape'){ closeModal(manageModal); }
     }
-
-    function openModal(modal) {
+    function openModal(modal){
       lastFocused = document.activeElement;
       modal.classList.remove('hidden');
-      $('.modal-backdrop', modal).setAttribute('data-open', 'true');
-      $('.modal-panel', modal).setAttribute('data-open', 'true');
+      $('.modal-backdrop',modal).setAttribute('data-open','true');
+      $('.modal-panel',modal).setAttribute('data-open','true');
       modal.addEventListener('keydown', onModalKeydown);
-      setTimeout(() => { ($('#newActivityInput') || $('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])', modal)).focus({ preventScroll: true }); }, 0);
-      openManage.setAttribute('aria-expanded', 'true');
+      setTimeout(()=>{ ($('#newActivityInput') || $('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])', modal))?.focus({preventScroll:true}); },0);
+      openManage.setAttribute('aria-expanded','true');
     }
-
-    function closeModal(modal) {
-      $('.modal-backdrop', modal).setAttribute('data-open', 'false');
-      $('.modal-panel', modal).setAttribute('data-open', 'false');
+    function closeModal(modal){
+      $('.modal-backdrop',modal).setAttribute('data-open','false');
+      $('.modal-panel',modal).setAttribute('data-open','false');
       modal.removeEventListener('keydown', onModalKeydown);
-      setTimeout(() => { modal.classList.add('hidden'); }, 180);
-      if (lastFocused) lastFocused.focus();
-      openManage.setAttribute('aria-expanded', 'false');
+      setTimeout(()=>modal.classList.add('hidden'),180);
+      lastFocused?.focus(); openManage.setAttribute('aria-expanded','false');
     }
-
-    function onModalKeydown(e) { trapFocus(manageModal, e); }
-
-    $('.modal-backdrop', manageModal).addEventListener('click', () => closeModal(manageModal));
-    openManage.addEventListener('click', () => openModal(manageModal));
-    closeManage.addEventListener('click', () => closeModal(manageModal));
+    const onModalKeydown = e => trapFocus(manageModal, e);
+    $('.modal-backdrop', manageModal).addEventListener('click',()=>closeModal(manageModal));
+    openManage.addEventListener('click',()=>openModal(manageModal));
+    closeManage.addEventListener('click',()=>closeModal(manageModal));
 
     // ===== Activities =====
-    function renderActivitySelect() {
-      activitySelect.innerHTML = '';
-      for (const name of activities) {
-        const opt = document.createElement('option');
-        opt.value = name; opt.textContent = name;
+    function renderActivitySelect(){
+      activitySelect.innerHTML='';
+      for(const name of activities){
+        const opt=document.createElement('option'); opt.value=name; opt.textContent=name;
         activitySelect.appendChild(opt);
       }
     }
-
-    function renderActivityList() {
-      activityList.innerHTML = '';
-      for (const name of activities) {
+    function renderActivityList(){
+      activityList.innerHTML='';
+      for(const name of activities){
         const li = activityChipTpl.content.firstElementChild.cloneNode(true);
         $('span', li).textContent = name;
-        const delBtn = $('button', li);
-        delBtn.addEventListener('click', () => {
-          if (activities.length <= 1) {
+        $('button', li).addEventListener('click',()=>{
+          if(activities.length<=1){
             alert('At least one activity required. Resetting to defaults.');
-            activities = [...DEFAULT_ACTIVITIES];
-            store.activities = activities;
-          } else {
-            activities = activities.filter(a => a !== name);
-            store.activities = activities;
+            activities=[...DEFAULT_ACTIVITIES]; store.activities=activities;
+          }else{
+            activities = activities.filter(a=>a!==name); store.activities=activities;
           }
-          renderActivityList();
-          renderActivitySelect();
-          renderPlan();
+          renderActivityList(); renderActivitySelect(); renderPlan();
         });
         activityList.appendChild(li);
       }
     }
-
-    addActivityBtn.addEventListener('click', () => {
-      const raw = newActivityInput.value.trim();
-      if (!raw) return alert('Enter an activity name.');
-      const name = raw.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ' ').slice(0, 20);
-      if (!name) return alert('Invalid activity name (use letters, numbers, spaces).');
-      if (activities.some(a => a.toLowerCase() === name.toLowerCase())) { alert('Activity already exists.'); return; }
-      activities.push(name);
-      store.activities = activities;
-      newActivityInput.value = '';
-      renderActivityList();
-      renderActivitySelect();
+    addActivityBtn.addEventListener('click',()=>{
+      const raw=newActivityInput.value.trim(); if(!raw) return alert('Enter an activity name.');
+      const name=raw.replace(/[^a-zA-Z0-9\s]/g,'').replace(/\s+/g,' ').slice(0,20);
+      if(!name) return alert('Invalid name (letters/numbers/spaces).');
+      if(activities.some(a=>a.toLowerCase()===name.toLowerCase())) return alert('Activity already exists.');
+      activities.push(name); store.activities=activities; newActivityInput.value='';
+      renderActivityList(); renderActivitySelect();
     });
 
     // ===== Plan =====
-    function addToPlan(activity, duration, notes) {
-      plan.push({ id: crypto.randomUUID(), activity, duration, notes });
-      store.plan = plan;
-      renderPlan();
+    function addToPlan(activity,duration,notes){
+      plan.push({id:crypto.randomUUID(), activity, duration, notes}); store.plan=plan; renderPlan();
     }
-
-    let editId = null;
-    planForm.addEventListener('submit', (e) => {
+    let editId=null;
+    planForm.addEventListener('submit',(e)=>{
       e.preventDefault();
-      const activity = activitySelect.value;
-      const duration = parseFloat(durationInput.value);
-      const notes = notesInput.value.trim().slice(0, 100);
-      if (!activity) return alert('Please select an activity.');
-      if (!Number.isFinite(duration) || duration <= 0 || duration > 24) { return alert('Duration must be between 0.25 and 24 hours.'); }
-
-      if (editId) {
-        const idx = plan.findIndex(x => x.id === editId);
-        if (idx !== -1) {
-          plan[idx].activity = activity;
-          plan[idx].duration = duration;
-          plan[idx].notes = notes;
-        }
-        editId = null;
-        addPlanBtn.textContent = 'Add to plan';
-      } else {
-        addToPlan(activity, duration, notes);
-      }
-      notesInput.value = '';
-      renderPlan();
+      const activity=activitySelect.value;
+      const duration=parseFloat(durationInput.value);
+      const notes=notesInput.value.trim().slice(0,100);
+      if(!activity) return alert('Please select an activity.');
+      if(!Number.isFinite(duration)||duration<=0||duration>24) return alert('Duration must be between 0.25 and 24 hours.');
+      if(editId){
+        const idx=plan.findIndex(x=>x.id===editId); if(idx!==-1){ plan[idx].activity=activity; plan[idx].duration=duration; plan[idx].notes=notes; }
+        editId=null; addPlanBtn.textContent='Add to plan';
+      }else addToPlan(activity,duration,notes);
+      notesInput.value=''; renderPlan();
     });
-
-    clearPlanBtn.addEventListener('click', () => {
-      if (!plan.length) return;
-      if (clearPlanBtn.textContent === 'Undo') {
-        if (lastPlan) {
-          plan = lastPlan;
-          store.plan = plan;
-          renderPlan();
-          clearPlanBtn.textContent = 'Clear plan';
-        }
+    clearPlanBtn.addEventListener('click',()=>{
+      if(!plan.length) return;
+      if(clearPlanBtn.textContent==='Undo'){
+        if(lastPlan){ plan=lastPlan; store.plan=plan; renderPlan(); clearPlanBtn.textContent='Clear plan'; }
         return;
       }
-      if (confirm('Clear all plan items?')) {
-        lastPlan = [...plan];
-        plan = [];
-        store.plan = plan;
-        renderPlan();
-        clearPlanBtn.textContent = 'Undo';
-        setTimeout(() => { alert('Plan cleared. Click "Undo" to restore.'); }, 0);
-        setTimeout(() => { clearPlanBtn.textContent = 'Clear plan'; }, 5000);
+      if(confirm('Clear all plan items?')){
+        lastPlan=[...plan]; plan=[]; store.plan=plan; renderPlan(); clearPlanBtn.textContent='Undo';
+        setTimeout(()=>{ clearPlanBtn.textContent='Clear plan'; },5000);
       }
     });
 
-    function renderPlan() {
-      planList.innerHTML = '';
-      if (!plan.length) emptyState.classList.remove('hidden'); else emptyState.classList.add('hidden');
-      let total = 0;
-      for (const item of plan) {
-        total += Number(item.duration) || 0;
-        const li = planItemTpl.content.firstElementChild.cloneNode(true);
-        li.dataset.id = item.id;
-        $('.switch-activity', li).textContent = item.activity;
-        $('.duration', li).textContent = `${item.duration}h`;
-        $('.notes', li).textContent = item.notes || '';
+    function renderPlan(){
+      planList.innerHTML=''; if(!plan.length) emptyState.classList.remove('hidden'); else emptyState.classList.add('hidden');
+      let total=0;
+      for(const item of plan){
+        total+=Number(item.duration)||0;
+        const li=planItemTpl.content.firstElementChild.cloneNode(true);
+        li.dataset.id=item.id;
+        $('.switch-activity',li).textContent=item.activity;
+        $('.duration',li).textContent=`${item.duration}h`;
+        $('.notes',li).textContent=item.notes||'';
 
-        $('.switch-activity', li).addEventListener('click', (ev) => {
-          const menu = makeSwitchMenu(item, ev.currentTarget);
+        $('.switch-activity',li).addEventListener('click',(ev)=>{
+          const menu=makeSwitchMenu(item, ev.currentTarget);
           ev.currentTarget.insertAdjacentElement('afterend', menu);
-          const onDoc = (e) => { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', onDoc); } };
-          setTimeout(() => document.addEventListener('click', onDoc), 0);
+          const onDoc=(e)=>{ if(!menu.contains(e.target)){ menu.remove(); document.removeEventListener('click', onDoc); } };
+          setTimeout(()=>document.addEventListener('click', onDoc),0);
         });
-
-        $('.edit', li).addEventListener('click', () => editItem(item.id));
-        $('.del', li).addEventListener('click', () => delItem(item.id));
+        $('.edit',li).addEventListener('click',()=>editItem(item.id));
+        $('.del',li).addEventListener('click',()=>delItem(item.id));
 
         li.addEventListener('dragstart', onDragStart);
         li.addEventListener('dragover', onDragOver);
         li.addEventListener('drop', onDrop);
 
-        li.addEventListener('keydown', (e) => {
-          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        li.addEventListener('keydown', (e)=>{
+          if(e.key==='ArrowUp'||e.key==='ArrowDown'){
             e.preventDefault();
-            const idx = plan.findIndex(x => x.id === li.dataset.id);
-            const to = e.key === 'ArrowUp' ? idx - 1 : idx + 1;
-            if (to >= 0 && to < plan.length) {
-              [plan[idx], plan[to]] = [plan[to], plan[idx]];
-              store.plan = plan;
-              renderPlan();
-              planList.children[to].focus();
-            }
+            const idx=plan.findIndex(x=>x.id===li.dataset.id);
+            const to=e.key==='ArrowUp'?idx-1:idx+1;
+            if(to>=0&&to<plan.length){ [plan[idx],plan[to]]=[plan[to],plan[idx]]; store.plan=plan; renderPlan(); planList.children[to].focus(); }
           }
         });
 
         planList.appendChild(li);
       }
-      totalDuration.textContent = plan.length ? `Total: ${total.toFixed(2)} h` : '';
+      totalDuration.textContent=plan.length?`Total: ${total.toFixed(2)} h`:'';
     }
-
-    function makeSwitchMenu(item, anchor) {
-      const menu = document.createElement('div');
-      menu.className = 'absolute z-10 mt-1 panel rounded-xl p-2 shadow-xl border border-white/10';
-      menu.role = 'menu';
-      for (const name of activities) {
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-ghost w-full justify-start text-sm';
-        btn.textContent = name;
-        btn.addEventListener('click', () => {
-          item.activity = name;
-          store.plan = plan;
-          renderPlan();
-          menu.remove();
-        });
+    function makeSwitchMenu(item, anchor){
+      const menu=document.createElement('div');
+      menu.className='absolute z-10 mt-1 panel rounded-xl p-2 shadow-xl border border-white/10';
+      menu.role='menu';
+      for(const name of activities){
+        const btn=document.createElement('button');
+        btn.className='btn btn-ghost w-full justify-start text-sm';
+        btn.textContent=name;
+        btn.addEventListener('click',()=>{ item.activity=name; store.plan=plan; renderPlan(); menu.remove(); });
         menu.appendChild(btn);
       }
-      const rect = anchor.getBoundingClientRect();
-      const containerRect = planList.getBoundingClientRect();
-      menu.style.minWidth = rect.width + 'px';
-      menu.style.position = 'absolute';
-      menu.style.left = (rect.left - containerRect.left) + 'px';
-      menu.style.top = (anchor.offsetTop + anchor.offsetHeight) + 'px';
+      const rect=anchor.getBoundingClientRect(), containerRect=planList.getBoundingClientRect();
+      menu.style.minWidth=rect.width+'px'; menu.style.position='absolute';
+      menu.style.left=(rect.left - containerRect.left)+'px';
+      menu.style.top=(anchor.offsetTop + anchor.offsetHeight)+'px';
       return menu;
     }
-
-    function editItem(id) {
-      const idx = plan.findIndex(x => x.id === id);
-      if (idx === -1) return;
-      const item = plan[idx];
-      activitySelect.value = item.activity;
-      durationInput.value = item.duration;
-      notesInput.value = item.notes || '';
-      editId = id;
-      addPlanBtn.textContent = 'Save changes';
-      activitySelect.focus();
+    function editItem(id){
+      const idx=plan.findIndex(x=>x.id===id); if(idx===-1) return;
+      const it=plan[idx]; activitySelect.value=it.activity; durationInput.value=it.duration; notesInput.value=it.notes||'';
+      editId=id; addPlanBtn.textContent='Save changes'; activitySelect.focus();
     }
-
-    function delItem(id) {
-      const idx = plan.findIndex(x => x.id === id);
-      if (idx === -1) return;
-      plan.splice(idx, 1);
-      store.plan = plan;
-      renderPlan();
-    }
-
-    let dragId = null;
-    function onDragStart(e) { dragId = e.currentTarget.dataset.id; e.dataTransfer.effectAllowed = 'move'; }
-    function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
-    function onDrop(e) {
+    function delItem(id){ const idx=plan.findIndex(x=>x.id===id); if(idx===-1) return; plan.splice(idx,1); store.plan=plan; renderPlan(); }
+    let dragId=null;
+    function onDragStart(e){ dragId=e.currentTarget.dataset.id; e.dataTransfer.effectAllowed='move'; }
+    function onDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; }
+    function onDrop(e){
       e.preventDefault();
-      const targetId = e.currentTarget.dataset.id;
-      if (!dragId || dragId === targetId) return;
-      const from = plan.findIndex(x => x.id === dragId);
-      const to = plan.findIndex(x => x.id === targetId);
-      const [moved] = plan.splice(from, 1);
-      plan.splice(to, 0, moved);
-      store.plan = plan;
-      renderPlan();
-      dragId = null;
+      const targetId=e.currentTarget.dataset.id; if(!dragId||dragId===targetId) return;
+      const from=plan.findIndex(x=>x.id===dragId), to=plan.findIndex(x=>x.id===targetId);
+      const [moved]=plan.splice(from,1); plan.splice(to,0,moved); store.plan=plan; renderPlan(); dragId=null;
     }
 
-    // ===== AI Coach (Production‑ready tweaks) =====
-    let pipelineRef = null;       // current model pipeline
-    let loadedKey = null;         // which model is loaded
-    let trf = null;               // transformers.js module
-    let isRunning = false;
+    // ===== AI Coach (UMD loader, no dynamic import) =====
+    let pipelineRef=null, loadedKey=null, trf=null, isRunning=false;
 
-    modelSelect.addEventListener('change', () => { store.model = modelSelect.value; });
-
-    runCoachBtn.addEventListener('click', async () => {
-      if (isRunning) return;
-      isRunning = true;
-      try { await runAICoach(); } finally { isRunning = false; }
+    modelSelect.addEventListener('change', ()=>{ store.model=modelSelect.value; });
+    runCoachBtn.addEventListener('click', async ()=>{
+      if(isRunning) return; isRunning=true;
+      try{ await runAICoach(); } finally { isRunning=false; }
     });
 
-    async function runAICoach() {
-      const summary = makePlanSummary(plan);
-      if (!summary.trim()) {
-        aiOutput.textContent = 'Add some activities first.';
-        setThinking(false);
-        return;
-      }
-      setThinking(true);
-      if (!loadedKey) { aiOutput.textContent = 'Initializing AI model (first run)…'; }
-      try {
-        const selected = modelSelect.value;
-        const out = await generateWithFallback(selected, summary);
-        aiOutput.textContent = out;
-      } catch (err) {
-        aiOutput.textContent = `AI Coach failed: ${err?.message || err}. Using rule-based feedback.\n\n${ruleBasedCoach(plan)}`;
+    async function runAICoach(){
+      const summary=makePlanSummary(plan);
+      if(!summary.trim()){ aiOutput.textContent='Add some activities first.'; return; }
+      setThinking(true); if(!loadedKey) aiOutput.textContent='Initializing AI model (first run)…';
+      try{
+        const out=await generateWithFallback(modelSelect.value, summary);
+        aiOutput.textContent=out;
+      }catch(err){
+        const tips=[
+          location.protocol==='file:' ? 'Serve via http:// (e.g. python -m http.server) if your network blocks cross-origin requests.' : null,
+          'Allow cdn.jsdelivr.net / unpkg.com in adblock/VPN.',
+          'Try another network if a firewall blocks CDNs.'
+        ].filter(Boolean).map(t=>'• '+t).join('\n');
+        aiOutput.textContent=`AI Coach failed: ${err?.message||err}\n\nTroubleshooting:\n${tips}\n\nFalling back to rule-based feedback:\n\n${ruleBasedCoach(plan)}`;
       } finally { setThinking(false); }
     }
 
-    async function generateWithFallback(selected, summary) {
-      // Only try the other model if the first actually throws
-      const order = selected === 't5-small' ? ['t5-small', 'smollm2-135m'] : ['smollm2-135m', 't5-small'];
-      let lastErr = null;
-      for (const key of order) {
-        try { return await generateWithModel(key, summary); }
-        catch (e) { lastErr = e; }
-      }
+    async function generateWithFallback(selected, summary){
+      const order = selected==='t5-small' ? ['t5-small','smollm2-135m'] : ['smollm2-135m','t5-small'];
+      let lastErr=null;
+      for(const key of order){ try{ return await generateWithModel(key, summary); } catch(e){ lastErr=e; } }
       throw lastErr ?? new Error('AI failed');
     }
 
-    function modelConfig(key) {
-      if (key === 't5-small') {
-        return {
-          task: 'text2text-generation',
-          model: 'Xenova/t5-small',           // Explicit Xenova mirror
-          opts: { dtype: 'q8' },              // small memory footprint
-          generation: { max_new_tokens: 200, temperature: 0.7, repetition_penalty: 1.1 }
-        };
-      } else { // smollm2-135m
-        return {
-          task: 'text-generation',
-          model: 'Xenova/SmolLM2-135M-Instruct', // ONNX-converted variant
-          opts: { dtype: 'q4' },
-          generation: { max_new_tokens: 220, temperature: 0.75, top_k: 40, repetition_penalty: 1.1 }
-        };
+    function modelConfig(key){
+      if(key==='t5-small'){
+        return { task:'text2text-generation', model:'Xenova/t5-small', opts:{dtype:'q8'},
+                 generation:{ max_new_tokens:200, temperature:0.7, repetition_penalty:1.1 } };
+      }else{
+        return { task:'text-generation', model:'Xenova/SmolLM2-135M-Instruct', opts:{dtype:'q4'},
+                 generation:{ max_new_tokens:220, temperature:0.75, top_k:40, repetition_penalty:1.1 } };
       }
     }
-
-    function buildPrompt(summary, key) {
-      const sys = `You are an elite productivity and wellbeing coach. Return a short, actionable review with bullets: balance, intensity, recovery, sequence, swaps, and a 10/10 score.`;
-      if (key === 't5-small') {
-        return `${sys}\nPlan:\n${summary}\nRespond:`;
-      }
-      return `${sys}\n\nPlan:\n${summary}\n\nCoach:`;
+    function buildPrompt(summary,key){
+      const sys='You are an elite productivity and wellbeing coach. Return a short, actionable review with bullets: balance, intensity, recovery, sequence, swaps, and a 10/10 score.';
+      return key==='t5-small' ? `${sys}\nPlan:\n${summary}\nRespond:` : `${sys}\n\nPlan:\n${summary}\n\nCoach:`;
     }
-
-    function setThinking(on) {
+    function setThinking(on){
       aiThinking.classList.toggle('hidden', !on);
-      runCoachBtn.disabled = on;
+      runCoachBtn.disabled=on;
       runCoachBtn.textContent = on ? 'Thinking…' : 'Get feedback';
     }
-
-    function makePlanSummary(plan) {
-      if (!plan.length) return '';
-      const lines = plan.map((p, i) => `${i+1}. ${p.activity} — ${p.duration}h${p.notes ? ` (${p.notes})` : ''}`);
-      const total = plan.reduce((s, p) => s + (Number(p.duration)||0), 0).toFixed(2);
+    function makePlanSummary(plan){
+      if(!plan.length) return '';
+      const lines=plan.map((p,i)=>`${i+1}. ${p.activity} — ${p.duration}h${p.notes ? ` (${p.notes})` : ''}`);
+      const total=plan.reduce((s,p)=>s+(Number(p.duration)||0),0).toFixed(2);
       return lines.join('\n') + `\nTotal: ${total}h`;
     }
-
-    function ruleBasedCoach(plan) {
-      if (!plan.length) return 'No items to assess.';
-      const total = plan.reduce((s, p) => s + (Number(p.duration)||0), 0);
-      const hasSleep = plan.some(p => /sleep/i.test(p.activity));
-      const hasSport = plan.some(p => /sport|run|gym|workout/i.test(p.activity));
-      const hasEat = plan.some(p => /eat|meal|breakfast|lunch|dinner|mc/i.test(p.activity));
-      const lines = [];
-      lines.push(`Rule-based feedback (offline):`);
+    function ruleBasedCoach(plan){
+      if(!plan.length) return 'No items to assess.';
+      const total=plan.reduce((s,p)=>s+(Number(p.duration)||0),0);
+      const hasSleep=plan.some(p=>/sleep/i.test(p.activity));
+      const hasSport=plan.some(p=>/sport|run|gym|workout/i.test(p.activity));
+      const hasEat=plan.some(p=>/eat|meal|breakfast|lunch|dinner/i.test(p.activity));
+      const lines=[];
+      lines.push('Rule-based feedback (offline):');
       lines.push(`• Total planned time: ${total.toFixed(2)}h (aim for 6–12h)`);
-      if (!hasSleep) lines.push('• Consider adding Sleep for recovery.');
-      if (!hasSport) lines.push('• Add a short Sport/Walk for energy and mood.');
-      if (!hasEat) lines.push('• Include regular meals for steady energy.');
-      lines.push('• Try alternating focus (Laptop/Work) with lighter blocks (Walk/Stretch).');
+      if(!hasSleep) lines.push('• Consider adding Sleep for recovery.');
+      if(!hasSport) lines.push('• Add a short Sport/Walk for energy and mood.');
+      if(!hasEat) lines.push('• Include regular meals for steady energy.');
+      lines.push('• Alternate focus (Laptop/Work) with lighter blocks (Walk/Stretch).');
       lines.push('• Keep blocks 0.5–2h to minimize fatigue.');
       return lines.join('\n');
     }
 
-    async function generateWithModel(key, summary) {
-      if (!trf) {
-        // Pinned transformers.js
-        trf = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@3.7.2');
-      }
+    async function ensurePipeline(key){
+      await ensureTransformersUMD();
       const { pipeline, env } = trf;
-
-      // Robust WASM defaults that work without crossOriginIsolation
-      env.allowLocalModels = false;           // remote only
-      env.useBrowserCache = true;             // cache in IndexedDB
-      env.backends = env.backends || {};      // safety
-      env.backends.onnx = env.backends.onnx || {};
-      env.backends.onnx.wasm = env.backends.onnx.wasm || {};
-      env.backends.onnx.wasm.numThreads = 1; // avoid SharedArrayBuffer requirement
-      env.backends.onnx.wasm.proxy = true;   // offload heavy ops off main thread when possible
-
-      const config = modelConfig(key);
-
-      // (Re)load pipeline only when model changes
-      if (loadedKey !== key) {
-        try { env.clearCache?.(); } catch {}
-        pipelineRef = await pipeline(config.task, config.model, config.opts);
+      // Browser-safe defaults
+      env.allowLocalModels=false; env.useBrowserCache=true;
+      env.backends=env.backends||{}; env.backends.onnx=env.backends.onnx||{}; env.backends.onnx.wasm=env.backends.onnx.wasm||{};
+      env.backends.onnx.wasm.numThreads=1; env.backends.onnx.wasm.proxy=true;
+      const cfg=modelConfig(key);
+      if(loadedKey!==key){
+        try{ env.clearCache?.(); }catch{}
+        pipelineRef = await pipeline(cfg.task, cfg.model, cfg.opts);
         loadedKey = key;
-        // quick warmup with a tiny prompt to compile graph
-        try { await withTimeout(pipelineRef('Hello', config.generation), 15000); } catch {}
+        try{ await withTimeout(pipelineRef('Hello', cfg.generation), 15000); }catch{}
       }
-
-      const prompt = buildPrompt(summary, key);
-      const result = await withTimeout(pipelineRef(prompt, config.generation), 45000);
-
-      const text = Array.isArray(result)
-        ? (result[0]?.generated_text ?? result[0]?.summary_text ?? '')
-        : (result?.generated_text || result?.summary_text || '');
-      return (text || '').trim() || 'AI returned empty output. Using rule-based feedback.\n\n' + ruleBasedCoach(plan);
+      return pipelineRef;
     }
-
-    function withTimeout(promise, ms) {
-      return new Promise((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error('Timed out.')), ms);
-        promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+    async function generateWithModel(key, summary){
+      const cfg=modelConfig(key);
+      const pipe=await ensurePipeline(key);
+      const prompt=buildPrompt(summary, key);
+      const result=await withTimeout(pipe(prompt, cfg.generation), 45000);
+      const text = Array.isArray(result) ? (result[0]?.generated_text ?? result[0]?.summary_text ?? '')
+                                         : (result?.generated_text || result?.summary_text || '');
+      return (text||'').trim() || 'AI returned empty output. Using rule-based feedback.\n\n' + ruleBasedCoach(plan);
+    }
+    function withTimeout(promise, ms){
+      return new Promise((resolve,reject)=>{
+        const t=setTimeout(()=>reject(new Error('Timed out.')), ms);
+        promise.then(v=>{clearTimeout(t);resolve(v);}, e=>{clearTimeout(t);reject(e);});
       });
     }
 
-    // ===== Init =====
-    function init() {
-      renderActivitySelect();
-      renderActivityList();
-      renderPlan();
+    // Load transformers UMD from a list of CDNs (no dynamic import)
+    async function ensureTransformersUMD(){
+      if(trf) return trf;
+      const urls=[
+        'https://cdn.jsdelivr.net/npm/@xenova/transformers@3.7.2/dist/transformers.min.js',
+        'https://cdn.jsdelivr.net/npm/@xenova/transformers@3.7.2/dist/transformers.js',
+        'https://unpkg.com/@xenova/transformers@3.7.2/dist/transformers.min.js',
+        'https://unpkg.com/@xenova/transformers@3.7.2/dist/transformers.js'
+      ];
+      let lastErr;
+      for(const src of urls){
+        try{
+          await new Promise((res,rej)=>{
+            const s=document.createElement('script');
+            s.src=src; s.async=true; s.crossOrigin='anonymous';
+            s.onload=()=>res(); s.onerror=()=>rej(new Error('Script load failed: '+src));
+            document.head.appendChild(s);
+          });
+          if(window.transformers){ trf = window.transformers; return trf; }
+        }catch(e){ lastErr=e; }
+      }
+      throw lastErr ?? new Error('Failed to load transformers from all CDNs');
     }
 
+    // ===== Init =====
+    function init(){ renderActivitySelect(); renderActivityList(); renderPlan(); }
     init();
   </script>
 </body>
