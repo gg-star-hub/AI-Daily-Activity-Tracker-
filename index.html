@@ -1,4 +1,44 @@
-<!DOCTYPE html>
+
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -7,6 +47,8 @@
 
   <!-- Tailwind CSS CDN (pinned) -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN (pinned) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.min.js"></script>
 
   <style>
     :root {
@@ -26,13 +68,11 @@
     html, body { height: 100%; }
     body { background: var(--bg); color: var(--text); }
 
-    /* --- custom scrollbars --- */
     *::-webkit-scrollbar { width: 10px; height: 10px; }
     *::-webkit-scrollbar-track { background: #0b1220; }
     *::-webkit-scrollbar-thumb { background: #243b55; border-radius: 9999px; }
     *::-webkit-scrollbar-thumb:hover { background: #2f4c6f; }
 
-    /* --- buttons and inputs (pure CSS, no @apply) --- */
     .btn { display:inline-flex; align-items:center; justify-content:center; border-radius:0.75rem; padding:0.5rem 1rem; font-size:0.875rem; font-weight:600; transition:transform .12s ease, box-shadow .12s ease, background-color .12s ease; background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.1)); box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 10px 20px rgba(0,0,0,.15); cursor:pointer; }
     .btn:hover { transform: translateY(-1px) scale(1.02); }
     .btn:active { transform: translateY(0) scale(.98); }
@@ -62,11 +102,13 @@
     .progress-indeterminate { height: 100%; width: 30%; border-radius: 9999px; background: linear-gradient(90deg, var(--primary), var(--accent)); animation: slide 1.1s infinite ease-in-out; }
     @keyframes slide { 0% { transform: translateX(-120%);} 50% { transform: translateX(40%);} 100% { transform: translateX(120%);} }
 
+    .drag-over { border: 2px dashed var(--primary); opacity: 0.7; }
+    .drag-placeholder { background: var(--panel-2); border: 2px dashed var(--primary); opacity: 0.5; height: 48px; border-radius: 0.75rem; }
+
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
-  <!-- Header -->
   <header class="sticky top-0 z-20 border-b border-white/10 backdrop-blur supports-[backdrop-filter]:bg-black/30">
     <div class="mx-auto max-w-5xl px-4 sm:px-6 py-3 flex items-center justify-between">
       <h1 class="text-lg sm:text-2xl font-bold tracking-tight">AI Daily Activity Planner</h1>
@@ -76,9 +118,7 @@
     </div>
   </header>
 
-  <!-- Main -->
   <main class="mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6 py-6 space-y-6">
-    <!-- Planner Controls -->
     <section class="panel rounded-2xl p-4 sm:p-6">
       <h2 class="text-xl font-semibold mb-4" id="plannerHeading">Plan an activity</h2>
       <form id="planForm" class="grid gap-3 sm:grid-cols-12" aria-labelledby="plannerHeading">
@@ -86,11 +126,13 @@
           <label for="activitySelect" class="block text-sm mb-1">Activity</label>
           <div class="relative">
             <select id="activitySelect" class="select" aria-label="Select activity" required></select>
+            <div id="activityError" class="text-sm text-[color:var(--danger)] mt-1 hidden"></div>
           </div>
         </div>
         <div class="sm:col-span-3">
           <label for="durationInput" class="block text-sm mb-1">Duration (hours)</label>
           <input id="durationInput" class="input" type="number" min="0.25" max="24" step="0.25" value="1" aria-label="Duration in hours" required />
+          <div id="durationError" class="text-sm text-[color:var(--danger)] mt-1 hidden"></div>
         </div>
         <div class="sm:col-span-5">
           <label for="notesInput" class="block text-sm mb-1">Notes (optional)</label>
@@ -106,17 +148,24 @@
       </form>
     </section>
 
-    <!-- Plan List -->
     <section class="panel rounded-2xl p-4 sm:p-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xl font-semibold">Today's plan</h2>
-        <div class="text-sm text-[color:var(--muted)]" id="totalDuration" aria-live="polite"></div>
+        <div class="flex items-center gap-2">
+          <button id="exportPlanBtn" class="btn btn-ghost text-sm" type="button" aria-label="Export plan as JSON">Export</button>
+          <label for="importPlanInput" class="btn btn-ghost text-sm" aria-label="Import plan from JSON">Import</label>
+          <input id="importPlanInput" type="file" accept=".json" class="hidden" />
+          <button id="resetToggleBtn" class="btn btn-ghost text-sm" type="button" aria-label="Toggle daily reset at midnight">Reset at Midnight: Off</button>
+          <div class="text-sm text-[color:var(--muted)]" id="totalDuration" aria-live="polite"></div>
+        </div>
       </div>
       <ul id="planList" class="space-y-3 relative" role="list" aria-label="Planned activities"></ul>
       <p id="emptyState" class="text-sm text-[color:var(--muted)]">No items yet. Add an activity above.</p>
+      <div id="chartContainer" class="mt-4 hidden">
+        <canvas id="activityChart" height="200"></canvas>
+      </div>
     </section>
 
-    <!-- AI Coach -->
     <section class="panel rounded-2xl p-4 sm:p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 class="text-xl font-semibold">AI Coach</h2>
@@ -140,7 +189,6 @@
     </section>
   </main>
 
-  <!-- Manage Activities Modal -->
   <div id="manageModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="manageTitle" aria-describedby="manageDesc">
     <div class="modal-backdrop absolute inset-0" data-open="false"></div>
     <div class="relative mx-auto max-w-[90vw] sm:w-96 mt-16">
@@ -162,6 +210,7 @@
               </div>
               <button id="addActivityBtn" class="btn btn-primary" type="button">Add</button>
             </div>
+            <div id="newActivityError" class="text-sm text-[color:var(--danger)] mt-1 hidden"></div>
           </div>
           <div>
             <h3 class="text-sm font-semibold mb-2">Current activities</h3>
@@ -172,7 +221,6 @@
     </div>
   </div>
 
-  <!-- Templates -->
   <template id="activityChipTpl">
     <li class="flex items-center justify-between rounded-xl px-3 py-2 panel-2">
       <span class="text-sm"></span>
@@ -198,10 +246,14 @@
     </li>
   </template>
 
-  <!-- App Script -->
   <script>
-    // ===== State & Persistence =====
-    const DEFAULT_ACTIVITIES = ["Eat", "Sleep", "Sport", "Laptop", "Bath", "Family"]; // McDonalds -> Family
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.error('Service Worker registration failed:', err));
+    }
+  </script>
+
+  <script>
+    const DEFAULT_ACTIVITIES = ["Eat", "Sleep", "Sport", "Laptop", "Bath", "Family"];
     const store = {
       get activities() {
         const raw = localStorage.getItem('planner.activities');
@@ -215,14 +267,15 @@
       },
       set plan(list) { localStorage.setItem('planner.plan', JSON.stringify(list)); },
       get model() { return localStorage.getItem('planner.model') || 't5-small'; },
-      set model(v) { localStorage.setItem('planner.model', v); }
+      set model(v) { localStorage.setItem('planner.model', v); },
+      get autoReset() { return localStorage.getItem('planner.autoReset') === 'true'; },
+      set autoReset(v) { localStorage.setItem('planner.autoReset', v); }
     };
 
     let activities = store.activities;
     let plan = store.plan;
     let lastPlan = null;
 
-    // ===== Elements =====
     const $ = (s, el = document) => el.querySelector(s);
     const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
@@ -236,6 +289,11 @@
     const emptyState = $('#emptyState');
     const totalDuration = $('#totalDuration');
     const notesCounter = $('#notesCounter');
+    const activityError = $('#activityError');
+    const durationError = $('#durationError');
+    const exportPlanBtn = $('#exportPlanBtn');
+    const importPlanInput = $('#importPlanInput');
+    const resetToggleBtn = $('#resetToggleBtn');
 
     const runCoachBtn = $('#runCoachBtn');
     const retryCoachBtn = $('#retryCoachBtn');
@@ -250,12 +308,13 @@
     const addActivityBtn = $('#addActivityBtn');
     const activityList = $('#activityList');
     const activityCounter = $('#activityCounter');
+    const newActivityError = $('#newActivityError');
     const activityChipTpl = $('#activityChipTpl');
     const planItemTpl = $('#planItemTpl');
 
     modelSelect.value = store.model;
+    resetToggleBtn.textContent = `Reset at Midnight: ${store.autoReset ? 'On' : 'Off'}`;
 
-    // ===== Modal A11y =====
     let lastFocused = null;
     function trapFocus(container, e) {
       const focusables = $$('[tabindex]:not([tabindex="-1"]),button,input,select,textarea', container)
@@ -291,7 +350,12 @@
     openManage.addEventListener('click', () => openModal(manageModal));
     closeManage.addEventListener('click', () => closeModal(manageModal));
 
-    // ===== Activities =====
+    function showError(element, message) {
+      element.textContent = message;
+      element.classList.remove('hidden');
+      setTimeout(() => element.classList.add('hidden'), 3000);
+    }
+
     function renderActivitySelect() {
       activitySelect.innerHTML = '';
       for (const name of activities) {
@@ -308,7 +372,7 @@
         $('span', li).textContent = name;
         $('button', li).addEventListener('click', () => {
           if (activities.length <= 1) {
-            alert('At least one activity required. Resetting to defaults.');
+            showError(newActivityError, 'At least one activity required. Resetting to defaults.');
             activities = [...DEFAULT_ACTIVITIES];
             store.activities = activities;
           } else {
@@ -324,10 +388,10 @@
     }
     addActivityBtn.addEventListener('click', () => {
       const raw = newActivityInput.value.trim();
-      if (!raw) return alert('Enter an activity name.');
+      if (!raw) return showError(newActivityError, 'Enter an activity name.');
       const name = raw.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ' ').slice(0, 20);
-      if (!name) return alert('Invalid name (letters/numbers/spaces).');
-      if (activities.some(a => a.toLowerCase() === name.toLowerCase())) return alert('Activity already exists.');
+      if (!name) return showError(newActivityError, 'Invalid name (letters/numbers/spaces).');
+      if (activities.some(a => a.toLowerCase() === name.toLowerCase())) return showError(newActivityError, 'Activity already exists.');
       activities.push(name);
       store.activities = activities;
       newActivityInput.value = '';
@@ -339,7 +403,6 @@
       activityCounter.textContent = `${newActivityInput.value.length}/20`;
     });
 
-    // ===== Plan =====
     function addToPlan(activity, duration, notes) {
       plan.push({ id: crypto.randomUUID(), activity, duration, notes });
       store.plan = plan;
@@ -351,15 +414,15 @@
       const activity = activitySelect.value;
       const duration = parseFloat(durationInput.value);
       const notes = notesInput.value.trim().slice(0, 100);
-      if (!activity) return alert('Please select an activity.');
-      if (!Number.isFinite(duration) || duration <= 0 || duration > 24) return alert('Duration must be between 0.25 and 24 hours.');
+      if (!activity) return showError(activityError, 'Please select an activity.');
+      if (!Number.isFinite(duration) || duration <= 0 || duration > 24) return showError(durationError, 'Duration must be between 0.25 and 24 hours.');
       if (editId) {
         const idx = plan.findIndex(x => x.id === editId);
         if (idx !== -1) {
           plan[idx].activity = activity;
           plan[idx].duration = duration;
           plan[idx].notes = notes;
-          store.plan = plan; // FIX: persist edits
+          store.plan = plan;
         }
         editId = null;
         addPlanBtn.textContent = 'Add to plan';
@@ -394,10 +457,98 @@
       notesCounter.textContent = `${notesInput.value.length}/100`;
     });
 
+    function exportPlan() {
+      if (!plan.length) return showError(totalDuration, 'No plan items to export.');
+      const data = JSON.stringify(plan, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `plan-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    function importPlan(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!Array.isArray(imported) || !imported.every(item => 
+            typeof item.id === 'string' &&
+            typeof item.activity === 'string' && activities.includes(item.activity) &&
+            typeof item.duration === 'number' && item.duration > 0 && item.duration <= 24 &&
+            (typeof item.notes === 'string' || item.notes === undefined)
+          )) {
+            throw new Error('Invalid plan format');
+          }
+          plan = imported.map(item => ({ ...item, id: crypto.randomUUID() }));
+          store.plan = plan;
+          renderPlan();
+          showError(totalDuration, 'Plan imported successfully.');
+        } catch (err) {
+          showError(totalDuration, 'Invalid JSON file. Please upload a valid plan.');
+        }
+        importPlanInput.value = '';
+      };
+      reader.readAsText(file);
+    }
+    exportPlanBtn.addEventListener('click', exportPlan);
+    importPlanInput.addEventListener('change', importPlan);
+
+    function resetPlan() {
+      if (!plan.length) return;
+      lastPlan = [...plan];
+      plan = [];
+      store.plan = plan;
+      renderPlan();
+      showError(totalDuration, 'Plan reset for new day.');
+      clearPlanBtn.textContent = 'Undo';
+      setTimeout(() => { clearPlanBtn.textContent = 'Clear plan'; }, 5000);
+    }
+
+    function checkMidnightReset() {
+      if (!store.autoReset) return;
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      if (now >= midnight) {
+        const lastReset = localStorage.getItem('planner.lastReset');
+        const today = now.toDateString();
+        if (lastReset !== today) {
+          resetPlan();
+          localStorage.setItem('planner.lastReset', today);
+        }
+      }
+      setTimeout(checkMidnightReset, 60000);
+    }
+
+    resetToggleBtn.addEventListener('click', () => {
+      if (store.autoReset) {
+        store.autoReset = false;
+        resetToggleBtn.textContent = 'Reset at Midnight: Off';
+        showError(totalDuration, 'Auto-reset disabled.');
+      } else {
+        store.autoReset = true;
+        resetToggleBtn.textContent = 'Reset at Midnight: On';
+        showError(totalDuration, 'Auto-reset enabled. Plan will clear at midnight.');
+        checkMidnightReset();
+        if (plan.length) {
+          if (confirm('Reset plan now for today?')) resetPlan();
+        }
+      }
+    });
+
     function renderPlan() {
       planList.innerHTML = '';
-      if (!plan.length) emptyState.classList.remove('hidden');
-      else emptyState.classList.add('hidden');
+      if (!plan.length) {
+        emptyState.classList.remove('hidden');
+        chartContainer.classList.add('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+        chartContainer.classList.remove('hidden');
+      }
       let total = 0;
       for (const item of plan) {
         total += Number(item.duration) || 0;
@@ -420,6 +571,7 @@
 
         li.addEventListener('dragstart', onDragStart);
         li.addEventListener('dragover', onDragOver);
+        li.addEventListener('dragend', onDragEnd);
         li.addEventListener('drop', onDrop);
 
         li.addEventListener('keydown', (e) => {
@@ -447,20 +599,48 @@
         planList.appendChild(li);
       }
       totalDuration.textContent = plan.length ? `Total: ${total.toFixed(2)} h` : '';
+      renderChart();
     }
+
+    let chartInstance = null;
+    function renderChart() {
+      if (chartInstance) chartInstance.destroy();
+      const ctx = $('#activityChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: plan.map(p => p.activity),
+          datasets: [{
+            data: plan.map(p => p.duration),
+            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
+            borderColor: ['#1e3a8a', '#065f46', '#b45309', '#991b1b', '#5b21b6', '#be185d'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          plugins: {
+            legend: { position: 'top', labels: { color: '#e6edf3' } },
+            title: { display: true, text: 'Activity Time Allocation', color: '#e6edf3', font: { size: 16 } }
+          },
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+    }
+
     function makeSwitchMenu(item, anchor) {
       const menu = document.createElement('div');
-      menu.className = 'absolute z-10 mt-1 panel rounded-xl p-2 shadow-xl border border-white/10'; // FIX: shadow=xl -> shadow-xl
+      menu.className = 'absolute z-10 mt-1 panel rounded-xl p-2 shadow-xl border border-white/10';
       menu.role = 'menu';
       menu.style.position = 'absolute';
       menu.style.minWidth = anchor.offsetWidth + 'px';
-      // Position relative to the planList container
-      const container = planList;
-      const left = anchor.offsetLeft;
-      const top = anchor.offsetTop + anchor.offsetHeight + 6;
-      menu.style.left = left + 'px';
-      menu.style.top = top + 'px';
-
+      const rect = anchor.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      menu.style.left = rect.left + 'px';
+      menu.style.top = (rect.bottom + 6) + 'px';
+      if (rect.bottom + 150 > viewportHeight) {
+        menu.style.top = (rect.top - 150 - 6) + 'px';
+      }
       for (const name of activities) {
         const btn = document.createElement('button');
         btn.className = 'btn btn-ghost w-full justify-start text-sm';
@@ -496,29 +676,56 @@
       renderPlan();
     }
     let dragId = null;
+    let placeholder = null;
     function onDragStart(e) {
       dragId = e.currentTarget.dataset.id;
       e.currentTarget.setAttribute('aria-grabbed', 'true');
+      e.currentTarget.style.opacity = '0.4';
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setDragImage(e.currentTarget.cloneNode(true), 0, 0);
+      placeholder = document.createElement('li');
+      placeholder.className = 'drag-placeholder';
+      placeholder.setAttribute('aria-hidden', 'true');
     }
     function onDragOver(e) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
+      const target = e.currentTarget;
+      if (target.dataset.id === dragId) return;
+      target.classList.add('drag-over');
+      const rect = target.getBoundingClientRect();
+      const isAbove = e.clientY < rect.top + rect.height / 2;
+      if (placeholder && !target.contains(placeholder)) {
+        target.parentNode.insertBefore(placeholder, isAbove ? target : target.nextSibling);
+      }
+    }
+    function onDragEnd(e) {
+      e.currentTarget.style.opacity = '1';
+      e.currentTarget.setAttribute('aria-grabbed', 'false');
+      $$('.drag-over', planList).forEach(el => el.classList.remove('drag-over'));
+      if (placeholder) {
+        placeholder.remove();
+        placeholder = null;
+      }
+      dragId = null;
     }
     function onDrop(e) {
       e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
       const targetId = e.currentTarget.dataset.id;
       e.currentTarget.setAttribute('aria-grabbed', 'false');
-      if (!dragId || dragId === targetId) return;
-      const from = plan.findIndex(x => x.id === dragId), to = plan.findIndex(x => x.id === targetId);
+      if (!dragId || dragId === targetId || !placeholder) return;
+      const from = plan.findIndex(x => x.id === dragId);
+      const to = Array.from(planList.children).indexOf(placeholder);
       const [moved] = plan.splice(from, 1);
       plan.splice(to, 0, moved);
       store.plan = plan;
       renderPlan();
       dragId = null;
+      placeholder.remove();
+      placeholder = null;
     }
 
-    // ===== AI Coach (UMD loader, no dynamic import) =====
     let pipelineRef = null, loadedKey = null, trf = null, isRunning = false;
 
     modelSelect.addEventListener('change', () => { store.model = modelSelect.value; });
@@ -581,7 +788,7 @@
       }
     }
     function buildPrompt(summary, key) {
-      const sys = 'You are an elite productivity and wellbeing coach. Return a short, actionable review with bullets: balance, intensity, recovery, sequence, swaps, and a 10/10 score.';
+      const sys = 'You are an elite productivity coach. Analyze the plan and provide a concise review with 3–5 specific, actionable suggestions (e.g., adjust timing, swap activities) in bullet points. Include a balance score (1–10).';
       return key === 't5-small' ? `${sys}\nPlan:\n${summary}\nRespond:` : `${sys}\n\nPlan:\n${summary}\n\nCoach:`;
     }
     function setThinking(on) {
@@ -609,6 +816,7 @@
       if (!hasEat) lines.push('• Include regular meals for steady energy.');
       lines.push('• Alternate focus (Laptop/Work) with lighter blocks (Walk/Stretch).');
       lines.push('• Keep blocks 0.5–2h to minimize fatigue.');
+      lines.push('• Balance score: ' + (hasSleep && hasSport && hasEat ? '8/10' : '5/10'));
       return lines.join('\n');
     }
 
@@ -620,7 +828,7 @@
       env.backends = env.backends || {};
       env.backends.onnx = env.backends.onnx || {};
       env.backends.onnx.wasm = env.backends.onnx.wasm || {};
-      env.backends.onnx.wasm.numThreads = 1; // low-memory friendly
+      env.backends.onnx.wasm.numThreads = 1;
       env.backends.onnx.wasm.proxy = true;
       const cfg = modelConfig(key);
       if (loadedKey !== key) {
@@ -697,13 +905,20 @@
       throw lastErr ?? new Error('Failed to load transformers from all CDNs');
     }
 
-    // ===== Init =====
+    async function preloadModels() {
+      for (const key of ['t5-small', 'smollm2-135m']) {
+        try { await ensurePipeline(key); } catch {}
+      }
+    }
+
     function init() {
       renderActivitySelect();
       renderActivityList();
       renderPlan();
       notesCounter.textContent = '0/100';
       activityCounter.textContent = '0/20';
+      preloadModels();
+      if (store.autoReset) checkMidnightReset();
     }
     init();
   </script>
