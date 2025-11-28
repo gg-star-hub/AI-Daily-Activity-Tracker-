@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Beep & Flash Every 60 Seconds</title>
+  <title>Beep & Flash Reminder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <style>
     :root {
@@ -32,7 +32,7 @@
 
     #container {
       width: 100%;
-      max-width: 480px;
+      max-width: 520px;
       text-align: center;
     }
 
@@ -81,18 +81,19 @@
     }
 
     button {
-      padding: 12px 28px;
+      padding: 10px 22px;
       border-radius: 999px;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 600;
       background: linear-gradient(135deg, var(--accent-3), var(--accent-4));
       color: #000;
       box-shadow: 0 0 16px rgba(0, 255, 160, 0.4);
       outline: none;
-      min-width: 180px;
+      min-width: 120px;
       touch-action: manipulation;
+      transition: transform 0.05s ease, box-shadow 0.05s ease;
     }
 
     button:active {
@@ -106,14 +107,81 @@
       box-shadow: none;
     }
 
-    #status {
+    #controls {
+      margin: 16px auto 0;
+      text-align: left;
+      max-width: 420px;
+      font-size: 0.9rem;
+    }
+
+    .control-row {
+      margin-bottom: 10px;
+    }
+
+    .control-row label {
+      display: block;
+      margin-bottom: 4px;
+      opacity: 0.9;
+    }
+
+    .control-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-inline input[type="number"] {
+      width: 80px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--fg);
+      outline: none;
+    }
+
+    .unit {
+      opacity: 0.8;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #volume-value {
+      min-width: 42px;
+      text-align: right;
+      opacity: 0.85;
+    }
+
+    .buttons-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
       margin-top: 10px;
+    }
+
+    #status {
+      margin-top: 12px;
       font-size: 0.85rem;
       opacity: 0.8;
       line-height: 1.4;
+      text-align: center;
     }
 
-    /* Larger desktops: give it a bit more presence */
+    #countdown {
+      margin-top: 4px;
+      font-size: 0.8rem;
+      opacity: 0.75;
+      text-align: center;
+    }
+
     @media (min-width: 900px) {
       #container {
         max-width: 560px;
@@ -129,25 +197,80 @@
 <body>
   <div id="container">
     <div id="flash-img">ALERT</div>
-    <button id="start-btn">Start Alert</button>
-    <p id="status">
-      Tap “Start Alert” once to allow sound. You’ll get a beep + flash every 60 seconds.
+
+    <div id="controls">
+      <div class="control-row">
+        <label for="interval-input">Alert interval</label>
+        <div class="control-inline">
+          <input
+            type="number"
+            id="interval-input"
+            min="0.1"
+            step="0.1"
+            value="1"
+            inputmode="decimal"
+          />
+          <span class="unit">minutes</span>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <label for="volume-input">Beep volume</label>
+        <div class="volume-row">
+          <input type="range" id="volume-input" min="0" max="100" value="25" />
+          <span id="volume-value">25%</span>
+        </div>
+      </div>
+
+      <div class="control-row">
+        <label for="vibrate-toggle">Vibrate on alert (supported devices only)</label>
+        <div class="control-inline">
+          <input type="checkbox" id="vibrate-toggle" />
+          <span class="unit">uses Vibration API</span>
+        </div>
+      </div>
+
+      <div class="control-row buttons-row">
+        <button id="start-btn">Start alert</button>
+        <button id="stop-btn" disabled>Stop</button>
+      </div>
+    </div>
+
+    <p id="status" role="status" aria-live="polite">
+      Set your interval and tap “Start alert” once to allow sound. You’ll get a 440 Hz beep + flash on each interval.
     </p>
+    <p id="countdown"></p>
   </div>
 
   <script>
-    const INTERVAL_MS = 60000;   // 60 seconds
     const BEEP_DURATION = 0.5;   // seconds
     const FLASH_DURATION = 1000; // ms
+    const DEFAULT_INTERVAL_MS = 60000; // fallback if input invalid
+    const SETTINGS_KEY = "beep_flash_settings_v1";
 
-    const startBtn = document.getElementById("start-btn");
     const flashImg = document.getElementById("flash-img");
+    const startBtn = document.getElementById("start-btn");
+    const stopBtn = document.getElementById("stop-btn");
     const statusEl = document.getElementById("status");
+    const intervalInput = document.getElementById("interval-input");
+    const volumeInput = document.getElementById("volume-input");
+    const volumeValue = document.getElementById("volume-value");
+    const vibrateToggle = document.getElementById("vibrate-toggle");
+    const countdownEl = document.getElementById("countdown");
 
     let audioCtx = null;
     let timerId = null;
+    let volume = volumeInput.value / 100;
+
+    let nextTickAt = null;
+    let rafId = null;
 
     function ensureAudioContext() {
+      if (!("AudioContext" in window || "webkitAudioContext" in window)) {
+        statusEl.textContent =
+          "This browser does not support the Web Audio API. Visual flash and vibration will work, but not the beep.";
+        return;
+      }
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       } else if (audioCtx.state === "suspended") {
@@ -155,14 +278,22 @@
       }
     }
 
+    function getIntervalMs() {
+      const minutes = parseFloat(intervalInput.value);
+      if (isNaN(minutes) || minutes <= 0) return DEFAULT_INTERVAL_MS;
+      return minutes * 60000;
+    }
+
     function beep() {
       ensureAudioContext();
+      if (!audioCtx) return;
+
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
 
       osc.type = "sine";
-      osc.frequency.value = 440;   // Hz
-      gain.gain.value = 0.25;      // volume
+      osc.frequency.value = 440;   // 440 Hz = concert A
+      gain.gain.value = volume;    // 0.0–1.0
 
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -176,29 +307,160 @@
       setTimeout(() => flashImg.classList.remove("flash"), FLASH_DURATION);
     }
 
+    function vibrateOnce() {
+      if (!navigator.vibrate) return;
+      if (!vibrateToggle.checked) return;
+      navigator.vibrate([160, 80, 160]); // vibrate – pause – vibrate
+    }
+
+    function updateCountdown() {
+      if (!nextTickAt || !timerId) {
+        countdownEl.textContent = "";
+        return;
+      }
+      const now = performance.now();
+      const msLeft = Math.max(0, nextTickAt - now);
+      const seconds = Math.round(msLeft / 1000);
+      countdownEl.textContent = "Next alert in " + seconds + " second(s)";
+      rafId = requestAnimationFrame(updateCountdown);
+    }
+
+    function startCountdown(intervalMs) {
+      nextTickAt = performance.now() + intervalMs;
+      if (rafId) cancelAnimationFrame(rafId);
+      updateCountdown();
+    }
+
+    function stopCountdown() {
+      nextTickAt = null;
+      if (rafId) cancelAnimationFrame(rafId);
+      countdownEl.textContent = "";
+    }
+
+    function updateRunningStatus(intervalMs) {
+      const minutes = (intervalMs / 60000).toFixed(2).replace(/\.00$/, "");
+      statusEl.textContent =
+        "Running: beep + flash" +
+        (vibrateToggle.checked && navigator.vibrate ? " + vibration" : "") +
+        " every " +
+        minutes +
+        " minute(s). Keep this tab open and sound on.";
+    }
+
     function alertTick() {
       beep();
       flash();
+      vibrateOnce();
+      const intervalMs = getIntervalMs();
+      startCountdown(intervalMs);
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        if (typeof s.intervalMinutes === "number" && s.intervalMinutes > 0) {
+          intervalInput.value = s.intervalMinutes;
+        }
+        if (typeof s.volumePct === "number" && s.volumePct >= 0 && s.volumePct <= 100) {
+          volumeInput.value = s.volumePct;
+          volume = s.volumePct / 100;
+          volumeValue.textContent = s.volumePct + "%";
+        }
+        if (typeof s.vibrateOn === "boolean") {
+          vibrateToggle.checked = s.vibrateOn;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    function saveSettings() {
+      const minutes = parseFloat(intervalInput.value);
+      const volumePct = parseInt(volumeInput.value, 10);
+      const data = {
+        intervalMinutes: isNaN(minutes) || minutes <= 0 ? 1 : minutes,
+        volumePct: isNaN(volumePct) ? 25 : volumePct,
+        vibrateOn: !!vibrateToggle.checked,
+      };
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+      } catch (e) {
+        // ignore
+      }
     }
 
     startBtn.addEventListener("click", () => {
       if (timerId !== null) return; // already running
 
-      alertTick();                            // immediate first alert
-      timerId = setInterval(alertTick, INTERVAL_MS);
+      ensureAudioContext();
+      alertTick(); // immediate first alert
+
+      const intervalMs = getIntervalMs();
+      timerId = setInterval(alertTick, intervalMs);
+      startCountdown(intervalMs);
+      updateRunningStatus(intervalMs);
 
       startBtn.disabled = true;
-      statusEl.textContent = "Running: beep + flash every 60 seconds. Leave this page open.";
+      stopBtn.disabled = false;
     });
 
-    // Optional: resume audio on additional user interactions (for some mobile browsers)
-    ["touchstart", "click"].forEach(evt =>
-      document.addEventListener(evt, () => {
-        if (audioCtx && audioCtx.state === "suspended") {
-          audioCtx.resume();
-        }
-      }, { passive: true })
+    stopBtn.addEventListener("click", () => {
+      if (timerId === null) return;
+
+      clearInterval(timerId);
+      timerId = null;
+      stopCountdown();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      statusEl.textContent =
+        "Stopped. Adjust interval/volume/vibration and press “Start alert” when ready.";
+    });
+
+    volumeInput.addEventListener("input", () => {
+      volume = volumeInput.value / 100;
+      volumeValue.textContent = volumeInput.value + "%";
+      saveSettings();
+    });
+
+    intervalInput.addEventListener("change", () => {
+      saveSettings();
+
+      // If already running, immediately apply the new interval
+      if (timerId !== null) {
+        const intervalMs = getIntervalMs();
+        clearInterval(timerId);
+        timerId = setInterval(alertTick, intervalMs);
+        startCountdown(intervalMs);
+        updateRunningStatus(intervalMs);
+      }
+    });
+
+    vibrateToggle.addEventListener("change", () => {
+      saveSettings();
+      // If running, refresh status text to reflect +vibration / no vibration
+      if (timerId !== null) {
+        const intervalMs = getIntervalMs();
+        updateRunningStatus(intervalMs);
+      }
+    });
+
+    // Optional: resume audio on extra interactions (mobile browsers)
+    ["touchstart", "click"].forEach((evt) =>
+      document.addEventListener(
+        evt,
+        () => {
+          if (audioCtx && audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
+        },
+        { passive: true }
+      )
     );
+
+    // Initialize from saved settings
+    loadSettings();
   </script>
 </body>
 </html>
