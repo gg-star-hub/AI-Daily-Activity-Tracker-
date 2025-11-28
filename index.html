@@ -62,7 +62,8 @@
 
     /* Flash animation */
     #flash-img.flash {
-      animation: flicker 0.1s linear 10;
+      /* Reduced frequency: max 3 flashes per ~second */
+      animation: flicker 0.3s linear 3;
     }
 
     @keyframes flicker {
@@ -77,6 +78,13 @@
         filter:
           drop-shadow(0 0 4px #fff)
           drop-shadow(0 0 40px #ffdd55);
+      }
+    }
+
+    /* Honor user reduced motion preference: disable flicker */
+    @media (prefers-reduced-motion: reduce) {
+      #flash-img.flash {
+        animation: none !important;
       }
     }
 
@@ -182,6 +190,73 @@
       text-align: center;
     }
 
+    /* Desktop vs mobile interval layouts */
+    .interval-desktop {
+      display: block;
+    }
+
+    .interval-mobile {
+      display: none;
+    }
+
+    /* Mobile-only enhancements */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(5, 5, 16, 0.7);
+      color: var(--fg);
+      font-size: 0.8rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .chip-active {
+      background: linear-gradient(135deg, var(--accent-3), var(--accent-4));
+      color: #000;
+      border-color: transparent;
+      box-shadow: 0 0 10px rgba(0, 255, 160, 0.4);
+    }
+
+    .interval-inline {
+      gap: 6px;
+    }
+
+    .interval-step-btn {
+      width: 40px;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 0, 0.5);
+      color: var(--fg);
+      font-size: 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .interval-step-btn:active {
+      transform: scale(0.96);
+      box-shadow: 0 0 8px rgba(0, 255, 160, 0.5);
+    }
+
+    /* On coarse pointer (typically mobile/tablet), show mobile layout */
+    @media (pointer: coarse) {
+      .interval-desktop {
+        display: none;
+      }
+      .interval-mobile {
+        display: block;
+      }
+    }
+
     @media (min-width: 900px) {
       #container {
         max-width: 560px;
@@ -199,21 +274,69 @@
     <div id="flash-img">ALERT</div>
 
     <div id="controls">
+      <!-- Alert interval -->
       <div class="control-row">
-        <label for="interval-input">Alert interval</label>
-        <div class="control-inline">
-          <input
-            type="number"
-            id="interval-input"
-            min="0.1"
-            step="0.1"
-            value="1"
-            inputmode="decimal"
-          />
-          <span class="unit">minutes</span>
+        <label for="interval-input-desktop">Alert interval</label>
+
+        <!-- Desktop: original simple control -->
+        <div class="interval-desktop">
+          <div class="control-inline">
+            <input
+              type="number"
+              id="interval-input-desktop"
+              min="0.1"
+              step="0.1"
+              value="1"
+              inputmode="decimal"
+            />
+            <span class="unit">minutes</span>
+          </div>
+        </div>
+
+        <!-- Mobile: chips + +/- stepper -->
+        <div class="interval-mobile">
+          <div class="chip-row" aria-label="Quick interval presets">
+            <button class="chip" type="button" data-minutes="0.5">0.5 min</button>
+            <button class="chip chip-active" type="button" data-minutes="1">1 min</button>
+            <button class="chip" type="button" data-minutes="2">2 min</button>
+            <button class="chip" type="button" data-minutes="5">5 min</button>
+          </div>
+
+          <div class="control-inline interval-inline">
+            <button
+              class="interval-step-btn"
+              type="button"
+              id="interval-step-down"
+              aria-label="Decrease interval"
+            >
+              −
+            </button>
+
+            <input
+              type="number"
+              id="interval-input-mobile"
+              min="0.1"
+              step="0.1"
+              value="1"
+              inputmode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
+            />
+
+            <button
+              class="interval-step-btn"
+              type="button"
+              id="interval-step-up"
+              aria-label="Increase interval"
+            >
+              +
+            </button>
+
+            <span class="unit">minutes</span>
+          </div>
         </div>
       </div>
 
+      <!-- Volume -->
       <div class="control-row">
         <label for="volume-input">Beep volume</label>
         <div class="volume-row">
@@ -222,6 +345,7 @@
         </div>
       </div>
 
+      <!-- Vibration -->
       <div class="control-row">
         <label for="vibrate-toggle">Vibrate on alert (supported devices only)</label>
         <div class="control-inline">
@@ -230,237 +354,366 @@
         </div>
       </div>
 
+      <!-- Start / Stop -->
       <div class="control-row buttons-row">
         <button id="start-btn">Start alert</button>
         <button id="stop-btn" disabled>Stop</button>
       </div>
     </div>
 
-    <p id="status" role="status" aria-live="polite">
+    <p
+      id="status"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       Set your interval and tap “Start alert” once to allow sound. You’ll get a 440 Hz beep + flash on each interval.
     </p>
     <p id="countdown"></p>
   </div>
 
   <script>
-    const BEEP_DURATION = 0.5;   // seconds
-    const FLASH_DURATION = 1000; // ms
-    const DEFAULT_INTERVAL_MS = 60000; // fallback if input invalid
-    const SETTINGS_KEY = "beep_flash_settings_v1";
+    (function () {
+      "use strict";
 
-    const flashImg = document.getElementById("flash-img");
-    const startBtn = document.getElementById("start-btn");
-    const stopBtn = document.getElementById("stop-btn");
-    const statusEl = document.getElementById("status");
-    const intervalInput = document.getElementById("interval-input");
-    const volumeInput = document.getElementById("volume-input");
-    const volumeValue = document.getElementById("volume-value");
-    const vibrateToggle = document.getElementById("vibrate-toggle");
-    const countdownEl = document.getElementById("countdown");
+      const BEEP_DURATION = 0.5;      // seconds
+      const FLASH_DURATION = 1000;    // ms
+      const SETTINGS_KEY = "beep_flash_settings_v1";
 
-    let audioCtx = null;
-    let timerId = null;
-    let volume = volumeInput.value / 100;
+      const MIN_INTERVAL_MINUTES = 0.1;
+      const INTERVAL_STEP_MINUTES = 0.1;
+      const MAX_INTERVAL_MINUTES = 999;
 
-    let nextTickAt = null;
-    let rafId = null;
+      const isCoarsePointer =
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
 
-    function ensureAudioContext() {
-      if (!("AudioContext" in window || "webkitAudioContext" in window)) {
-        statusEl.textContent =
-          "This browser does not support the Web Audio API. Visual flash and vibration will work, but not the beep.";
-        return;
+      const flashImg = document.getElementById("flash-img");
+      const startBtn = document.getElementById("start-btn");
+      const stopBtn = document.getElementById("stop-btn");
+      const statusEl = document.getElementById("status");
+      const volumeInput = document.getElementById("volume-input");
+      const volumeValue = document.getElementById("volume-value");
+      const vibrateToggle = document.getElementById("vibrate-toggle");
+      const countdownEl = document.getElementById("countdown");
+
+      const intervalInput = document.getElementById(
+        isCoarsePointer ? "interval-input-mobile" : "interval-input-desktop"
+      );
+
+      const intervalStepDown = isCoarsePointer
+        ? document.getElementById("interval-step-down")
+        : null;
+      const intervalStepUp = isCoarsePointer
+        ? document.getElementById("interval-step-up")
+        : null;
+      const intervalChips = isCoarsePointer
+        ? Array.from(document.querySelectorAll(".chip-row .chip"))
+        : [];
+
+      const vibrateDescription = document.querySelector("#vibrate-toggle + .unit");
+      const supportsVibration = !!navigator.vibrate;
+
+      let audioCtx = null;
+      let timerId = null;
+      let volume = volumeInput.value / 100;
+
+      let nextTickAt = null;
+      let rafId = null;
+      let lastCountdownSeconds = null;
+
+      // If vibration isn’t supported, disable the toggle and explain
+      if (!supportsVibration && vibrateToggle) {
+        vibrateToggle.disabled = true;
+        if (vibrateDescription) {
+          vibrateDescription.textContent = "Vibration not supported on this device";
+        }
       }
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      } else if (audioCtx.state === "suspended") {
-        audioCtx.resume();
+
+      function ensureAudioContext() {
+        if (!("AudioContext" in window || "webkitAudioContext" in window)) {
+          statusEl.textContent =
+            "This browser does not support the Web Audio API. Visual flash and vibration will work, but not the beep.";
+          return;
+        }
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } else if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
       }
-    }
 
-    function getIntervalMs() {
-      const minutes = parseFloat(intervalInput.value);
-      if (isNaN(minutes) || minutes <= 0) return DEFAULT_INTERVAL_MS;
-      return minutes * 60000;
-    }
+      function sanitizeIntervalMinutes() {
+        let raw = (intervalInput.value || "").toString().trim().replace(",", ".");
+        let minutes = parseFloat(raw);
+        if (isNaN(minutes) || minutes <= 0) return null;
+        minutes = Math.min(Math.max(minutes, MIN_INTERVAL_MINUTES), MAX_INTERVAL_MINUTES);
+        return minutes;
+      }
 
-    function beep() {
-      ensureAudioContext();
-      if (!audioCtx) return;
+      function getIntervalMs() {
+        const minutes = sanitizeIntervalMinutes();
+        const effectiveMinutes = minutes === null ? 1 : minutes;
+        return effectiveMinutes * 60000;
+      }
 
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
+      function updateActiveChip(minutes) {
+        if (!intervalChips.length) return;
+        let matched = false;
+        intervalChips.forEach((chip) => {
+          const m = parseFloat(chip.dataset.minutes);
+          const isActive = Math.abs(m - minutes) < 1e-6;
+          chip.classList.toggle("chip-active", isActive);
+          if (isActive) matched = true;
+        });
+        if (!matched) {
+          intervalChips.forEach((chip) => chip.classList.remove("chip-active"));
+        }
+      }
 
-      osc.type = "sine";
-      osc.frequency.value = 440;   // 440 Hz = concert A
-      gain.gain.value = volume;    // 0.0–1.0
+      function beep() {
+        ensureAudioContext();
+        if (!audioCtx) return;
 
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
 
-      osc.start();
-      osc.stop(audioCtx.currentTime + BEEP_DURATION);
-    }
+        osc.type = "sine";
+        osc.frequency.value = 440;   // 440 Hz = concert A
+        gain.gain.value = volume;    // 0.0–1.0
 
-    function flash() {
-      flashImg.classList.add("flash");
-      setTimeout(() => flashImg.classList.remove("flash"), FLASH_DURATION);
-    }
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
 
-    function vibrateOnce() {
-      if (!navigator.vibrate) return;
-      if (!vibrateToggle.checked) return;
-      navigator.vibrate([160, 80, 160]); // vibrate – pause – vibrate
-    }
+        osc.start();
+        osc.stop(audioCtx.currentTime + BEEP_DURATION);
+      }
 
-    function updateCountdown() {
-      if (!nextTickAt || !timerId) {
+      function flash() {
+        flashImg.classList.add("flash");
+        setTimeout(() => flashImg.classList.remove("flash"), FLASH_DURATION);
+      }
+
+      function vibrateOnce() {
+        if (!supportsVibration) return;
+        if (!vibrateToggle.checked) return;
+        navigator.vibrate([160, 80, 160]); // vibrate – pause – vibrate
+      }
+
+      function updateCountdown() {
+        if (!nextTickAt || timerId === null) {
+          countdownEl.textContent = "";
+          lastCountdownSeconds = null;
+          return;
+        }
+        const now = performance.now();
+        const msLeft = Math.max(0, nextTickAt - now);
+        const seconds = Math.round(msLeft / 1000);
+        if (seconds !== lastCountdownSeconds) {
+          countdownEl.textContent = "Next alert in " + seconds + " second(s)";
+          lastCountdownSeconds = seconds;
+        }
+        rafId = requestAnimationFrame(updateCountdown);
+      }
+
+      function startCountdown(intervalMs) {
+        nextTickAt = performance.now() + intervalMs;
+        if (rafId) cancelAnimationFrame(rafId);
+        lastCountdownSeconds = null;
+        updateCountdown();
+      }
+
+      function stopCountdown() {
+        nextTickAt = null;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = null;
         countdownEl.textContent = "";
-        return;
+        lastCountdownSeconds = null;
       }
-      const now = performance.now();
-      const msLeft = Math.max(0, nextTickAt - now);
-      const seconds = Math.round(msLeft / 1000);
-      countdownEl.textContent = "Next alert in " + seconds + " second(s)";
-      rafId = requestAnimationFrame(updateCountdown);
-    }
 
-    function startCountdown(intervalMs) {
-      nextTickAt = performance.now() + intervalMs;
-      if (rafId) cancelAnimationFrame(rafId);
-      updateCountdown();
-    }
-
-    function stopCountdown() {
-      nextTickAt = null;
-      if (rafId) cancelAnimationFrame(rafId);
-      countdownEl.textContent = "";
-    }
-
-    function updateRunningStatus(intervalMs) {
-      const minutes = (intervalMs / 60000).toFixed(2).replace(/\.00$/, "");
-      statusEl.textContent =
-        "Running: beep + flash" +
-        (vibrateToggle.checked && navigator.vibrate ? " + vibration" : "") +
-        " every " +
-        minutes +
-        " minute(s). Keep this tab open and sound on.";
-    }
-
-    function alertTick() {
-      beep();
-      flash();
-      vibrateOnce();
-      const intervalMs = getIntervalMs();
-      startCountdown(intervalMs);
-    }
-
-    function loadSettings() {
-      try {
-        const raw = localStorage.getItem(SETTINGS_KEY);
-        if (!raw) return;
-        const s = JSON.parse(raw);
-        if (typeof s.intervalMinutes === "number" && s.intervalMinutes > 0) {
-          intervalInput.value = s.intervalMinutes;
-        }
-        if (typeof s.volumePct === "number" && s.volumePct >= 0 && s.volumePct <= 100) {
-          volumeInput.value = s.volumePct;
-          volume = s.volumePct / 100;
-          volumeValue.textContent = s.volumePct + "%";
-        }
-        if (typeof s.vibrateOn === "boolean") {
-          vibrateToggle.checked = s.vibrateOn;
-        }
-      } catch (e) {
-        // ignore
+      function updateRunningStatus(intervalMs) {
+        const minutes = (intervalMs / 60000).toFixed(2).replace(/\.00$/, "");
+        statusEl.textContent =
+          "Running: beep + flash" +
+          (vibrateToggle.checked && supportsVibration ? " + vibration" : "") +
+          " every " +
+          minutes +
+          " minute(s). Keep this tab open and sound on.";
       }
-    }
 
-    function saveSettings() {
-      const minutes = parseFloat(intervalInput.value);
-      const volumePct = parseInt(volumeInput.value, 10);
-      const data = {
-        intervalMinutes: isNaN(minutes) || minutes <= 0 ? 1 : minutes,
-        volumePct: isNaN(volumePct) ? 25 : volumePct,
-        vibrateOn: !!vibrateToggle.checked,
-      };
-      try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    startBtn.addEventListener("click", () => {
-      if (timerId !== null) return; // already running
-
-      ensureAudioContext();
-      alertTick(); // immediate first alert
-
-      const intervalMs = getIntervalMs();
-      timerId = setInterval(alertTick, intervalMs);
-      startCountdown(intervalMs);
-      updateRunningStatus(intervalMs);
-
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-    });
-
-    stopBtn.addEventListener("click", () => {
-      if (timerId === null) return;
-
-      clearInterval(timerId);
-      timerId = null;
-      stopCountdown();
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      statusEl.textContent =
-        "Stopped. Adjust interval/volume/vibration and press “Start alert” when ready.";
-    });
-
-    volumeInput.addEventListener("input", () => {
-      volume = volumeInput.value / 100;
-      volumeValue.textContent = volumeInput.value + "%";
-      saveSettings();
-    });
-
-    intervalInput.addEventListener("change", () => {
-      saveSettings();
-
-      // If already running, immediately apply the new interval
-      if (timerId !== null) {
+      function alertTick() {
+        beep();
+        flash();
+        vibrateOnce();
         const intervalMs = getIntervalMs();
-        clearInterval(timerId);
+        startCountdown(intervalMs);
+      }
+
+      function loadSettings() {
+        try {
+          const raw = localStorage.getItem(SETTINGS_KEY);
+          if (!raw) return;
+          const s = JSON.parse(raw);
+          if (typeof s.intervalMinutes === "number" && s.intervalMinutes > 0) {
+            intervalInput.value = s.intervalMinutes;
+          }
+          if (typeof s.volumePct === "number" && s.volumePct >= 0 && s.volumePct <= 100) {
+            volumeInput.value = s.volumePct;
+            volume = s.volumePct / 100;
+            volumeValue.textContent = s.volumePct + "%";
+          }
+          if (typeof s.vibrateOn === "boolean") {
+            vibrateToggle.checked = s.vibrateOn && supportsVibration;
+          }
+        } catch (e) {
+          // ignore load errors
+        }
+      }
+
+      function saveSettings() {
+        const minutes = sanitizeIntervalMinutes();
+        const volumePct = parseInt(volumeInput.value, 10);
+        const data = {
+          intervalMinutes: minutes === null ? 1 : minutes,
+          volumePct: isNaN(volumePct) ? 25 : volumePct,
+          vibrateOn: !!vibrateToggle.checked,
+        };
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+        } catch (e) {
+          // ignore save errors (e.g., private mode / quota)
+        }
+      }
+
+      function applyIntervalChange() {
+        const minutes = sanitizeIntervalMinutes();
+        const effectiveMinutes = minutes === null ? 1 : minutes;
+
+        intervalInput.value = effectiveMinutes.toString();
+
+        saveSettings();
+        updateActiveChip(effectiveMinutes);
+
+        if (timerId !== null) {
+          const intervalMs = effectiveMinutes * 60000;
+          clearInterval(timerId);
+          timerId = setInterval(alertTick, intervalMs);
+          startCountdown(intervalMs);
+          updateRunningStatus(intervalMs);
+        }
+      }
+
+      // Start / stop handlers
+      startBtn.addEventListener("click", () => {
+        if (timerId !== null) return; // already running
+
+        ensureAudioContext();
+        alertTick(); // immediate first alert
+
+        const intervalMs = getIntervalMs();
         timerId = setInterval(alertTick, intervalMs);
         startCountdown(intervalMs);
         updateRunningStatus(intervalMs);
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      });
+
+      stopBtn.addEventListener("click", () => {
+        if (timerId === null) return;
+
+        clearInterval(timerId);
+        timerId = null;
+        stopCountdown();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        statusEl.textContent =
+          "Stopped. Adjust interval/volume/vibration and press “Start alert” when ready.";
+      });
+
+      // Volume control
+      volumeInput.addEventListener("input", () => {
+        volume = volumeInput.value / 100;
+        volumeValue.textContent = volumeInput.value + "%";
+        saveSettings();
+      });
+
+      // Interval input events
+      intervalInput.addEventListener("change", () => {
+        applyIntervalChange();
+      });
+
+      intervalInput.addEventListener("input", () => {
+        const minutes = sanitizeIntervalMinutes();
+        if (minutes !== null) {
+          updateActiveChip(minutes);
+        } else {
+          updateActiveChip(0); // clears, because no chip will match
+        }
+      });
+
+      // Mobile-only: chips and +/- buttons
+      if (isCoarsePointer) {
+        intervalChips.forEach((chip) => {
+          chip.addEventListener("click", () => {
+            const minutes = parseFloat(chip.dataset.minutes);
+            if (!isNaN(minutes)) {
+              intervalInput.value = minutes.toString();
+              applyIntervalChange();
+            }
+          });
+        });
+
+        if (intervalStepDown) {
+          intervalStepDown.addEventListener("click", () => {
+            let minutes = sanitizeIntervalMinutes();
+            if (minutes === null) minutes = 1;
+            minutes = Math.max(MIN_INTERVAL_MINUTES, minutes - INTERVAL_STEP_MINUTES);
+            intervalInput.value = minutes.toString();
+            applyIntervalChange();
+          });
+        }
+
+        if (intervalStepUp) {
+          intervalStepUp.addEventListener("click", () => {
+            let minutes = sanitizeIntervalMinutes();
+            if (minutes === null) minutes = 1;
+            minutes = Math.min(MAX_INTERVAL_MINUTES, minutes + INTERVAL_STEP_MINUTES);
+            intervalInput.value = minutes.toString();
+            applyIntervalChange();
+          });
+        }
       }
-    });
 
-    vibrateToggle.addEventListener("change", () => {
-      saveSettings();
-      // If running, refresh status text to reflect +vibration / no vibration
-      if (timerId !== null) {
-        const intervalMs = getIntervalMs();
-        updateRunningStatus(intervalMs);
+      // Vibrate toggle
+      vibrateToggle.addEventListener("change", () => {
+        saveSettings();
+        if (timerId !== null) {
+          const intervalMs = getIntervalMs();
+          updateRunningStatus(intervalMs);
+        }
+      });
+
+      // Optional: resume audio on extra interactions (mobile browsers)
+      ["touchstart", "click"].forEach((evt) =>
+        document.addEventListener(
+          evt,
+          () => {
+            if (audioCtx && audioCtx.state === "suspended") {
+              audioCtx.resume();
+            }
+          },
+          { passive: true }
+        )
+      );
+
+      // Initialize from saved settings and sync chips (mobile)
+      loadSettings();
+      const initialMinutes = sanitizeIntervalMinutes();
+      if (initialMinutes !== null) {
+        updateActiveChip(initialMinutes);
       }
-    });
-
-    // Optional: resume audio on extra interactions (mobile browsers)
-    ["touchstart", "click"].forEach((evt) =>
-      document.addEventListener(
-        evt,
-        () => {
-          if (audioCtx && audioCtx.state === "suspended") {
-            audioCtx.resume();
-          }
-        },
-        { passive: true }
-      )
-    );
-
-    // Initialize from saved settings
-    loadSettings();
+    })();
   </script>
 </body>
 </html>
