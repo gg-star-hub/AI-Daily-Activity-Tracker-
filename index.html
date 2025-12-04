@@ -62,7 +62,6 @@
 
     /* Flash animation */
     #flash-img.flash {
-      /* Reduced frequency: max 3 flashes per ~second */
       animation: flicker 0.3s linear 3;
     }
 
@@ -81,7 +80,6 @@
       }
     }
 
-    /* Honor user reduced motion preference: disable flicker */
     @media (prefers-reduced-motion: reduce) {
       #flash-img.flash {
         animation: none !important;
@@ -190,7 +188,6 @@
       text-align: center;
     }
 
-    /* Desktop vs mobile interval layouts */
     .interval-desktop {
       display: block;
     }
@@ -199,7 +196,6 @@
       display: none;
     }
 
-    /* Mobile-only enhancements */
     .chip-row {
       display: flex;
       flex-wrap: wrap;
@@ -247,7 +243,6 @@
       box-shadow: 0 0 8px rgba(0, 255, 160, 0.5);
     }
 
-    /* On coarse pointer (typically mobile/tablet), show mobile layout */
     @media (pointer: coarse) {
       .interval-desktop {
         display: none;
@@ -278,7 +273,7 @@
       <div class="control-row">
         <label for="interval-input-desktop">Alert interval</label>
 
-        <!-- Desktop: original simple control -->
+        <!-- Desktop -->
         <div class="interval-desktop">
           <div class="control-inline">
             <input
@@ -293,7 +288,7 @@
           </div>
         </div>
 
-        <!-- Mobile: chips + +/- stepper -->
+        <!-- Mobile -->
         <div class="interval-mobile">
           <div class="chip-row" aria-label="Quick interval presets">
             <button class="chip" type="button" data-minutes="0.5">0.5 min</button>
@@ -356,8 +351,8 @@
 
       <!-- Start / Stop -->
       <div class="control-row buttons-row">
-        <button id="start-btn">Start alert</button>
-        <button id="stop-btn" disabled>Stop</button>
+        <button id="start-btn" type="button">Start alert</button>
+        <button id="stop-btn" type="button" disabled>Stop</button>
       </div>
     </div>
 
@@ -369,7 +364,7 @@
     >
       Set your interval and tap “Start alert” once to allow sound. You’ll get a 440 Hz beep + flash on each interval.
     </p>
-    <p id="countdown"></p>
+    <p id="countdown" aria-live="polite"></p>
   </div>
 
   <script>
@@ -378,11 +373,14 @@
 
       const BEEP_DURATION = 0.5;      // seconds
       const FLASH_DURATION = 1000;    // ms
-      const SETTINGS_KEY = "beep_flash_settings_v1";
 
       const MIN_INTERVAL_MINUTES = 0.1;
-      const INTERVAL_STEP_MINUTES = 0.1;
       const MAX_INTERVAL_MINUTES = 999;
+      const INTERVAL_STEP_MINUTES = 0.1;
+      const DEFAULT_INTERVAL_MINUTES = 1;
+      const DEFAULT_VOLUME_PCT = 25;
+
+      const SETTINGS_KEY = "beep_flash_settings_v1";
 
       const isCoarsePointer =
         (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
@@ -397,9 +395,9 @@
       const vibrateToggle = document.getElementById("vibrate-toggle");
       const countdownEl = document.getElementById("countdown");
 
-      const intervalInput = document.getElementById(
-        isCoarsePointer ? "interval-input-mobile" : "interval-input-desktop"
-      );
+      const intervalInputDesktop = document.getElementById("interval-input-desktop");
+      const intervalInputMobile = document.getElementById("interval-input-mobile");
+      const intervalInput = isCoarsePointer ? intervalInputMobile : intervalInputDesktop;
 
       const intervalStepDown = isCoarsePointer
         ? document.getElementById("interval-step-down")
@@ -415,6 +413,8 @@
       const supportsVibration = !!navigator.vibrate;
 
       let audioCtx = null;
+      let warnedNoAudio = false;
+
       let timerId = null;
       let volume = volumeInput.value / 100;
 
@@ -422,7 +422,6 @@
       let rafId = null;
       let lastCountdownSeconds = null;
 
-      // If vibration isn’t supported, disable the toggle and explain
       if (!supportsVibration && vibrateToggle) {
         vibrateToggle.disabled = true;
         if (vibrateDescription) {
@@ -430,10 +429,19 @@
         }
       }
 
+      function setIntervalInputs(minutes) {
+        const value = minutes.toString();
+        if (intervalInputDesktop) intervalInputDesktop.value = value;
+        if (intervalInputMobile) intervalInputMobile.value = value;
+      }
+
       function ensureAudioContext() {
         if (!("AudioContext" in window || "webkitAudioContext" in window)) {
-          statusEl.textContent =
-            "This browser does not support the Web Audio API. Visual flash and vibration will work, but not the beep.";
+          if (!warnedNoAudio) {
+            warnedNoAudio = true;
+            statusEl.textContent =
+              "This browser does not support the Web Audio API. Visual flash and vibration will work, but not the beep.";
+          }
           return;
         }
         if (!audioCtx) {
@@ -444,6 +452,7 @@
       }
 
       function sanitizeIntervalMinutes() {
+        if (!intervalInput) return null;
         let raw = (intervalInput.value || "").toString().trim().replace(",", ".");
         let minutes = parseFloat(raw);
         if (isNaN(minutes) || minutes <= 0) return null;
@@ -451,10 +460,13 @@
         return minutes;
       }
 
-      function getIntervalMs() {
+      function getEffectiveMinutes() {
         const minutes = sanitizeIntervalMinutes();
-        const effectiveMinutes = minutes === null ? 1 : minutes;
-        return effectiveMinutes * 60000;
+        return minutes === null ? DEFAULT_INTERVAL_MINUTES : minutes;
+      }
+
+      function getIntervalMs() {
+        return getEffectiveMinutes() * 60000;
       }
 
       function updateActiveChip(minutes) {
@@ -472,6 +484,8 @@
       }
 
       function beep() {
+        if (volume <= 0) return; // no-op when muted
+
         ensureAudioContext();
         if (!audioCtx) return;
 
@@ -479,8 +493,8 @@
         const gain = audioCtx.createGain();
 
         osc.type = "sine";
-        osc.frequency.value = 440;   // 440 Hz = concert A
-        gain.gain.value = volume;    // 0.0–1.0
+        osc.frequency.value = 440;
+        gain.gain.value = volume;
 
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -497,7 +511,11 @@
       function vibrateOnce() {
         if (!supportsVibration) return;
         if (!vibrateToggle.checked) return;
-        navigator.vibrate([160, 80, 160]); // vibrate – pause – vibrate
+        try {
+          navigator.vibrate([160, 80, 160]);
+        } catch (_) {
+          /* ignore */
+        }
       }
 
       function updateCountdown() {
@@ -541,6 +559,13 @@
           " minute(s). Keep this tab open and sound on.";
       }
 
+      function scheduleLoop(intervalMs) {
+        if (timerId !== null) clearInterval(timerId);
+        timerId = setInterval(alertTick, intervalMs);
+        startCountdown(intervalMs);
+        updateRunningStatus(intervalMs);
+      }
+
       function alertTick() {
         beep();
         flash();
@@ -555,9 +580,13 @@
           if (!raw) return;
           const s = JSON.parse(raw);
           if (typeof s.intervalMinutes === "number" && s.intervalMinutes > 0) {
-            intervalInput.value = s.intervalMinutes;
+            setIntervalInputs(s.intervalMinutes);
           }
-          if (typeof s.volumePct === "number" && s.volumePct >= 0 && s.volumePct <= 100) {
+          if (
+            typeof s.volumePct === "number" &&
+            s.volumePct >= 0 &&
+            s.volumePct <= 100
+          ) {
             volumeInput.value = s.volumePct;
             volume = s.volumePct / 100;
             volumeValue.textContent = s.volumePct + "%";
@@ -566,7 +595,7 @@
             vibrateToggle.checked = s.vibrateOn && supportsVibration;
           }
         } catch (e) {
-          // ignore load errors
+          /* ignore */
         }
       }
 
@@ -574,46 +603,39 @@
         const minutes = sanitizeIntervalMinutes();
         const volumePct = parseInt(volumeInput.value, 10);
         const data = {
-          intervalMinutes: minutes === null ? 1 : minutes,
-          volumePct: isNaN(volumePct) ? 25 : volumePct,
+          intervalMinutes: minutes === null ? DEFAULT_INTERVAL_MINUTES : minutes,
+          volumePct: isNaN(volumePct) ? DEFAULT_VOLUME_PCT : volumePct,
           vibrateOn: !!vibrateToggle.checked,
         };
         try {
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
         } catch (e) {
-          // ignore save errors (e.g., private mode / quota)
+          /* ignore */
         }
       }
 
       function applyIntervalChange() {
-        const minutes = sanitizeIntervalMinutes();
-        const effectiveMinutes = minutes === null ? 1 : minutes;
-
-        intervalInput.value = effectiveMinutes.toString();
-
+        const effectiveMinutes = getEffectiveMinutes();
+        setIntervalInputs(effectiveMinutes);
         saveSettings();
         updateActiveChip(effectiveMinutes);
 
+        // Live-apply changes while running
         if (timerId !== null) {
           const intervalMs = effectiveMinutes * 60000;
-          clearInterval(timerId);
-          timerId = setInterval(alertTick, intervalMs);
-          startCountdown(intervalMs);
-          updateRunningStatus(intervalMs);
+          scheduleLoop(intervalMs);
         }
       }
 
-      // Start / stop handlers
+      // Start / stop
       startBtn.addEventListener("click", () => {
-        if (timerId !== null) return; // already running
+        if (timerId !== null) return;
 
         ensureAudioContext();
         alertTick(); // immediate first alert
 
         const intervalMs = getIntervalMs();
-        timerId = setInterval(alertTick, intervalMs);
-        startCountdown(intervalMs);
-        updateRunningStatus(intervalMs);
+        scheduleLoop(intervalMs);
 
         startBtn.disabled = true;
         stopBtn.disabled = false;
@@ -631,26 +653,28 @@
           "Stopped. Adjust interval/volume/vibration and press “Start alert” when ready.";
       });
 
-      // Volume control
+      // Volume
       volumeInput.addEventListener("input", () => {
         volume = volumeInput.value / 100;
         volumeValue.textContent = volumeInput.value + "%";
         saveSettings();
       });
 
-      // Interval input events
-      intervalInput.addEventListener("change", () => {
-        applyIntervalChange();
-      });
+      // Interval input
+      if (intervalInput) {
+        intervalInput.addEventListener("change", () => {
+          applyIntervalChange();
+        });
 
-      intervalInput.addEventListener("input", () => {
-        const minutes = sanitizeIntervalMinutes();
-        if (minutes !== null) {
-          updateActiveChip(minutes);
-        } else {
-          updateActiveChip(0); // clears, because no chip will match
-        }
-      });
+        intervalInput.addEventListener("input", () => {
+          const minutes = sanitizeIntervalMinutes();
+          if (minutes !== null) {
+            updateActiveChip(minutes);
+          } else {
+            updateActiveChip(0);
+          }
+        });
+      }
 
       // Mobile-only: chips and +/- buttons
       if (isCoarsePointer) {
@@ -658,7 +682,7 @@
           chip.addEventListener("click", () => {
             const minutes = parseFloat(chip.dataset.minutes);
             if (!isNaN(minutes)) {
-              intervalInput.value = minutes.toString();
+              setIntervalInputs(minutes);
               applyIntervalChange();
             }
           });
@@ -667,9 +691,9 @@
         if (intervalStepDown) {
           intervalStepDown.addEventListener("click", () => {
             let minutes = sanitizeIntervalMinutes();
-            if (minutes === null) minutes = 1;
+            if (minutes === null) minutes = DEFAULT_INTERVAL_MINUTES;
             minutes = Math.max(MIN_INTERVAL_MINUTES, minutes - INTERVAL_STEP_MINUTES);
-            intervalInput.value = minutes.toString();
+            setIntervalInputs(minutes);
             applyIntervalChange();
           });
         }
@@ -677,9 +701,9 @@
         if (intervalStepUp) {
           intervalStepUp.addEventListener("click", () => {
             let minutes = sanitizeIntervalMinutes();
-            if (minutes === null) minutes = 1;
+            if (minutes === null) minutes = DEFAULT_INTERVAL_MINUTES;
             minutes = Math.min(MAX_INTERVAL_MINUTES, minutes + INTERVAL_STEP_MINUTES);
-            intervalInput.value = minutes.toString();
+            setIntervalInputs(minutes);
             applyIntervalChange();
           });
         }
@@ -694,7 +718,7 @@
         }
       });
 
-      // Optional: resume audio on extra interactions (mobile browsers)
+      // Resume audio on interaction (mobile)
       ["touchstart", "click"].forEach((evt) =>
         document.addEventListener(
           evt,
@@ -707,12 +731,13 @@
         )
       );
 
-      // Initialize from saved settings and sync chips (mobile)
+      // Init
       loadSettings();
       const initialMinutes = sanitizeIntervalMinutes();
       if (initialMinutes !== null) {
         updateActiveChip(initialMinutes);
       }
+
     })();
   </script>
 </body>
