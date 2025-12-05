@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Beep & Flash Reminder</title>
+  <title>Beep & Flash Reminder – Random Reward</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <style>
     :root {
@@ -154,13 +154,13 @@
       width: 100%;
     }
 
-    .volume-row {
+    .slider-row {
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    #volume-value {
+    .slider-value {
       min-width: 42px;
       text-align: right;
       opacity: 0.85;
@@ -269,9 +269,9 @@
     <div id="flash-img">ALERT</div>
 
     <div id="controls">
-      <!-- Alert interval -->
+      <!-- Average interval -->
       <div class="control-row">
-        <label for="interval-input-desktop">Alert interval</label>
+        <label for="interval-input-desktop">Average alert interval</label>
 
         <!-- Desktop -->
         <div class="interval-desktop">
@@ -334,9 +334,27 @@
       <!-- Volume -->
       <div class="control-row">
         <label for="volume-input">Beep volume</label>
-        <div class="volume-row">
+        <div class="slider-row">
           <input type="range" id="volume-input" min="0" max="100" value="25" />
-          <span id="volume-value">25%</span>
+          <span id="volume-value" class="slider-value">25%</span>
+        </div>
+      </div>
+
+      <!-- Reward chance -->
+      <div class="control-row">
+        <label for="reward-input">Reward beep chance</label>
+        <div class="slider-row">
+          <input type="range" id="reward-input" min="0" max="100" value="33" />
+          <span id="reward-value" class="slider-value">33%</span>
+        </div>
+      </div>
+
+      <!-- Interval randomness -->
+      <div class="control-row">
+        <label for="randomness-input">Interval randomness</label>
+        <div class="slider-row">
+          <input type="range" id="randomness-input" min="0" max="100" value="50" />
+          <span id="randomness-value" class="slider-value">50%</span>
         </div>
       </div>
 
@@ -351,7 +369,7 @@
 
       <!-- Start / Stop -->
       <div class="control-row buttons-row">
-        <button id="start-btn" type="button">Start alert</button>
+        <button id="start-btn" type="button">Start alerts</button>
         <button id="stop-btn" type="button" disabled>Stop</button>
       </div>
     </div>
@@ -362,7 +380,8 @@
       aria-live="polite"
       aria-atomic="true"
     >
-      Set your interval and tap “Start alert” once to allow sound. You’ll get a 440 Hz beep + flash on each interval.
+      Set an average interval and tap “Start alerts”. Beeps occur at random times around that interval,
+      with occasional higher-pitch reward beeps.
     </p>
     <p id="countdown" aria-live="polite"></p>
   </div>
@@ -379,8 +398,13 @@
       const INTERVAL_STEP_MINUTES = 0.1;
       const DEFAULT_INTERVAL_MINUTES = 1;
       const DEFAULT_VOLUME_PCT = 25;
+      const DEFAULT_REWARD_CHANCE_PCT = 33; // ≈ 1 in 3
+      const DEFAULT_RANDOMNESS_PCT = 50;
 
-      const SETTINGS_KEY = "beep_flash_settings_v1";
+      const BASE_FREQUENCY = 440;     // Hz
+      const REWARD_FREQUENCY = 880;   // Hz
+
+      const SETTINGS_KEY = "beep_flash_random_reward_v1";
 
       const isCoarsePointer =
         (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
@@ -392,6 +416,10 @@
       const statusEl = document.getElementById("status");
       const volumeInput = document.getElementById("volume-input");
       const volumeValue = document.getElementById("volume-value");
+      const rewardInput = document.getElementById("reward-input");
+      const rewardValue = document.getElementById("reward-value");
+      const randomnessInput = document.getElementById("randomness-input");
+      const randomnessValue = document.getElementById("randomness-value");
       const vibrateToggle = document.getElementById("vibrate-toggle");
       const countdownEl = document.getElementById("countdown");
 
@@ -415,12 +443,19 @@
       let audioCtx = null;
       let warnedNoAudio = false;
 
-      let timerId = null;
+      let timeoutId = null;
+      let running = false;
+
       let volume = volumeInput.value / 100;
+      let rewardChance = rewardInput.value / 100;
+      let randomnessFraction = randomnessInput.value / 100;
 
       let nextTickAt = null;
       let rafId = null;
       let lastCountdownSeconds = null;
+
+      // Countdown is always visible
+      countdownEl.textContent = "No alert scheduled.";
 
       if (!supportsVibration && vibrateToggle) {
         vibrateToggle.disabled = true;
@@ -465,8 +500,23 @@
         return minutes === null ? DEFAULT_INTERVAL_MINUTES : minutes;
       }
 
-      function getIntervalMs() {
-        return getEffectiveMinutes() * 60000;
+      function computeRandomIntervalMs() {
+        const meanMinutes = getEffectiveMinutes();
+        const meanMs = meanMinutes * 60000;
+
+        if (randomnessFraction <= 0) {
+          return meanMs;
+        }
+
+        const delta = meanMs * randomnessFraction; // +/- fraction of mean
+        const offset = (Math.random() * 2 - 1) * delta;
+        let candidate = meanMs + offset;
+
+        const minMs = MIN_INTERVAL_MINUTES * 60000;
+        const maxMs = MAX_INTERVAL_MINUTES * 60000;
+        candidate = Math.max(minMs, Math.min(maxMs, candidate));
+
+        return candidate;
       }
 
       function updateActiveChip(minutes) {
@@ -483,8 +533,8 @@
         }
       }
 
-      function beep() {
-        if (volume <= 0) return; // no-op when muted
+      function playTone(frequency) {
+        if (volume <= 0) return;
 
         ensureAudioContext();
         if (!audioCtx) return;
@@ -493,7 +543,7 @@
         const gain = audioCtx.createGain();
 
         osc.type = "sine";
-        osc.frequency.value = 440;
+        osc.frequency.value = frequency;
         gain.gain.value = volume;
 
         osc.connect(gain);
@@ -501,6 +551,19 @@
 
         osc.start();
         osc.stop(audioCtx.currentTime + BEEP_DURATION);
+      }
+
+      function beepWithReward() {
+        const isReward = Math.random() < rewardChance;
+        const freq = isReward ? REWARD_FREQUENCY : BASE_FREQUENCY;
+        playTone(freq);
+
+        if (isReward) {
+          statusEl.textContent =
+            "Reward beep! High pitch at " +
+            REWARD_FREQUENCY +
+            " Hz. Random schedule still running.";
+        }
       }
 
       function flash() {
@@ -519,11 +582,14 @@
       }
 
       function updateCountdown() {
-        if (!nextTickAt || timerId === null) {
-          countdownEl.textContent = "";
+        if (!running || !nextTickAt) {
+          countdownEl.textContent = running
+            ? "No alert scheduled."
+            : "No alert scheduled.";
           lastCountdownSeconds = null;
           return;
         }
+
         const now = performance.now();
         const msLeft = Math.max(0, nextTickAt - now);
         const seconds = Math.round(msLeft / 1000);
@@ -545,33 +611,45 @@
         nextTickAt = null;
         if (rafId) cancelAnimationFrame(rafId);
         rafId = null;
-        countdownEl.textContent = "";
+        countdownEl.textContent = "No alert scheduled.";
         lastCountdownSeconds = null;
       }
 
-      function updateRunningStatus(intervalMs) {
-        const minutes = (intervalMs / 60000).toFixed(2).replace(/\.00$/, "");
+      function updateRunningStatus() {
+        const avgMinutes = getEffectiveMinutes();
+        const randomnessPct = Math.round(randomnessFraction * 100);
+        const rewardPct = Math.round(rewardChance * 100);
         statusEl.textContent =
-          "Running: beep + flash" +
-          (vibrateToggle.checked && supportsVibration ? " + vibration" : "") +
-          " every " +
-          minutes +
-          " minute(s). Keep this tab open and sound on.";
+          "Running: random beep schedule around " +
+          avgMinutes.toFixed(2).replace(/\.00$/, "") +
+          " minute(s), " +
+          randomnessPct +
+          "% variability, reward beeps at " +
+          rewardPct +
+          "% chance. Keep this tab open and sound on.";
       }
 
-      function scheduleLoop(intervalMs) {
-        if (timerId !== null) clearInterval(timerId);
-        timerId = setInterval(alertTick, intervalMs);
+      function scheduleNextBeepFromNow() {
+        if (!running) return;
+        if (timeoutId !== null) clearTimeout(timeoutId);
+
+        const intervalMs = computeRandomIntervalMs();
         startCountdown(intervalMs);
-        updateRunningStatus(intervalMs);
+        updateRunningStatus();
+
+        timeoutId = setTimeout(alertTick, intervalMs);
+      }
+
+      function doAlertOnce() {
+        beepWithReward();
+        flash();
+        vibrateOnce();
       }
 
       function alertTick() {
-        beep();
-        flash();
-        vibrateOnce();
-        const intervalMs = getIntervalMs();
-        startCountdown(intervalMs);
+        if (!running) return;
+        doAlertOnce();
+        scheduleNextBeepFromNow();
       }
 
       function loadSettings() {
@@ -591,6 +669,24 @@
             volume = s.volumePct / 100;
             volumeValue.textContent = s.volumePct + "%";
           }
+          if (
+            typeof s.rewardChancePct === "number" &&
+            s.rewardChancePct >= 0 &&
+            s.rewardChancePct <= 100
+          ) {
+            rewardInput.value = s.rewardChancePct;
+            rewardChance = s.rewardChancePct / 100;
+            rewardValue.textContent = s.rewardChancePct + "%";
+          }
+          if (
+            typeof s.randomnessPct === "number" &&
+            s.randomnessPct >= 0 &&
+            s.randomnessPct <= 100
+          ) {
+            randomnessInput.value = s.randomnessPct;
+            randomnessFraction = s.randomnessPct / 100;
+            randomnessValue.textContent = s.randomnessPct + "%";
+          }
           if (typeof s.vibrateOn === "boolean") {
             vibrateToggle.checked = s.vibrateOn && supportsVibration;
           }
@@ -602,9 +698,13 @@
       function saveSettings() {
         const minutes = sanitizeIntervalMinutes();
         const volumePct = parseInt(volumeInput.value, 10);
+        const rewardPct = parseInt(rewardInput.value, 10);
+        const randomPct = parseInt(randomnessInput.value, 10);
         const data = {
           intervalMinutes: minutes === null ? DEFAULT_INTERVAL_MINUTES : minutes,
           volumePct: isNaN(volumePct) ? DEFAULT_VOLUME_PCT : volumePct,
+          rewardChancePct: isNaN(rewardPct) ? DEFAULT_REWARD_CHANCE_PCT : rewardPct,
+          randomnessPct: isNaN(randomPct) ? DEFAULT_RANDOMNESS_PCT : randomPct,
           vibrateOn: !!vibrateToggle.checked,
         };
         try {
@@ -620,44 +720,71 @@
         saveSettings();
         updateActiveChip(effectiveMinutes);
 
-        // Live-apply changes while running
-        if (timerId !== null) {
-          const intervalMs = effectiveMinutes * 60000;
-          scheduleLoop(intervalMs);
+        if (running) {
+          scheduleNextBeepFromNow();
         }
       }
 
       // Start / stop
       startBtn.addEventListener("click", () => {
-        if (timerId !== null) return;
+        if (running) return;
 
         ensureAudioContext();
-        alertTick(); // immediate first alert
+        running = true;
 
-        const intervalMs = getIntervalMs();
-        scheduleLoop(intervalMs);
+        // Immediate first alert
+        doAlertOnce();
+        scheduleNextBeepFromNow();
 
         startBtn.disabled = true;
         stopBtn.disabled = false;
       });
 
       stopBtn.addEventListener("click", () => {
-        if (timerId === null) return;
+        if (!running) return;
 
-        clearInterval(timerId);
-        timerId = null;
+        running = false;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         stopCountdown();
         startBtn.disabled = false;
         stopBtn.disabled = true;
         statusEl.textContent =
-          "Stopped. Adjust interval/volume/vibration and press “Start alert” when ready.";
+          "Stopped. Adjust interval, randomness, volume, reward chance, or vibration and press “Start alerts” when ready.";
       });
 
       // Volume
       volumeInput.addEventListener("input", () => {
-        volume = volumeInput.value / 100;
-        volumeValue.textContent = volumeInput.value + "%";
+        const pct = parseInt(volumeInput.value, 10);
+        const clamped = isNaN(pct) ? DEFAULT_VOLUME_PCT : Math.min(100, Math.max(0, pct));
+        volumeInput.value = clamped;
+        volume = clamped / 100;
+        volumeValue.textContent = clamped + "%";
         saveSettings();
+      });
+
+      // Reward chance
+      rewardInput.addEventListener("input", () => {
+        const pct = parseInt(rewardInput.value, 10);
+        const clamped = isNaN(pct) ? DEFAULT_REWARD_CHANCE_PCT : Math.min(100, Math.max(0, pct));
+        rewardInput.value = clamped;
+        rewardChance = clamped / 100;
+        rewardValue.textContent = clamped + "%";
+        saveSettings();
+        if (running) updateRunningStatus();
+      });
+
+      // Randomness
+      randomnessInput.addEventListener("input", () => {
+        const pct = parseInt(randomnessInput.value, 10);
+        const clamped = isNaN(pct) ? DEFAULT_RANDOMNESS_PCT : Math.min(100, Math.max(0, pct));
+        randomnessInput.value = clamped;
+        randomnessFraction = clamped / 100;
+        randomnessValue.textContent = clamped + "%";
+        saveSettings();
+        if (running) updateRunningStatus();
       });
 
       // Interval input
@@ -712,9 +839,8 @@
       // Vibrate toggle
       vibrateToggle.addEventListener("change", () => {
         saveSettings();
-        if (timerId !== null) {
-          const intervalMs = getIntervalMs();
-          updateRunningStatus(intervalMs);
+        if (running) {
+          updateRunningStatus();
         }
       });
 
@@ -737,7 +863,6 @@
       if (initialMinutes !== null) {
         updateActiveChip(initialMinutes);
       }
-
     })();
   </script>
 </body>
