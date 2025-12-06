@@ -243,4 +243,501 @@
     input {
       margin-top: 3px;
       border-radius: 10px;
-      border: 1px
+      border: 1px solid #d1bfa8;
+      padding: 8px 10px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #fbf3e7;
+      transition: border-color 130ms ease-out, box-shadow 130ms ease-out,
+        background-color 130ms ease-out;
+    }
+
+    input::placeholder {
+      color: #a08f7b;
+    }
+
+    input:focus-visible {
+      outline: none;
+      border-color: rgba(139, 90, 43, 0.9);
+      box-shadow: 0 0 0 1px rgba(139, 90, 43, 0.4);
+      background: #fff8ee;
+    }
+
+    button.save {
+      margin-top: 2px;
+      border: none;
+      border-radius: var(--radius-pill);
+      padding: 10px 12px;
+      width: 100%;
+      background: linear-gradient(110deg, #8b5a2b, #a16207);
+      color: #fdf2e9;
+      font-weight: 650;
+      font-size: 0.86rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 14px 30px rgba(120, 72, 32, 0.5);
+      transition: transform 160ms ease-out, box-shadow 160ms ease-out,
+        filter 160ms ease-out;
+      min-height: 40px;
+    }
+
+    button.save:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+      box-shadow: 0 18px 40px rgba(120, 72, 32, 0.65);
+    }
+
+    button.save:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: 0 8px 18px rgba(87, 56, 30, 0.7);
+    }
+
+    .cards-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .mini-card {
+      border-radius: 14px;
+      border: 1px solid #d7c4ac;
+      background: linear-gradient(135deg, #fbf3e7, #f3e0c7);
+      padding: 8px 10px;
+      box-shadow: 0 8px 18px rgba(107, 83, 54, 0.22);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .mini-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .mini-value {
+      font-size: 1rem;
+      font-weight: 650;
+    }
+
+    .mini-sub {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .mini-income .mini-value { color: var(--accent-green); }
+    .mini-expense .mini-value { color: var(--accent-red); }
+
+    .mini-net .mini-value {
+      color: var(--text);
+    }
+
+    .mini-net.negative .mini-value {
+      color: var(--accent-red);
+    }
+
+    .table-shell {
+      border-radius: 16px;
+      border: 1px solid #d3c0a7;
+      background: linear-gradient(135deg, #fbf3e7, #f5e5cf);
+      box-shadow: 0 10px 25px rgba(92, 68, 46, 0.28);
+      overflow: hidden;
+    }
+
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 116, 80, 0.8) transparent;
+    }
+
+    .table-scroll::-webkit-scrollbar { height: 6px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+    .table-scroll::-webkit-scrollbar-thumb {
+      background: rgba(148, 116, 80, 0.85);
+      border-radius: 999px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      min-width: 420px;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #e0cdb5;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      text-transform: uppercase;
+      color: var(--muted);
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      background: #f1e0c8;
+    }
+
+    tbody tr:nth-child(odd) {
+      background: #fdf6ec;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f7ebdd;
+    }
+
+    .amount-in { color: var(--accent-green); font-weight: 560; }
+    .amount-out { color: var(--accent-red); font-weight: 560; }
+
+    .delete-btn {
+      border-radius: var(--radius-pill);
+      border: 1px solid #ddc9b0;
+      background: #fdf6ec;
+      color: var(--muted);
+      padding: 4px 9px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      min-width: 32px;
+      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition-fast), border-color var(--transition-fast),
+        transform var(--transition-fast), color var(--transition-fast);
+    }
+
+    .delete-btn:hover {
+      background: #fee2e2;
+      border-color: #fecaca;
+      color: #b91c1c;
+      transform: translateY(-0.5px);
+    }
+
+    .delete-btn:active {
+      transform: translateY(1px) scale(0.97);
+    }
+
+    .empty-row td {
+      text-align: center;
+      color: var(--muted);
+      padding: 14px 10px;
+      white-space: normal;
+    }
+
+    @media (max-width: 640px) {
+      #app {
+        border-radius: 18px;
+        padding: 14px 12px 16px;
+        box-shadow: 0 8px 24px rgba(56, 38, 20, 0.25);
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .header-right {
+        align-items: flex-start;
+      }
+
+      .cards-row {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        min-width: 360px;
+      }
+    }
+
+    @media (min-width: 900px) {
+      form {
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) minmax(0, 0.8fr);
+        align-items: end;
+      }
+
+      /* Income / Expense toggle above the label row */
+      .type-toggle { grid-column: 1 / 4; }
+      label[for="labelInput"] { grid-column: 1 / 3; }
+      label[for="amountInput"] { grid-column: 3 / 4; }
+      button.save {
+        grid-column: 1 / 4;
+        max-width: 280px;
+        justify-self: flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="title-block">
+        <h1>Monthly Budget Cards</h1>
+        <div class="subtitle">Warm, wooden overview of this month’s income and expenses.</div>
+      </div>
+      <div class="header-right">
+        <div class="period-pill" id="periodPill">
+          <span>Current month:</span>
+          <strong id="periodLabel">—</strong>
+        </div>
+        <div class="currency-pill">
+          <span>Currency</span>
+          <select id="currencySelect" class="currency-select" aria-label="Currency selector">
+            <option value="EUR">€ · EUR</option>
+            <option value="USD">$ · USD</option>
+            <option value="JPY">¥ · JPY</option>
+            <option value="GBP">£ · GBP</option>
+            <option value="CNY">¥ · CNY</option>
+            <option value="AUD">A$ · AUD</option>
+            <option value="CAD">C$ · CAD</option>
+            <option value="CHF">Fr · CHF</option>
+            <option value="HKD">HK$ · HKD</option>
+            <option value="SGD">S$ · SGD</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">New entry</div>
+          <div class="badge-soft">Stored locally</div>
+        </div>
+
+        <form id="entryForm">
+          <div class="type-toggle" id="typeToggle">
+            <button type="button" class="type-btn active income" data-type="income">Income</button>
+            <button type="button" class="type-btn expense" data-type="expense">Expense</button>
+          </div>
+          <label for="labelInput">Label
+            <input id="labelInput" type="text" placeholder="Salary, Rent, Groceries, Note" />
+          </label>
+          <label for="amountInput">Amount (<span id="currencyLabel">€</span>)
+            <input id="amountInput" type="number" step="1" min="1" required />
+          </label>
+          <button type="submit" class="save">Save Entry</button>
+        </form>
+
+        <div class="cards-row">
+          <div class="mini-card mini-income">
+            <div class="mini-label">Income</div>
+            <div class="mini-value" id="totalIncome">€0.00</div>
+            <div class="mini-sub" id="incomeMeta">0 income entries</div>
+          </div>
+          <div class="mini-card mini-expense">
+            <div class="mini-label">Expenses</div>
+            <div class="mini-value" id="totalExpenses">€0.00</div>
+            <div class="mini-sub" id="expenseMeta">0 expense entries</div>
+          </div>
+          <div class="mini-card mini-net" id="netCard">
+            <div class="mini-label">Net</div>
+            <div class="mini-value" id="netBalance">€0.00</div>
+            <div class="mini-sub" id="netMeta">Income − Expenses</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">This month’s entries</div>
+          <div class="badge-soft" id="entryCountLabel">0 entries</div>
+        </div>
+        <div class="table-shell">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr class="empty-row">
+                  <td colspan="4">No entries yet. Add your first income or expense for this month.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = 'monthly_finance_v1';
+      const now = new Date();
+      const year = now.getFullYear();
+      const monthIndex = now.getMonth();
+      const periodKey = year + '-' + String(monthIndex + 1).padStart(2, '0');
+
+      const CURRENCIES = {
+        EUR: { symbol: '€', label: 'EUR' },
+        USD: { symbol: '$', label: 'USD' },
+        JPY: { symbol: '¥', label: 'JPY' },
+        GBP: { symbol: '£', label: 'GBP' },
+        CNY: { symbol: '¥', label: 'CNY' },
+        AUD: { symbol: 'A$', label: 'AUD' },
+        CAD: { symbol: 'C$', label: 'CAD' },
+        CHF: { symbol: 'Fr', label: 'CHF' },
+        HKD: { symbol: 'HK$', label: 'HKD' },
+        SGD: { symbol: 'S$', label: 'SGD' }
+      };
+
+      const DEFAULT_CURRENCY = 'EUR';
+
+      const periodLabel = document.getElementById('periodLabel');
+      periodLabel.textContent = now.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+
+      let raw = {};
+      try {
+        raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      } catch (_) {
+        raw = {};
+      }
+
+      if (raw.month !== periodKey || !Array.isArray(raw.entries)) {
+        raw = { month: periodKey, currency: raw.currency || DEFAULT_CURRENCY, entries: [] };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(raw));
+      }
+
+      let currentCurrency = CURRENCIES[raw.currency]?.label ? raw.currency : DEFAULT_CURRENCY;
+
+      let entries = raw.entries
+        .filter(e => e && typeof e.amount === 'number')
+        .map(e => ({
+          id: e.id || (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+          type: e.type === 'expense' ? 'expense' : 'income',
+          label: (e.label || [e.category, e.description].filter(Boolean).join(' – ') || '').trim(),
+          amount: Number(e.amount) || 0
+        }))
+        .filter(e => e.amount > 0);
+
+      const labelInput = document.getElementById('labelInput');
+      const amountInput = document.getElementById('amountInput');
+      const tableBody = document.getElementById('tableBody');
+      const totalIncomeEl = document.getElementById('totalIncome');
+      const totalExpensesEl = document.getElementById('totalExpenses');
+      const netBalanceEl = document.getElementById('netBalance');
+      const incomeMetaEl = document.getElementById('incomeMeta');
+      const expenseMetaEl = document.getElementById('expenseMeta');
+      const netMetaEl = document.getElementById('netMeta');
+      const netCard = document.getElementById('netCard');
+      const entryCountLabel = document.getElementById('entryCountLabel');
+      const currencySelect = document.getElementById('currencySelect');
+      const currencyLabel = document.getElementById('currencyLabel');
+
+      let currentType = 'income';
+      document.getElementById('typeToggle').addEventListener('click', e => {
+        const btn = e.target.closest('.type-btn');
+        if (!btn) return;
+        currentType = btn.dataset.type;
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('active', b === btn));
+      });
+
+      function save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ month: periodKey, currency: currentCurrency, entries }));
+      }
+
+      function fmt(x) {
+        const c = CURRENCIES[currentCurrency] || CURRENCIES[DEFAULT_CURRENCY];
+        return c.symbol + x.toFixed(2);
+      }
+
+      function updateCurrencyUI() {
+        const c = CURRENCIES[currentCurrency] || CURRENCIES[DEFAULT_CURRENCY];
+        currencyLabel.textContent = c.symbol;
+        currencySelect.value = currentCurrency;
+      }
+
+      function render() {
+        if (!entries.length) {
+          tableBody.innerHTML =
+            '<tr class="empty-row"><td colspan="4">No entries yet. Add your first income or expense for this month.</td></tr>';
+        } else {
+          tableBody.innerHTML = entries.map(e => `
+            <tr>
+              <td>${(e.label || '—').replace(/</g, '&lt;')}</td>
+              <td>${e.type}</td>
+              <td class="${e.type === 'income' ? 'amount-in' : 'amount-out'}">${fmt(e.amount)}</td>
+              <td><button class="delete-btn" type="button" data-id="${e.id}" aria-label="Delete entry">✕</button></td>
+            </tr>
+          `).join('');
+        }
+
+        entryCountLabel.textContent = entries.length === 1 ? '1 entry' : entries.length + ' entries';
+
+        const inc = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+        const exp = entries.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+        const net = inc - exp;
+
+        totalIncomeEl.textContent = fmt(inc);
+        totalExpensesEl.textContent = fmt(exp);
+        netBalanceEl.textContent = fmt(net);
+
+        const incomeCount = entries.filter(e => e.type === 'income').length;
+        const expenseCount = entries.filter(e => e.type === 'expense').length;
+
+        incomeMetaEl.textContent = incomeCount + ' income ' + (incomeCount === 1 ? 'entry' : 'entries');
+        expenseMetaEl.textContent = expenseCount + ' expense ' + (expenseCount === 1 ? 'entry' : 'entries');
+        netMetaEl.textContent = net >= 0 ? 'Net surplus this month' : 'Net deficit this month';
+
+        netCard.classList.toggle('negative', net < 0);
+      }
+
+      document.getElementById('entryForm').addEventListener('submit', e => {
+        e.preventDefault();
+        const rawAmount = (amountInput.value || '').replace(',', '.');
+        const amount = parseFloat(rawAmount);
+        if (!isFinite(amount) || amount <= 0) {
+          alert('Enter a valid amount greater than 0');
+          amountInput.focus();
+          return;
+        }
+        const label = (labelInput.value || '').trim();
+        const entry = {
+          id: (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+          type: currentType === 'expense' ? 'expense' : 'income',
+          label,
+          amount
+        };
+        entries.push(entry);
+        save();
+        render();
+        amountInput.value = '';
+        labelInput.value = '';
+        amountInput.focus();
+      });
+
+      tableBody.addEventListener('click', e => {
+        const btn = e.target.closest('.delete-btn');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        entries = entries.filter(x => x.id !== id);
+        save();
+        render();
+      });
+
+      currencySelect.addEventListener('change', () => {
+        const value = currencySelect.value;
+        if (!CURRENCIES[value]) return;
+        currentCurrency = value;
+        updateCurrencyUI();
+        save();
+        render();
+      });
+
+      updateCurrencyUI();
+      render();
+    })();
+  </script>
+</body>
+</html>
