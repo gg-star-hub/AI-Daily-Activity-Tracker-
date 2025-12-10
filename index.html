@@ -24,19 +24,17 @@
       --shadow-soft: 0 12px 30px rgba(15, 27, 71, 0.18);
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #050816;
-        --bg-alt: #101426;
-        --card: #0f1424;
-        --accent: #4b9dff;
-        --accent-soft: rgba(75, 157, 255, 0.18);
-        --danger: #ff6b8a;
-        --text-main: #f9fafb;
-        --text-muted: #a2a9d0;
-        --border-subtle: rgba(255, 255, 255, 0.08);
-        --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
-      }
+    :root[data-theme="dark"] {
+      --bg: #050816;
+      --bg-alt: #101426;
+      --card: #0f1424;
+      --accent: #4b9dff;
+      --accent-soft: rgba(75, 157, 255, 0.18);
+      --danger: #ff6b8a;
+      --text-main: #f9fafb;
+      --text-muted: #a2a9d0;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
     }
 
     *,
@@ -106,12 +104,10 @@
       white-space: nowrap;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .badge {
-        border-color: rgba(255, 255, 255, 0.3);
-        background: linear-gradient(135deg, rgba(15, 24, 61, 0.9), rgba(75, 107, 255, 0.9));
-        color: #f5f5ff;
-      }
+    [data-theme="dark"] .badge {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: linear-gradient(135deg, rgba(15, 24, 61, 0.9), rgba(75, 107, 255, 0.9));
+      color: #f5f5ff;
     }
 
     .composer {
@@ -122,11 +118,9 @@
       box-shadow: var(--shadow-soft);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .composer {
-        background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.2), rgba(7, 11, 36, 0.98));
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
+    [data-theme="dark"] .composer {
+      background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.2), rgba(7, 11, 36, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
 
     .composer-top {
@@ -164,14 +158,13 @@
       background: #ffffff;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .idea-input {
-        background: rgba(6, 10, 30, 0.98);
-        color: var(--text-main);
-      }
-      .idea-input::placeholder {
-        color: var(--text-muted);
-      }
+    [data-theme="dark"] .idea-input {
+      background: rgba(6, 10, 30, 0.98);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .idea-input::placeholder {
+      color: var(--text-muted);
     }
 
     .composer-bottom {
@@ -209,15 +202,14 @@
       color: var(--text-main);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .tag-input {
-        background: rgba(6, 10, 30, 0.98);
-        border-color: rgba(255, 255, 255, 0.12);
-        color: var(--text-main);
-      }
-      .tag-input::placeholder {
-        color: var(--text-muted);
-      }
+    [data-theme="dark"] .tag-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .tag-input::placeholder {
+      color: var(--text-muted);
     }
 
     .btn-primary {
@@ -276,11 +268,9 @@
       color: var(--accent);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .chip {
-        background: rgba(12, 17, 39, 0.96);
-        border-color: rgba(255, 255, 255, 0.14);
-      }
+    [data-theme="dark"] .chip {
+      background: rgba(12, 17, 39, 0.96);
+      border-color: rgba(255, 255, 255, 0.14);
     }
 
     .search-row {
@@ -305,15 +295,14 @@
       color: var(--text-muted);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .search-input {
-        background: rgba(6, 10, 30, 0.98);
-        border-color: rgba(255, 255, 255, 0.12);
-        color: var(--text-main);
-      }
-      .search-input::placeholder {
-        color: var(--text-muted);
-      }
+    [data-theme="dark"] .search-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .search-input::placeholder {
+      color: var(--text-muted);
     }
 
     .board {
@@ -392,12 +381,10 @@
       border: 1px solid rgba(76, 88, 160, 0.22);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .pill-tag {
-        background: rgba(11, 18, 55, 0.96);
-        color: #c8cff8;
-        border-color: rgba(196, 200, 255, 0.3);
-      }
+    [data-theme="dark"] .pill-tag {
+      background: rgba(11, 18, 55, 0.96);
+      color: #c8cff8;
+      border-color: rgba(196, 200, 255, 0.3);
     }
 
     .meta-right {
@@ -459,11 +446,9 @@
       box-shadow: 0 6px 18px rgba(11, 18, 53, 0.26);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .icon-btn.round {
-        background: rgba(10, 14, 33, 0.98);
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
-      }
+    [data-theme="dark"] .icon-btn.round {
+      background: rgba(10, 14, 33, 0.98);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
     }
 
     .empty {
@@ -473,8 +458,6 @@
       color: var(--text-muted);
       padding: 2rem 1rem;
     }
-
-    
 
     .edit-input {
       border-radius: 12px;
@@ -491,12 +474,10 @@
       color: var(--text-main);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .edit-input {
-        background: rgba(6, 10, 30, 0.98);
-        border-color: rgba(255, 255, 255, 0.12);
-        color: var(--text-main);
-      }
+    [data-theme="dark"] .edit-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
     }
 
     .edit-actions {
@@ -523,12 +504,10 @@
       color: var(--accent);
     }
 
-    @media (prefers-color-scheme: dark) {
-      .btn-small {
-        background: rgba(11, 16, 42, 0.98);
-        border-color: rgba(255, 255, 255, 0.14);
-        color: var(--text-main);
-      }
+    [data-theme="dark"] .btn-small {
+      background: rgba(11, 16, 42, 0.98);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: var(--text-main);
     }
 
     .sr-only {
@@ -557,6 +536,9 @@
         </button>
         <button class="icon-btn round" id="importBtn" title="Import ideas">
           <span>↑</span>
+        </button>
+        <button class="icon-btn round" id="themeToggle" title="Toggle theme">
+          ☀️
         </button>
         <div class="badge">Mobile-first</div>
       </div>
@@ -620,6 +602,7 @@
 
       const STORAGE_KEY = "ideaWhiteboard_v3";
       const ANALYTICS_KEY = "ideaWhiteboard_events_v1";
+      const THEME_KEY = "ideaWhiteboard_theme_v1";
 
       const ideaInput = document.getElementById("ideaInput");
       const tagInput = document.getElementById("tagInput");
@@ -631,6 +614,7 @@
       const searchInput = document.getElementById("searchInput");
       const exportBtn = document.getElementById("exportBtn");
       const importBtn = document.getElementById("importBtn");
+      const themeToggle = document.getElementById("themeToggle");
 
       let ideas = [];
       let filter = "all";
@@ -688,6 +672,158 @@
           "_" +
           Math.random().toString(36).slice(2, 7)
         );
+      }
+
+      function showToast(message) {
+        try {
+          const existing = document.getElementById("ideaToast");
+          if (existing) {
+            existing.remove();
+          }
+          const toast = document.createElement("div");
+          toast.id = "ideaToast";
+          toast.textContent = message;
+          toast.style.position = "fixed";
+          toast.style.bottom = "24px";
+          toast.style.left = "50%";
+          toast.style.transform = "translateX(-50%)";
+          toast.style.padding = "8px 16px";
+          toast.style.borderRadius = "999px";
+          toast.style.fontSize = "0.9rem";
+          toast.style.zIndex = "9999";
+          toast.style.boxShadow = "0 12px 30px rgba(0, 0, 0, 0.35)";
+          toast.style.maxWidth = "90vw";
+          toast.style.textAlign = "center";
+          toast.style.whiteSpace = "nowrap";
+          toast.style.overflow = "hidden";
+          toast.style.textOverflow = "ellipsis";
+          toast.style.opacity = "0";
+          toast.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+          toast.style.backdropFilter = "blur(12px)";
+          toast.style.webkitBackdropFilter = "blur(12px)";
+          const isDark =
+            (document.documentElement.getAttribute("data-theme") || "light") === "dark";
+          toast.style.background = isDark
+            ? "rgba(15, 23, 42, 0.95)"
+            : "rgba(31, 41, 55, 0.95)";
+          toast.style.color = "#f9fafb";
+          document.body.appendChild(toast);
+          requestAnimationFrame(() => {
+            toast.style.opacity = "1";
+          });
+          setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(-50%) translateY(4px)";
+            setTimeout(() => {
+              const el = document.getElementById("ideaToast");
+              if (el) el.remove();
+            }, 220);
+          }, 1200);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function renderMarkdown(text) {
+        if (!text) return "";
+        let safe = String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+        // Normalize all newlines to "\n"
+        safe = safe.replace(/\r\n|\r/g, "\n");
+
+        // Bold **text**
+        safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        // Italic *text*
+        safe = safe.replace(/\*(.+?)\*/g, "<em>$1</em>");
+        // Inline code `code`
+        safe = safe.replace(
+          /`(.+?)`/g,
+          "<code style='background:var(--accent-soft);padding:2px 5px;border-radius:4px;font-size:0.85em;'>$1</code>"
+        );
+        // Finally, turn newlines into <br>
+        safe = safe.replace(/\n/g, "<br>");
+        return safe;
+      }
+
+      // Self-tests for renderMarkdown
+      (function selfTestRenderMarkdown() {
+        try {
+          const cases = [
+            { input: "plain", expected: "plain" },
+            { input: "**bold**", expected: "<strong>bold</strong>" },
+            { input: "*it*", expected: "<em>it</em>" },
+            { input: "line1\nline2", expected: "line1<br>line2" },
+            { input: "mix **b** and *i*", expected: "mix <strong>b</strong> and <em>i</em>" },
+            { input: "code `x`", expected: "code <code style='background:var(--accent-soft);padding:2px 5px;border-radius:4px;font-size:0.85em;'>x</code>" }
+          ];
+          cases.forEach((c, idx) => {
+            const out = renderMarkdown(c.input);
+            if (typeof console !== "undefined" && console.assert) {
+              console.assert(
+                out === c.expected,
+                "renderMarkdown test failed",
+                idx,
+                out,
+                c.expected
+              );
+            }
+          });
+        } catch (e) {
+          // Never break the app if console is unavailable
+        }
+      })();
+
+      function applyTheme(theme) {
+        const t = theme === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+        if (themeToggle) {
+          themeToggle.textContent = t === "dark" ? "🌙" : "☀️";
+        }
+      }
+
+      function initTheme() {
+        let stored = null;
+        try {
+          stored = localStorage.getItem(THEME_KEY);
+        } catch (e) {
+          stored = null;
+        }
+        let theme;
+        if (stored === "light" || stored === "dark") {
+          theme = stored;
+        } else {
+          const prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          theme = prefersDark ? "dark" : "light";
+        }
+        applyTheme(theme);
+
+        if (!stored && window.matchMedia) {
+          try {
+            const mql = window.matchMedia("(prefers-color-scheme: dark)");
+            const handler = function (e) {
+              let manual = null;
+              try {
+                manual = localStorage.getItem(THEME_KEY);
+              } catch (err) {
+                manual = null;
+              }
+              if (manual === "light" || manual === "dark") return;
+              applyTheme(e.matches ? "dark" : "light");
+            };
+            if (mql.addEventListener) {
+              mql.addEventListener("change", handler);
+            } else if (mql.addListener) {
+              mql.addListener(handler);
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
       }
 
       // --- Data Logic ---
@@ -831,6 +967,45 @@
           });
       }
 
+      function copyCardText(text) {
+        const value = String(text || "");
+        if (!value) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(value)
+            .then(
+              () => {
+                haptic(30);
+                showToast("Copied");
+                trackEvent("copy_card", { length: value.length });
+              },
+              () => {
+                showToast("Copy failed");
+              }
+            );
+        } else {
+          try {
+            const helper = document.createElement("textarea");
+            helper.style.position = "fixed";
+            helper.style.opacity = "0";
+            helper.value = value;
+            document.body.appendChild(helper);
+            helper.select();
+            const ok = document.execCommand("copy");
+            document.body.removeChild(helper);
+            if (ok) {
+              haptic(30);
+              showToast("Copied");
+              trackEvent("copy_card", { length: value.length });
+            } else {
+              prompt("Copy this text:", value);
+            }
+          } catch (err) {
+            prompt("Copy this text:", value);
+          }
+        }
+      }
+
       function render() {
         const filtered = sortIdeas(getFilteredIdeas());
         board.innerHTML = "";
@@ -880,7 +1055,7 @@
 
           const textEl = document.createElement("div");
           textEl.className = "idea-text";
-          textEl.textContent = idea.text;
+          textEl.innerHTML = renderMarkdown(idea.text);
 
           const meta = document.createElement("div");
           meta.className = "idea-meta";
@@ -905,10 +1080,28 @@
           meta.appendChild(leftMeta);
           meta.appendChild(rightMeta);
 
-          // Interaction: Edit
-          card.addEventListener("click", () => {
+          // Interaction: Edit with single-click (not double)
+          let clickTimeout = null;
+          card.addEventListener("click", (e) => {
             if (suppressClick) return;
-            enterEditMode(card, idea);
+            if (clickTimeout) {
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+            }
+            clickTimeout = setTimeout(() => {
+              enterEditMode(card, idea);
+              clickTimeout = null;
+            }, 220);
+          });
+
+          // Copy on double-click
+          card.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            if (clickTimeout) {
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+            }
+            copyCardText(idea.text);
           });
 
           // Interaction: Focus style
@@ -1199,51 +1392,67 @@
         try {
           const payload = {
             version: 3,
-            ideas: ideas
+            ideas: ideas,
+            exportedAt: new Date().toISOString()
           };
-          const json = JSON.stringify(payload);
-          const encoded = btoa(
-            unescape(encodeURIComponent(json))
-          );
+          const json = JSON.stringify(payload, null, 2);
 
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(encoded);
-            alert(
-              "Exported to clipboard.\nPaste this text into a safe place to back up your ideas."
-            );
-          } else {
-            // Fallback for older browsers
-            const helper = document.createElement("textarea");
-            helper.style.position = "fixed";
-            helper.style.opacity = "0";
-            helper.value = encoded;
-            document.body.appendChild(helper);
-            helper.select();
-            try {
-              document.execCommand("copy");
-              alert(
-                "Exported using fallback copy.\nIf unsure, choose OK and manually copy from the next prompt."
-              );
-            } catch (err) {
-              // ignore
-            }
-            document.body.removeChild(helper);
-            prompt("Copy this exported data manually:", encoded);
+          // Download as .json file
+          if (typeof Blob !== "undefined" && typeof URL !== "undefined" && URL.createObjectURL) {
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "idea-whiteboard-" + new Date().toISOString().slice(0, 10) + ".json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
           }
+
+          // Also copy encoded JSON to clipboard if possible
+          let clipboardOk = false;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            const encoded = btoa(unescape(encodeURIComponent(json)));
+            await navigator.clipboard.writeText(encoded);
+            clipboardOk = true;
+          }
+
+          if (clipboardOk) {
+            alert("Exported: downloaded file + copied backup string to clipboard.");
+          } else {
+            alert("Exported JSON file downloaded. Clipboard backup not supported on this browser.");
+          }
+
           trackEvent("export", { count: ideas.length });
         } catch (e) {
           console.warn("Export failed", e);
-          prompt("Copy this exported data manually:", "");
+          try {
+            const fallbackPayload = {
+              version: 3,
+              ideas: ideas
+            };
+            const fallbackJson = JSON.stringify(fallbackPayload);
+            const encoded = btoa(unescape(encodeURIComponent(fallbackJson)));
+            prompt("Export failed. You can still copy this backup string manually:", encoded);
+          } catch (e2) {
+            alert("Export failed and no fallback is available in this browser.");
+          }
         }
       }
 
       async function handleImport() {
-        const text = prompt("Paste your exported data:");
+        const text = prompt("Paste your exported data (backup string):");
         if (!text) return;
         try {
-          const decodedJson = decodeURIComponent(
-            escape(atob(text.trim()))
-          );
+          const trimmed = text.trim();
+          let decodedJson;
+          try {
+            decodedJson = decodeURIComponent(escape(atob(trimmed)));
+          } catch (e) {
+            // maybe direct JSON
+            decodedJson = trimmed;
+          }
           const parsed = JSON.parse(decodedJson);
           let list;
           if (Array.isArray(parsed)) {
@@ -1323,7 +1532,8 @@
               "Esc → Cancel edit / blur\n" +
               "Delete/Backspace → Delete focused card\n" +
               "p → Pin/unpin focused card\n" +
-              "Drag (All view) → Reorder cards"
+              "Drag (All view) → Reorder cards\n" +
+              "Double-click card → Copy text"
           );
           return;
         }
@@ -1381,6 +1591,8 @@
 
       // --- Initialization ---
 
+      initTheme();
+
       ideaInput.addEventListener("input", () => {
         updateAddButtonState();
         autoGrowTextArea(ideaInput);
@@ -1433,6 +1645,22 @@
         });
       }
 
+      if (themeToggle) {
+        themeToggle.addEventListener("click", () => {
+          const current =
+            document.documentElement.getAttribute("data-theme") || "light";
+          const next = current === "dark" ? "light" : "dark";
+          try {
+            localStorage.setItem(THEME_KEY, next);
+          } catch (e) {
+            // ignore
+          }
+          applyTheme(next);
+          haptic(20);
+          trackEvent("theme_toggle", { theme: next });
+        });
+      }
+
       document.addEventListener("keydown", handleGlobalKeydown);
 
       // Start
@@ -1442,8 +1670,8 @@
       updateAddButtonState();
       autoGrowTextArea(ideaInput);
       // Optional: focus on load for desktop
-      if (window.matchMedia("(min-width: 800px)").matches) {
-          ideaInput.focus();
+      if (window.matchMedia && window.matchMedia("(min-width: 800px)").matches) {
+        ideaInput.focus();
       }
     })();
   </script>
