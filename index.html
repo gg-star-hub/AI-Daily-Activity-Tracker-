@@ -731,50 +731,21 @@
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;");
 
-        // Normalize all newlines to "\n"
-        safe = safe.replace(/\r\n|\r/g, "\n");
+        // Normalize newlines
+        safe = safe.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-        // Bold **text**
+        // Basic markdown
         safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-        // Italic *text*
         safe = safe.replace(/\*(.+?)\*/g, "<em>$1</em>");
-        // Inline code `code`
         safe = safe.replace(
           /`(.+?)`/g,
           "<code style='background:var(--accent-soft);padding:2px 5px;border-radius:4px;font-size:0.85em;'>$1</code>"
         );
-        // Finally, turn newlines into <br>
+
+        // Line breaks
         safe = safe.replace(/\n/g, "<br>");
         return safe;
       }
-
-      // Self-tests for renderMarkdown
-      (function selfTestRenderMarkdown() {
-        try {
-          const cases = [
-            { input: "plain", expected: "plain" },
-            { input: "**bold**", expected: "<strong>bold</strong>" },
-            { input: "*it*", expected: "<em>it</em>" },
-            { input: "line1\nline2", expected: "line1<br>line2" },
-            { input: "mix **b** and *i*", expected: "mix <strong>b</strong> and <em>i</em>" },
-            { input: "code `x`", expected: "code <code style='background:var(--accent-soft);padding:2px 5px;border-radius:4px;font-size:0.85em;'>x</code>" }
-          ];
-          cases.forEach((c, idx) => {
-            const out = renderMarkdown(c.input);
-            if (typeof console !== "undefined" && console.assert) {
-              console.assert(
-                out === c.expected,
-                "renderMarkdown test failed",
-                idx,
-                out,
-                c.expected
-              );
-            }
-          });
-        } catch (e) {
-          // Never break the app if console is unavailable
-        }
-      })();
 
       function applyTheme(theme) {
         const t = theme === "dark" ? "dark" : "light";
@@ -1080,9 +1051,9 @@
           meta.appendChild(leftMeta);
           meta.appendChild(rightMeta);
 
-          // Interaction: Edit with single-click (not double)
+          // Interaction: Edit with single-click
           let clickTimeout = null;
-          card.addEventListener("click", (e) => {
+          card.addEventListener("click", () => {
             if (suppressClick) return;
             if (clickTimeout) {
               clearTimeout(clickTimeout);
@@ -1104,7 +1075,7 @@
             copyCardText(idea.text);
           });
 
-          // Interaction: Focus style
+          // Focus style
           card.addEventListener("focus", () => {
             card.classList.add("card-focused");
           });
@@ -1112,7 +1083,7 @@
             card.classList.remove("card-focused");
           });
 
-          // Interaction: DnD
+          // Drag and drop
           if (allowDrag) {
             card.addEventListener("dragstart", (e) =>
               handleDragStart(e, idea.id)
@@ -1172,7 +1143,6 @@
       function deleteIdea(id) {
         const before = ideas.length;
         ideas = ideas.filter((i) => i.id !== id);
-        // Re-normalize order
         ideas.forEach((idea, index) => {
           idea.order = index;
         });
@@ -1187,10 +1157,8 @@
         const fromIndex = ideas.findIndex((i) => i.id === sourceId);
         const toIndex = ideas.findIndex((i) => i.id === targetId);
         if (fromIndex === -1 || toIndex === -1) return;
-        // Move item
         const [moved] = ideas.splice(fromIndex, 1);
         ideas.splice(toIndex, 0, moved);
-        // Re-index
         ideas.forEach((idea, index) => {
           idea.order = index;
         });
@@ -1260,7 +1228,6 @@
         card.dataset.editing = "1";
         const originalText = idea.text;
 
-        // Construct edit UI
         const textArea = document.createElement("textarea");
         textArea.className = "edit-input";
         textArea.value = originalText;
@@ -1293,7 +1260,6 @@
 
         autoGrowTextArea(textArea);
         textArea.focus();
-        // Cursor at end
         textArea.setSelectionRange(
           textArea.value.length,
           textArea.value.length
@@ -1316,7 +1282,7 @@
           const newText = textArea.value.trim();
           if (!newText) {
             cleanup();
-            return; // Don't delete on empty save, just cancel
+            return;
           }
           const idx = ideas.findIndex((i) => i.id === idea.id);
           if (idx !== -1) {
@@ -1347,46 +1313,7 @@
         });
       }
 
-      // --- Event Bindings ---
-
-      function updateAddButtonState() {
-        const hasText = (ideaInput.value || "").trim().length > 0;
-        addBtn.disabled = !hasText;
-      }
-
-      function setFilter(next) {
-        filter = next;
-        filterChips.forEach((chip) => {
-          chip.classList.toggle("active", chip.dataset.filter === filter);
-        });
-        trackEvent("filter", { filter });
-        render();
-      }
-
-      function setSearchTerm(term) {
-        searchTerm = term.trim();
-        trackEvent("search", {
-          length: searchTerm.length > 0 ? searchTerm.length : 0
-        });
-        render();
-      }
-
-      function handleClearAll() {
-        if (!ideas.length) return;
-        if (
-          !confirm(
-            "Delete every idea permanently from this device? This cannot be undone."
-          )
-        ) {
-          return;
-        }
-        const count = ideas.length;
-        ideas = [];
-        saveIdeas();
-        render();
-        haptic(100);
-        trackEvent("clear_all", { count });
-      }
+      // --- Export / Import ---
 
       async function handleExport() {
         try {
@@ -1396,35 +1323,85 @@
             exportedAt: new Date().toISOString()
           };
           const json = JSON.stringify(payload, null, 2);
+          const encoded = btoa(unescape(encodeURIComponent(json)));
 
-          // Download as .json file
-          if (typeof Blob !== "undefined" && typeof URL !== "undefined" && URL.createObjectURL) {
-            const blob = new Blob([json], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "idea-whiteboard-" + new Date().toISOString().slice(0, 10) + ".json";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }
-
-          // Also copy encoded JSON to clipboard if possible
           let clipboardOk = false;
+          let fileDownloaded = false;
+
+          // 1) Try to copy backup string to clipboard
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            const encoded = btoa(unescape(encodeURIComponent(json)));
-            await navigator.clipboard.writeText(encoded);
-            clipboardOk = true;
+            try {
+              await navigator.clipboard.writeText(encoded);
+              clipboardOk = true;
+            } catch (err) {
+              clipboardOk = false;
+            }
           }
 
           if (clipboardOk) {
-            alert("Exported: downloaded file + copied backup string to clipboard.");
+            // 2) Ask if user also wants JSON file
+            const alsoFile = confirm(
+              "Backup string copied to clipboard.\n\nDo you also want to download a .json file?"
+            );
+
+            if (
+              alsoFile &&
+              typeof Blob !== "undefined" &&
+              typeof URL !== "undefined" &&
+              URL.createObjectURL
+            ) {
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download =
+                "idea-whiteboard-" +
+                new Date().toISOString().slice(0, 10) +
+                ".json";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              fileDownloaded = true;
+            }
           } else {
-            alert("Exported JSON file downloaded. Clipboard backup not supported on this browser.");
+            // Clipboard not available → fallback to file download
+            if (
+              typeof Blob !== "undefined" &&
+              typeof URL !== "undefined" &&
+              URL.createObjectURL
+            ) {
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download =
+                "idea-whiteboard-" +
+                new Date().toISOString().slice(0, 10) +
+                ".json";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              fileDownloaded = true;
+
+              alert(
+                "Clipboard export is not supported in this browser. A JSON file has been downloaded instead."
+              );
+            } else {
+              // Last-resort: manual copy of backup string
+              prompt(
+                "Clipboard and file download are not available. You can still copy this backup string manually:",
+                encoded
+              );
+            }
           }
 
-          trackEvent("export", { count: ideas.length });
+          trackEvent("export", {
+            count: ideas.length,
+            clipboard: clipboardOk,
+            file: fileDownloaded
+          });
         } catch (e) {
           console.warn("Export failed", e);
           try {
@@ -1434,7 +1411,10 @@
             };
             const fallbackJson = JSON.stringify(fallbackPayload);
             const encoded = btoa(unescape(encodeURIComponent(fallbackJson)));
-            prompt("Export failed. You can still copy this backup string manually:", encoded);
+            prompt(
+              "Export failed. You can still copy this backup string manually:",
+              encoded
+            );
           } catch (e2) {
             alert("Export failed and no fallback is available in this browser.");
           }
@@ -1450,7 +1430,6 @@
           try {
             decodedJson = decodeURIComponent(escape(atob(trimmed)));
           } catch (e) {
-            // maybe direct JSON
             decodedJson = trimmed;
           }
           const parsed = JSON.parse(decodedJson);
@@ -1486,6 +1465,8 @@
           alert("Could not import: invalid or corrupted data.");
         }
       }
+
+      // --- Keyboard & global ---
 
       function isTypingInInput() {
         const el = document.activeElement;
@@ -1560,7 +1541,7 @@
           return;
         }
 
-        // Keyboard management of cards
+        // Delete focused card
         if (
           (e.key === "Delete" || e.key === "Backspace") &&
           !isTypingInInput()
@@ -1575,6 +1556,7 @@
           return;
         }
 
+        // Toggle pin on focused card
         if (
           (e.key === "p" || e.key === "P") &&
           !isTypingInInput()
@@ -1587,6 +1569,25 @@
             togglePin(focused.dataset.id);
           }
         }
+      }
+
+      // --- Clear all ---
+
+      function handleClearAll() {
+        if (!ideas.length) return;
+        if (
+          !confirm(
+            "Delete every idea permanently from this device? This cannot be undone."
+          )
+        ) {
+          return;
+        }
+        const count = ideas.length;
+        ideas = [];
+        saveIdeas();
+        render();
+        haptic(100);
+        trackEvent("clear_all", { count });
       }
 
       // --- Initialization ---
@@ -1608,6 +1609,11 @@
         }
       });
 
+      function updateAddButtonState() {
+        const hasText = (ideaInput.value || "").trim().length > 0;
+        addBtn.disabled = !hasText;
+      }
+
       addBtn.addEventListener("click", () => {
         addIdea();
       });
@@ -1616,7 +1622,12 @@
         chip.addEventListener("click", () => {
           const next = chip.dataset.filter;
           if (!next) return;
-          setFilter(next);
+          filter = next;
+          filterChips.forEach((c) => {
+            c.classList.toggle("active", c.dataset.filter === filter);
+          });
+          trackEvent("filter", { filter });
+          render();
         });
       });
 
@@ -1626,7 +1637,11 @@
 
       if (searchInput) {
         const debouncedSearch = debounce((value) => {
-          setSearchTerm(value);
+          searchTerm = value.trim();
+          trackEvent("search", {
+            length: searchTerm.length > 0 ? searchTerm.length : 0
+          });
+          render();
         }, 120);
         searchInput.addEventListener("input", (e) => {
           debouncedSearch(e.target.value || "");
@@ -1663,13 +1678,12 @@
 
       document.addEventListener("keydown", handleGlobalKeydown);
 
-      // Start
       ideas = loadIdeas();
       saveIdeas();
       render();
       updateAddButtonState();
       autoGrowTextArea(ideaInput);
-      // Optional: focus on load for desktop
+
       if (window.matchMedia && window.matchMedia("(min-width: 800px)").matches) {
         ideaInput.focus();
       }
