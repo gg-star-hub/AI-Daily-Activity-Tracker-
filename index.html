@@ -126,7 +126,7 @@
       flex: 1;
       border-radius: 14px;
       border: 1px solid transparent;
-      background: rgba(255, 255, 255, 0.88);
+      background: rgba(255, 255, 255, 0.4);
       padding: 8px 10px;
       min-height: 60px;
       max-height: 160px;
@@ -148,12 +148,12 @@
         0 0 0 1px var(--accent-soft),
         0 0 0 1px var(--accent),
         0 10px 25px rgba(22, 35, 89, 0.3);
-      background: #ffffff;
+      background: rgba(255, 255, 255, 0.18);
     }
 
     @media (prefers-color-scheme: dark) {
       .idea-input {
-        background: rgba(9, 13, 32, 0.96);
+        background: rgba(9, 13, 32, 0.86);
         color: var(--text-main);
       }
       .idea-input::placeholder {
@@ -286,12 +286,28 @@
       flex-direction: column;
       min-height: 80px;
       position: relative;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .card-idea:active {
+      cursor: grabbing;
     }
 
     .card-idea.pinned {
       box-shadow:
         0 0 0 1px var(--accent-soft),
         0 14px 32px rgba(14, 26, 78, 0.38);
+    }
+
+    .card-idea.dragging {
+      opacity: 0.85;
+      transform: scale(0.98);
+    }
+
+    .card-idea.drop-target {
+      outline: 2px dashed var(--accent);
+      outline-offset: 2px;
     }
 
     .idea-text {
@@ -455,7 +471,7 @@
     <header class="header">
       <div class="title">
         <h1>Idea Whiteboard</h1>
-        <span>Pin, edit, and scroll through your thinking stream.</span>
+        <span>Pin, edit, and drag your thinking stream.</span>
       </div>
       <div class="badge">Mobile-first</div>
     </header>
@@ -513,6 +529,8 @@
 
       let ideas = [];
       let filter = "all";
+      let draggingId = null;
+      let suppressClick = false;
 
       function haptic(ms = 30) {
         if (navigator.vibrate) navigator.vibrate(ms);
@@ -536,6 +554,20 @@
         } catch (e) {
           console.warn("Failed to save ideas", e);
         }
+      }
+
+      function normalizeOrders() {
+        ideas.forEach((idea, index) => {
+          if (typeof idea.order !== "number") {
+            idea.order = index;
+          }
+        });
+      }
+
+      function reassignOrders() {
+        ideas.forEach((idea, index) => {
+          idea.order = index;
+        });
       }
 
       function createId() {
@@ -571,10 +603,9 @@
 
       function sortIdeas(list) {
         return list.slice().sort((a, b) => {
-          if (a.pinned !== b.pinned) {
-            return a.pinned ? -1 : 1;
-          }
-          return b.createdAt - a.createdAt;
+          const ao = typeof a.order === "number" ? a.order : 0;
+          const bo = typeof b.order === "number" ? b.order : 0;
+          return ao - bo;
         });
       }
 
@@ -591,6 +622,7 @@
           const card = document.createElement("article");
           card.className = "card-idea" + (idea.pinned ? " pinned" : "");
           card.dataset.id = idea.id;
+          card.draggable = true;
 
           const actions = document.createElement("div");
           actions.className = "card-actions";
@@ -646,8 +678,14 @@
           meta.appendChild(rightMeta);
 
           card.addEventListener("click", () => {
+            if (suppressClick) return;
             enterEditMode(card, idea);
           });
+
+          card.addEventListener("dragstart", (e) => handleDragStart(e, idea.id));
+          card.addEventListener("dragover", (e) => handleDragOver(e, idea.id));
+          card.addEventListener("drop", (e) => handleDrop(e, idea.id));
+          card.addEventListener("dragend", handleDragEnd);
 
           card.appendChild(actions);
           card.appendChild(textEl);
@@ -665,7 +703,8 @@
           text,
           tag: tag || "",
           pinned: false,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          order: ideas.length
         };
         ideas.push(idea);
         haptic(25);
@@ -689,9 +728,60 @@
 
       function deleteIdea(id) {
         ideas = ideas.filter(i => i.id !== id);
+        reassignOrders();
         haptic(40);
         saveIdeas();
         render();
+      }
+
+      function moveIdea(sourceId, targetId) {
+        if (!sourceId || !targetId || sourceId === targetId) return;
+        const fromIndex = ideas.findIndex(i => i.id === sourceId);
+        const toIndex = ideas.findIndex(i => i.id === targetId);
+        if (fromIndex === -1 || toIndex === -1) return;
+        const [moved] = ideas.splice(fromIndex, 1);
+        ideas.splice(toIndex, 0, moved);
+        reassignOrders();
+        saveIdeas();
+        render();
+      }
+
+      function handleDragStart(e, id) {
+        draggingId = id;
+        suppressClick = true;
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", id);
+        }
+        const el = e.currentTarget;
+        el.classList.add("dragging");
+      }
+
+      function handleDragOver(e, targetId) {
+        if (!draggingId || draggingId === targetId) return;
+        e.preventDefault();
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = "move";
+        }
+        const cards = board.querySelectorAll(".card-idea");
+        cards.forEach(c => {
+          c.classList.toggle("drop-target", c.dataset.id === targetId);
+        });
+      }
+
+      function handleDrop(e, targetId) {
+        e.preventDefault();
+        const sourceId = draggingId || (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+        moveIdea(sourceId, targetId);
+      }
+
+      function handleDragEnd() {
+        const cards = board.querySelectorAll(".card-idea");
+        cards.forEach(c => c.classList.remove("dragging", "drop-target"));
+        draggingId = null;
+        setTimeout(() => {
+          suppressClick = false;
+        }, 0);
       }
 
       function autoGrowTextArea(el) {
@@ -813,6 +903,8 @@
       });
 
       ideas = loadIdeas();
+      normalizeOrders();
+      saveIdeas();
       render();
       updateAddButtonState();
       autoGrowTextArea(ideaInput);
