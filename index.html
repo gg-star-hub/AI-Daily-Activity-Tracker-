@@ -2,576 +2,822 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Monthly Budget – Wooden Card UI</title>
+  <title>Idea Whiteboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <style>
     :root {
-      /* Palette: Warm Wood & Paper */
-      --bg-wood-light: #e6dace;
-      --bg-wood-dark: #d1bfa7;
-      
-      --card-bg: #fdfaf6;
-      --card-border: #e8ded3;
-      
-      --text-main: #4a3b32;
-      --text-muted: #8c7b6e;
-      
-      --accent-brown: #8b5e3c;
-      --accent-brown-hover: #6f4b30;
-      
-      --success-bg: #e6f4ea;
-      --success-text: #1e6034;
-      
-      --danger-bg: #fce8e8;
-      --danger-text: #c5221f;
-      
-      --shadow-soft: 0 10px 30px -5px rgba(92, 74, 60, 0.15);
-      --shadow-inner: inset 0 2px 4px rgba(0,0,0,0.03);
-      
-      --radius: 16px;
+      --bg: #f4f5fb;
+      --bg-alt: #e7ebff;
+      --card: #ffffff;
+      --accent: #4b6bff;
+      --accent-soft: rgba(75, 107, 255, 0.12);
+      --danger: #ff4b6b;
+      --text-main: #161827;
+      --text-muted: #6b718c;
+      --border-subtle: rgba(19, 31, 71, 0.08);
+      --radius-lg: 20px;
+      --shadow-soft: 0 12px 30px rgba(15, 27, 71, 0.18);
     }
 
-    * { box-sizing: border-box; outline: none; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #050816;
+        --bg-alt: #101426;
+        --card: #0f1424;
+        --accent: #4b9dff;
+        --accent-soft: rgba(75, 157, 255, 0.18);
+        --danger: #ff6b8a;
+        --text-main: #f5f5ff;
+        --text-muted: #a2a9d0;
+        --border-subtle: rgba(255, 255, 255, 0.08);
+        --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      /* Wood grain simulation via gradients */
-      background-color: var(--bg-wood-light);
-      background-image: 
-        linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%),
-        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(160, 130, 100, 0.05) 10px, rgba(160, 130, 100, 0.05) 12px);
-      color: var(--text-main);
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 20px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, var(--bg-alt) 0, var(--bg) 48%, #02030a 100%);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* --- Layout Container --- */
-    .wood-board {
-      width: 100%;
-      max-width: 800px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px 14px 24px;
     }
 
-    /* --- Header --- */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      padding: 0 4px;
-      flex-wrap: wrap;
-      gap: 15px;
-    }
-    
-    .title-group h1 {
-      margin: 0;
-      font-size: 1.75rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: #3e2f26;
-      text-shadow: 0 1px 0 rgba(255,255,255,0.4);
-    }
-    
-    .title-group .date-pill {
-      display: inline-block;
-      margin-top: 6px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      background: rgba(255,255,255,0.4);
-      padding: 4px 12px;
-      border-radius: 20px;
-      color: var(--text-muted);
-      border: 1px solid rgba(139, 94, 60, 0.1);
-    }
-
-    .settings-group {
+    .header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .title span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.3));
+      color: #28304a;
+      box-shadow: 0 8px 22px rgba(9, 13, 40, 0.18);
+      white-space: nowrap;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .badge {
+        border-color: rgba(255, 255, 255, 0.3);
+        background: linear-gradient(135deg, rgba(15, 24, 61, 0.9), rgba(75, 107, 255, 0.9));
+        color: #f5f5ff;
+      }
+    }
+
+    .composer {
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+      padding: 10px 11px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: var(--shadow-soft);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .composer {
+        background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.22), rgba(7, 11, 36, 0.96));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .composer-top {
+      display: flex;
+      align-items: flex-start;
       gap: 10px;
     }
 
-    select.currency-selector {
-      appearance: none;
-      background: rgba(255,255,255,0.6);
-      border: 1px solid rgba(139, 94, 60, 0.2);
-      border-radius: 12px;
-      padding: 6px 30px 6px 12px;
-      font-family: inherit;
-      font-size: 0.9rem;
+    .idea-input {
+      flex: 1;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.88);
+      padding: 8px 10px;
+      min-height: 60px;
+      max-height: 160px;
+      resize: none;
+      font-size: 0.92rem;
       color: var(--text-main);
-      font-weight: 600;
-      cursor: pointer;
-      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%238b5e3c%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-      background-repeat: no-repeat;
-      background-position: right 10px center;
-      background-size: 10px;
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
+      overflow-y: auto;
     }
 
-    /* --- Cards Generic --- */
-    .card {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 24px;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid var(--card-border);
+    .idea-input::placeholder {
+      color: rgba(107, 114, 142, 0.9);
+    }
+
+    .idea-input:focus {
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 0 0 1px var(--accent),
+        0 10px 25px rgba(22, 35, 89, 0.3);
+      background: #ffffff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .idea-input {
+        background: rgba(9, 13, 32, 0.96);
+        color: var(--text-main);
+      }
+      .idea-input::placeholder {
+        color: var(--text-muted);
+      }
+    }
+
+    .composer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tag-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tag-input-wrap span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .tag-input {
+      flex: 1;
+      min-width: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.08);
+      padding: 5px 9px;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.8);
+      outline: none;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tag-input {
+        background: rgba(9, 13, 32, 0.95);
+        border-color: rgba(255, 255, 255, 0.08);
+        color: var(--text-main);
+      }
+    }
+
+    .btn-primary {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--accent), #7b5bff);
+      color: #ffffff;
+      box-shadow: 0 10px 26px rgba(11, 22, 68, 0.7);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.45;
+      box-shadow: none;
+    }
+
+    .btn-primary span {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      margin-top: 12px;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.9);
+      white-space: nowrap;
+    }
+
+    .chip.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .chip {
+        background: rgba(12, 17, 39, 0.96);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+    }
+
+    .board {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .card-idea {
+      border-radius: 16px;
+      background: var(--card);
+      padding: 10px 11px 8px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 9px 22px rgba(9, 16, 46, 0.17);
+      display: flex;
+      flex-direction: column;
+      min-height: 80px;
       position: relative;
     }
 
-    /* --- Top Section: Input & Summary --- */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 20px;
+    .card-idea.pinned {
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 14px 32px rgba(14, 26, 78, 0.38);
     }
 
-    @media (max-width: 700px) {
-      .dashboard-grid { grid-template-columns: 1fr; }
+    .idea-text {
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
 
-    /* Form Styles */
-    .input-group {
+    .idea-meta {
       display: flex;
-      flex-direction: column;
-      gap: 15px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: auto;
     }
 
-    .type-toggle {
-      display: flex;
-      background: #efe6dc;
-      padding: 4px;
-      border-radius: 12px;
-      box-shadow: var(--shadow-inner);
+    .pill-tag {
+      font-size: 0.74rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(238, 240, 255, 0.9);
+      color: #3a4470;
+      border: 1px solid rgba(76, 88, 160, 0.22);
     }
-    
-    .type-toggle button {
-      flex: 1;
-      border: none;
-      background: transparent;
-      padding: 10px;
-      border-radius: 9px;
-      font-weight: 600;
+
+    @media (prefers-color-scheme: dark) {
+      .pill-tag {
+        background: rgba(11, 18, 55, 0.96);
+        color: #c8cff8;
+        border-color: rgba(196, 200, 255, 0.3);
+      }
+    }
+
+    .meta-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
       color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .type-toggle button.active.income {
-      background: #fff;
-      color: var(--success-text);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-    .type-toggle button.active.expense {
-      background: #fff;
-      color: var(--danger-text);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
 
-    .text-inputs {
+    .meta-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(99, 108, 169, 0.7);
+    }
+
+    .card-actions {
+      position: absolute;
+      top: 6px;
+      right: 6px;
       display: flex;
-      gap: 10px;
-    }
-    
-    .text-inputs input {
-      background: #fff;
-      border: 1px solid #e0d0c0;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 1rem;
-      color: var(--text-main);
-      transition: border-color 0.2s;
-    }
-    
-    .text-inputs input:focus {
-      border-color: var(--accent-brown);
+      gap: 4px;
     }
 
-    #labelInput { flex: 2; }
-    #amountInput { flex: 1; min-width: 80px; }
-
-    .btn-add {
-      background: var(--accent-brown);
-      color: #fff;
+    .icon-btn {
       border: none;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-      box-shadow: 0 4px 12px rgba(139, 94, 60, 0.3);
-    }
-    
-    .btn-add:hover { background: var(--accent-brown-hover); }
-
-    /* Stats Column */
-    .stats-column {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      border-radius: 999px;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
       justify-content: center;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 16px;
-      border-radius: 12px;
-      background: #fcfcfc;
-      border: 1px solid #efe8e0;
-    }
-    
-    .stat-label { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
-    .stat-value { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
-
-    .stat-row.income .stat-value { color: var(--success-text); }
-    .stat-row.expense .stat-value { color: var(--danger-text); }
-    
-    .stat-row.net {
-      background: #efe6dc; /* Darker paper for net */
-      border-color: #dccdbd;
-    }
-    .stat-row.net .stat-value { color: var(--text-main); font-size: 1.25rem; }
-
-    /* --- History Table --- */
-    .history-card h2 {
-      margin: 0 0 20px 0;
-      font-size: 1.1rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 2px solid #efe6dc;
-      padding-bottom: 12px;
-    }
-
-    .transaction-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .transaction-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 0;
-      border-bottom: 1px solid #f0eae4;
-      animation: fadeIn 0.3s ease-out;
-    }
-    
-    .transaction-item:last-child { border-bottom: none; }
-
-    .t-info {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .t-label { font-weight: 600; font-size: 1rem; color: var(--text-main); }
-    .t-date { font-size: 0.75rem; color: #a09085; margin-top: 2px; }
-
-    .t-right {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-    
-    .t-amount { font-weight: 700; font-size: 1rem; }
-    .t-amount.income { color: var(--success-text); }
-    .t-amount.expense { color: var(--danger-text); }
-
-    .btn-delete {
       background: transparent;
-      border: none;
-      color: #d1c0b0;
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 4px;
-      line-height: 1;
-      transition: color 0.2s;
-    }
-    
-    .btn-delete:hover { color: #c5221f; }
-
-    .empty-state {
-      text-align: center;
       color: var(--text-muted);
-      padding: 30px;
-      font-style: italic;
+      padding: 0;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
+    .icon-btn span {
+      font-size: 0.98rem;
+      line-height: 1;
+    }
+
+    .icon-btn.pin-active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .icon-btn.danger {
+      color: var(--danger);
+    }
+
+    .empty {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .edit-input {
+      border-radius: 12px;
+      border: 1px solid rgba(22, 35, 89, 0.12);
+      padding: 6px 8px;
+      font-size: 0.88rem;
+      width: 100%;
+      resize: none;
+      min-height: 60px;
+      max-height: 160px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.95);
+      overflow-y: auto;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .edit-input {
+        background: rgba(8, 12, 32, 0.96);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-main);
+      }
+    }
+
+    .edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .btn-small {
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.14);
+      background: rgba(245, 247, 255, 0.95);
+      font-size: 0.74rem;
+      padding: 4px 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .btn-small.primary {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .btn-small {
+        background: rgba(11, 16, 42, 0.96);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-main);
+      }
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
     }
   </style>
 </head>
 <body>
-
-  <div class="wood-board">
-    
-    <header>
-      <div class="title-group">
-        <h1>Monthly Budget</h1>
-        <div class="date-pill" id="currentMonthDisplay">Loading...</div>
+  <div class="app" id="app">
+    <header class="header">
+      <div class="title">
+        <h1>Idea Whiteboard</h1>
+        <span>Pin, edit, and scroll through your thinking stream.</span>
       </div>
-      <div class="settings-group">
-        <select id="currency" class="currency-selector">
-          <option value="USD">USD ($)</option>
-          <option value="EUR">EUR (€)</option>
-          <option value="GBP">GBP (£)</option>
-          <option value="JPY">JPY (¥)</option>
-          <option value="INR">INR (₹)</option>
-        </select>
-      </div>
+      <div class="badge">Mobile-first</div>
     </header>
 
-    <!-- Top Section: Controls and Stats -->
-    <div class="dashboard-grid">
-      
-      <!-- Input Card -->
-      <div class="card">
-        <form id="budgetForm" class="input-group">
-          <!-- Type Toggle -->
-          <div class="type-toggle">
-            <button type="button" class="active income" onclick="setType('income')">Income</button>
-            <button type="button" class="expense" onclick="setType('expense')">Expense</button>
+    <main>
+      <section class="composer" aria-label="New idea">
+        <div class="composer-top">
+          <textarea
+            id="ideaInput"
+            class="idea-input"
+            rows="3"
+            placeholder="Drop your idea here… (one clear thought per card)"
+          ></textarea>
+        </div>
+        <div class="composer-bottom">
+          <div class="tag-input-wrap">
+            <span>#</span>
+            <input
+              id="tagInput"
+              class="tag-input"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              placeholder="Tag (optional: focus, product, life, etc.)"
+            />
           </div>
-          
-          <!-- Text Inputs -->
-          <div class="text-inputs">
-            <input type="text" id="labelInput" placeholder="Description (e.g. Salary)" required autocomplete="off">
-            <input type="number" id="amountInput" placeholder="0.00" step="0.01" min="0.01" required>
-          </div>
-          
-          <button type="submit" class="btn-add">Add Entry</button>
-        </form>
+          <button id="addBtn" class="btn-primary" disabled>
+            <span>＋</span> Add
+          </button>
+        </div>
+      </section>
+
+      <nav class="toolbar" aria-label="Filter ideas">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="pinned">Pinned</button>
+        <button class="chip" data-filter="recent">Last 24h</button>
+      </nav>
+
+      <section class="board" id="board" aria-label="Idea board"></section>
+      <div class="empty" id="emptyState" style="display:none;">
+        No ideas yet. Type above and hit “Add” to pin your first thought.
       </div>
-
-      <!-- Stats Card -->
-      <div class="card stats-column">
-        <div class="stat-row income">
-          <span class="stat-label">Income</span>
-          <span class="stat-value" id="totalIncome">+0.00</span>
-        </div>
-        <div class="stat-row expense">
-          <span class="stat-label">Expenses</span>
-          <span class="stat-value" id="totalExpense">-0.00</span>
-        </div>
-        <div class="stat-row net">
-          <span class="stat-label">Net Balance</span>
-          <span class="stat-value" id="totalNet">0.00</span>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- History Section -->
-    <div class="card history-card">
-      <h2>Transaction History</h2>
-      <ul id="transactionList" class="transaction-list">
-        <!-- JS will populate this -->
-      </ul>
-      <div id="emptyState" class="empty-state">No entries yet this month.</div>
-    </div>
-
+    </main>
   </div>
 
   <script>
-    // --- State Management ---
-    const STATE_KEY = 'wooden_budget_v1';
-    let currentType = 'income'; // 'income' or 'expense'
-    
-    // Default State
-    let state = {
-      entries: [],
-      currency: 'USD',
-      monthKey: '' 
-    };
+    (function() {
+      const STORAGE_KEY = "ideaWhiteboard_v1";
+      const ideaInput = document.getElementById("ideaInput");
+      const tagInput = document.getElementById("tagInput");
+      const addBtn = document.getElementById("addBtn");
+      const board = document.getElementById("board");
+      const emptyState = document.getElementById("emptyState");
+      const filterChips = document.querySelectorAll(".chip[data-filter]");
 
-    // --- Date Utilities ---
-    const getMonthKey = () => {
-      const d = new Date();
-      return `${d.getFullYear()}-${d.getMonth()}`;
-    };
+      let ideas = [];
+      let filter = "all";
 
-    const getFormattedMonth = () => {
-      const options = { year: 'numeric', month: 'long' };
-      return new Date().toLocaleDateString('en-US', options);
-    };
-
-    // --- Currency Formatter ---
-    const formatMoney = (amount, currencyCode) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 2
-      }).format(amount);
-    };
-
-    // --- Initialization ---
-    function init() {
-      // Load current date
-      document.getElementById('currentMonthDisplay').textContent = getFormattedMonth();
-      
-      // Load from LocalStorage
-      const saved = localStorage.getItem(STATE_KEY);
-      const currentMonthKey = getMonthKey();
-
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // If it's a new month (optional logic: reset, or keep history. Here we just update key)
-        // For a simple monthly budget, let's keep data but if the key is different, 
-        // a real app might archive it. We will simply load what's there.
-        state = parsed;
+      function haptic(ms = 30) {
+        if (navigator.vibrate) navigator.vibrate(ms);
       }
-      
-      // Update month key if not set
-      state.monthKey = currentMonthKey;
 
-      // Set UI
-      document.getElementById('currency').value = state.currency;
-      
-      render();
-    }
+      function loadIdeas() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.warn("Failed to parse stored ideas", e);
+          return [];
+        }
+      }
 
-    // --- Action: Set Transaction Type ---
-    window.setType = (type) => {
-      currentType = type;
-      const btns = document.querySelectorAll('.type-toggle button');
-      btns.forEach(b => {
-        b.classList.remove('active');
-        if(b.classList.contains(type)) b.classList.add('active');
-      });
-      
-      // Update placeholder
-      const labelInput = document.getElementById('labelInput');
-      labelInput.placeholder = type === 'income' ? 'Source (e.g. Freelance)' : 'Item (e.g. Groceries)';
-    };
+      function saveIdeas() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
+        } catch (e) {
+          console.warn("Failed to save ideas", e);
+        }
+      }
 
-    // --- Action: Add Entry ---
-    document.getElementById('budgetForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const labelEl = document.getElementById('labelInput');
-      const amountEl = document.getElementById('amountInput');
-      
-      const amount = parseFloat(amountEl.value);
-      
-      if(!amount || amount <= 0) return;
+      function createId() {
+        return "idea_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+      }
 
-      const newEntry = {
-        id: Date.now(),
-        label: labelEl.value,
-        amount: amount,
-        type: currentType,
-        date: new Date().toISOString()
-      };
+      function formatTime(ts) {
+        const date = new Date(ts);
+        if (Number.isNaN(date.getTime())) return "";
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 1) return "just now";
+        if (diffMin < 60) return diffMin + " min ago";
+        const diffH = Math.floor(diffMin / 60);
+        if (diffH < 24) return diffH + " h ago";
+        const diffD = Math.floor(diffH / 24);
+        if (diffD < 7) return diffD + " d ago";
+        return date.toLocaleDateString();
+      }
 
-      state.entries.unshift(newEntry); // Add to top
-      save();
-      render();
+      function getFilteredIdeas() {
+        const now = Date.now();
+        if (filter === "pinned") {
+          return ideas.filter(i => i.pinned);
+        }
+        if (filter === "recent") {
+          const cutoff = now - 24 * 60 * 60 * 1000;
+          return ideas.filter(i => i.createdAt >= cutoff);
+        }
+        return ideas;
+      }
 
-      // Reset Form
-      labelEl.value = '';
-      amountEl.value = '';
-      labelEl.focus();
-    });
-
-    // --- Action: Delete Entry ---
-    window.deleteEntry = (id) => {
-      state.entries = state.entries.filter(entry => entry.id !== id);
-      save();
-      render();
-    };
-
-    // --- Action: Change Currency ---
-    document.getElementById('currency').addEventListener('change', (e) => {
-      state.currency = e.target.value;
-      save();
-      render();
-    });
-
-    // --- Core: Save to LocalStorage ---
-    function save() {
-      localStorage.setItem(STATE_KEY, JSON.stringify(state));
-    }
-
-    // --- Core: Render UI ---
-    function render() {
-      const listEl = document.getElementById('transactionList');
-      const emptyEl = document.getElementById('emptyState');
-      
-      // 1. Calculate Totals
-      let income = 0;
-      let expense = 0;
-
-      state.entries.forEach(e => {
-        if(e.type === 'income') income += e.amount;
-        else expense += e.amount;
-      });
-
-      const net = income - expense;
-
-      // 2. Update Stats HTML
-      document.getElementById('totalIncome').textContent = formatMoney(income, state.currency);
-      document.getElementById('totalExpense').textContent = formatMoney(expense, state.currency);
-      document.getElementById('totalNet').textContent = formatMoney(net, state.currency);
-
-      // 3. Render List
-      listEl.innerHTML = '';
-      
-      if (state.entries.length === 0) {
-        emptyEl.style.display = 'block';
-      } else {
-        emptyEl.style.display = 'none';
-        
-        state.entries.forEach(entry => {
-          const li = document.createElement('li');
-          li.className = 'transaction-item';
-          
-          const isIncome = entry.type === 'income';
-          const sign = isIncome ? '+' : '-';
-          const amountClass = isIncome ? 'income' : 'expense';
-          
-          // Format date briefly
-          const d = new Date(entry.date);
-          const dateStr = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-
-          li.innerHTML = `
-            <div class="t-info">
-              <span class="t-label">${escapeHtml(entry.label)}</span>
-              <span class="t-date">${dateStr}</span>
-            </div>
-            <div class="t-right">
-              <span class="t-amount ${amountClass}">${sign}${formatMoney(entry.amount, state.currency)}</span>
-              <button class="btn-delete" onclick="deleteEntry(${entry.id})" title="Delete">&times;</button>
-            </div>
-          `;
-          listEl.appendChild(li);
+      function sortIdeas(list) {
+        return list.slice().sort((a, b) => {
+          if (a.pinned !== b.pinned) {
+            return a.pinned ? -1 : 1;
+          }
+          return b.createdAt - a.createdAt;
         });
       }
-    }
 
-    // --- Utility: Escape HTML ---
-    function escapeHtml(text) {
-      if(!text) return '';
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
+      function render() {
+        const filtered = sortIdeas(getFilteredIdeas());
+        board.innerHTML = "";
+        if (!filtered.length) {
+          emptyState.style.display = "block";
+          return;
+        }
+        emptyState.style.display = "none";
 
-    // Start App
-    init();
+        filtered.forEach(idea => {
+          const card = document.createElement("article");
+          card.className = "card-idea" + (idea.pinned ? " pinned" : "");
+          card.dataset.id = idea.id;
 
+          const actions = document.createElement("div");
+          actions.className = "card-actions";
+
+          const pinBtn = document.createElement("button");
+          pinBtn.className = "icon-btn" + (idea.pinned ? " pin-active" : "");
+          pinBtn.type = "button";
+          pinBtn.title = idea.pinned ? "Unpin" : "Pin";
+          pinBtn.innerHTML = '<span>★</span>';
+          pinBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            togglePin(idea.id);
+          });
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "icon-btn danger";
+          delBtn.type = "button";
+          delBtn.title = "Delete";
+          delBtn.innerHTML = '<span>✕</span>';
+          delBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteIdea(idea.id);
+          });
+
+          actions.appendChild(pinBtn);
+          actions.appendChild(delBtn);
+
+          const textEl = document.createElement("div");
+          textEl.className = "idea-text";
+          textEl.textContent = idea.text;
+
+          const meta = document.createElement("div");
+          meta.className = "idea-meta";
+
+          const leftMeta = document.createElement("div");
+          if (idea.tag) {
+            const tag = document.createElement("span");
+            tag.className = "pill-tag";
+            tag.textContent = "#" + idea.tag;
+            leftMeta.appendChild(tag);
+          }
+
+          const rightMeta = document.createElement("div");
+          rightMeta.className = "meta-right";
+          const dot = document.createElement("span");
+          dot.className = "meta-dot";
+          const time = document.createElement("span");
+          time.textContent = formatTime(idea.createdAt);
+          rightMeta.appendChild(dot);
+          rightMeta.appendChild(time);
+
+          meta.appendChild(leftMeta);
+          meta.appendChild(rightMeta);
+
+          card.addEventListener("click", () => {
+            enterEditMode(card, idea);
+          });
+
+          card.appendChild(actions);
+          card.appendChild(textEl);
+          card.appendChild(meta);
+          board.appendChild(card);
+        });
+      }
+
+      function addIdea() {
+        const text = ideaInput.value.trim();
+        const tag = tagInput.value.trim().replace(/^#+/, "");
+        if (!text) return;
+        const idea = {
+          id: createId(),
+          text,
+          tag: tag || "",
+          pinned: false,
+          createdAt: Date.now()
+        };
+        ideas.push(idea);
+        haptic(25);
+        saveIdeas();
+        ideaInput.value = "";
+        ideaInput.style.height = "auto";
+        tagInput.value = "";
+        updateAddButtonState();
+        render();
+        ideaInput.focus();
+      }
+
+      function togglePin(id) {
+        const idx = ideas.findIndex(i => i.id === id);
+        if (idx === -1) return;
+        ideas[idx].pinned = !ideas[idx].pinned;
+        haptic(15);
+        saveIdeas();
+        render();
+      }
+
+      function deleteIdea(id) {
+        ideas = ideas.filter(i => i.id !== id);
+        haptic(40);
+        saveIdeas();
+        render();
+      }
+
+      function autoGrowTextArea(el) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+
+      function enterEditMode(card, idea) {
+        if (card.dataset.editing === "1") return;
+        card.dataset.editing = "1";
+        const originalText = idea.text;
+
+        const textArea = document.createElement("textarea");
+        textArea.className = "edit-input";
+        textArea.value = originalText;
+
+        const existingTextEl = card.querySelector(".idea-text");
+        const existingMeta = card.querySelector(".idea-meta");
+        existingTextEl.style.display = "none";
+        existingMeta.style.display = "none";
+
+        const editWrap = document.createElement("div");
+        editWrap.appendChild(textArea);
+
+        const actions = document.createElement("div");
+        actions.className = "edit-actions";
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "btn-small";
+        cancelBtn.textContent = "Cancel";
+
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "btn-small primary";
+        saveBtn.textContent = "Save";
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(saveBtn);
+        editWrap.appendChild(actions);
+        card.appendChild(editWrap);
+
+        autoGrowTextArea(textArea);
+        textArea.focus();
+        textArea.setSelectionRange(textArea.value.length, textArea.value.length);
+
+        function cleanup() {
+          card.dataset.editing = "0";
+          card.removeChild(editWrap);
+          existingTextEl.style.display = "";
+          existingMeta.style.display = "";
+        }
+
+        cancelBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          cleanup();
+        });
+
+        saveBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const newText = textArea.value.trim();
+          if (!newText) {
+            cleanup();
+            return;
+          }
+          const idx = ideas.findIndex(i => i.id === idea.id);
+          if (idx !== -1) {
+            ideas[idx].text = newText;
+            saveIdeas();
+            render();
+          } else {
+            cleanup();
+          }
+        });
+
+        textArea.addEventListener("input", () => autoGrowTextArea(textArea));
+
+        textArea.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            cancelBtn.click();
+          }
+        });
+      }
+
+      function updateAddButtonState() {
+        const hasText = ideaInput.value.trim().length > 0;
+        addBtn.disabled = !hasText;
+      }
+
+      function setFilter(next) {
+        filter = next;
+        filterChips.forEach(chip => {
+          chip.classList.toggle("active", chip.dataset.filter === filter);
+        });
+        render();
+      }
+
+      ideaInput.addEventListener("input", () => {
+        updateAddButtonState();
+        autoGrowTextArea(ideaInput);
+      });
+
+      ideaInput.addEventListener("keydown", (e) => {
+        if ((e.key === "Enter" || e.key === "NumpadEnter") && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          if (!addBtn.disabled) addIdea();
+        }
+      });
+
+      addBtn.addEventListener("click", () => {
+        addIdea();
+      });
+
+      filterChips.forEach(chip => {
+        chip.addEventListener("click", () => {
+          setFilter(chip.dataset.filter);
+        });
+      });
+
+      ideas = loadIdeas();
+      render();
+      updateAddButtonState();
+      autoGrowTextArea(ideaInput);
+      ideaInput.focus();
+    })();
   </script>
 </body>
 </html>
