@@ -109,6 +109,14 @@
       box-shadow: var(--shadow-soft);
     }
 
+    .composer:focus-within {
+      background: var(--card);
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        var(--shadow-soft);
+    }
+
     @media (prefers-color-scheme: dark) {
       .composer {
         background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.22), rgba(7, 11, 36, 0.96));
