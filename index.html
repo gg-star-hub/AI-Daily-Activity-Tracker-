@@ -4,6 +4,11 @@
   <meta charset="UTF-8" />
   <title>Idea Whiteboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050816" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>">
+  <link rel="manifest" href="data:application/manifest+json,{ &quot;name&quot;:&quot;Idea Whiteboard&quot;, &quot;short_name&quot;:&quot;Ideas&quot;, &quot;start_url&quot;:&quot;.&quot;, &quot;display&quot;:&quot;standalone&quot;, &quot;background_color&quot;:&quot;#050816&quot;, &quot;theme_color&quot;:&quot;#4b6bff&quot;, &quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>&quot;,&quot;sizes&quot;:&quot;any&quot;}] }">
   <style>
     :root {
       --bg: #f4f5fb;
@@ -27,14 +32,16 @@
         --accent: #4b9dff;
         --accent-soft: rgba(75, 157, 255, 0.18);
         --danger: #ff6b8a;
-        --text-main: #f5f5ff;
+        --text-main: #f9fafb;
         --text-muted: #a2a9d0;
         --border-subtle: rgba(255, 255, 255, 0.08);
         --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
       }
     }
 
-    * {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
     }
 
@@ -49,7 +56,7 @@
     }
 
     .app {
-      max-width: 960px;
+      max-width: 720px;
       margin: 0 auto;
       padding: 16px 14px 24px;
     }
@@ -80,6 +87,12 @@
       color: var(--text-muted);
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .badge {
       font-size: 0.7rem;
       text-transform: uppercase;
@@ -103,23 +116,15 @@
 
     .composer {
       border-radius: var(--radius-lg);
-      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
       padding: 10px 11px 8px;
       border: 1px solid rgba(255, 255, 255, 0.7);
       box-shadow: var(--shadow-soft);
     }
 
-    .composer:focus-within {
-      background: var(--card);
-      border-color: var(--accent);
-      box-shadow:
-        0 0 0 1px var(--accent-soft),
-        var(--shadow-soft);
-    }
-
     @media (prefers-color-scheme: dark) {
       .composer {
-        background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.22), rgba(7, 11, 36, 0.96));
+        background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.2), rgba(7, 11, 36, 0.98));
         border: 1px solid rgba(255, 255, 255, 0.08);
       }
     }
@@ -134,7 +139,7 @@
       flex: 1;
       border-radius: 14px;
       border: 1px solid transparent;
-      background: rgba(255, 255, 255, 0.88);
+      background: rgba(255, 255, 255, 0.96);
       padding: 8px 10px;
       min-height: 60px;
       max-height: 160px;
@@ -142,9 +147,8 @@
       font-size: 0.92rem;
       color: var(--text-main);
       outline: none;
-      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
       overflow-y: auto;
-      transition: background 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
     }
 
     .idea-input::placeholder {
@@ -162,7 +166,7 @@
 
     @media (prefers-color-scheme: dark) {
       .idea-input {
-        background: rgba(9, 13, 32, 0.96);
+        background: rgba(6, 10, 30, 0.98);
         color: var(--text-main);
       }
       .idea-input::placeholder {
@@ -197,18 +201,22 @@
       flex: 1;
       min-width: 0;
       border-radius: 999px;
-      border: 1px solid rgba(22, 35, 89, 0.08);
+      border: 1px solid rgba(22, 35, 89, 0.12);
       padding: 5px 9px;
       font-size: 0.8rem;
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.96);
       outline: none;
+      color: var(--text-main);
     }
 
     @media (prefers-color-scheme: dark) {
       .tag-input {
-        background: rgba(9, 13, 32, 0.95);
-        border-color: rgba(255, 255, 255, 0.08);
+        background: rgba(6, 10, 30, 0.98);
+        border-color: rgba(255, 255, 255, 0.12);
         color: var(--text-main);
+      }
+      .tag-input::placeholder {
+        color: var(--text-muted);
       }
     }
 
@@ -228,12 +236,7 @@
       justify-content: center;
       gap: 6px;
       white-space: nowrap;
-      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
-    }
-
-    .btn-primary:active:not(:disabled) {
-      transform: translateY(1px) scale(0.99);
-      box-shadow: 0 6px 18px rgba(11, 22, 68, 0.55);
+      cursor: pointer;
     }
 
     .btn-primary:disabled {
@@ -262,7 +265,7 @@
       padding: 4px 10px;
       font-size: 0.78rem;
       color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.94);
       white-space: nowrap;
       cursor: pointer;
     }
@@ -276,16 +279,54 @@
     @media (prefers-color-scheme: dark) {
       .chip {
         background: rgba(12, 17, 39, 0.96);
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+    }
+
+    .search-row {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .search-input {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 6px 11px;
+      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.96);
+      outline: none;
+      color: var(--text-main);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .search-input {
+        background: rgba(6, 10, 30, 0.98);
         border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-main);
+      }
+      .search-input::placeholder {
+        color: var(--text-muted);
       }
     }
 
     .board {
       margin-top: 14px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: minmax(0, 1fr);
       gap: 10px;
-      align-items: flex-start;
+    }
+
+    @media (min-width: 640px) {
+      .board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
 
     .card-idea {
@@ -298,13 +339,9 @@
       flex-direction: column;
       min-height: 80px;
       position: relative;
-      cursor: grab;
       user-select: none;
-      transition: box-shadow 0.15s ease, transform 0.15s ease, opacity 0.12s ease;
-    }
-
-    .card-idea:active {
-      cursor: grabbing;
+      outline: none;
+      transition: transform 0.09s ease, box-shadow 0.09s ease, background 0.12s ease;
     }
 
     .card-idea.pinned {
@@ -314,11 +351,8 @@
     }
 
     .card-idea.dragging {
-      opacity: 0.85;
-      transform: scale(0.98) translateY(1px);
-      box-shadow:
-        0 0 0 1px var(--accent-soft),
-        0 16px 30px rgba(14, 26, 78, 0.42);
+      opacity: 0.9;
+      transform: scale(0.98);
     }
 
     .card-idea.drop-target {
@@ -326,8 +360,10 @@
       outline-offset: 2px;
     }
 
-    .card-idea.nodrag {
-      cursor: default;
+    .card-idea.card-focused {
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 0 0 1px var(--accent);
     }
 
     .idea-text {
@@ -335,6 +371,7 @@
       margin-bottom: 8px;
       white-space: pre-wrap;
       word-wrap: break-word;
+      color: var(--text-main);
     }
 
     .idea-meta {
@@ -350,7 +387,7 @@
       font-size: 0.74rem;
       padding: 3px 8px;
       border-radius: 999px;
-      background: rgba(238, 240, 255, 0.9);
+      background: rgba(238, 240, 255, 0.96);
       color: #3a4470;
       border: 1px solid rgba(76, 88, 160, 0.22);
     }
@@ -398,20 +435,11 @@
       color: var(--text-muted);
       padding: 0;
       cursor: pointer;
-      transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
     }
 
     .icon-btn span {
       font-size: 0.98rem;
       line-height: 1;
-    }
-
-    .icon-btn:hover {
-      background: rgba(22, 35, 89, 0.04);
-    }
-
-    .icon-btn:active {
-      transform: scale(0.96);
     }
 
     .icon-btn.pin-active {
@@ -423,16 +451,40 @@
       color: var(--danger);
     }
 
+    .icon-btn.round {
+      border-radius: 999px;
+      width: 28px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 6px 18px rgba(11, 18, 53, 0.26);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .icon-btn.round {
+        background: rgba(10, 14, 33, 0.98);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+      }
+    }
+
     .empty {
       margin-top: 24px;
       text-align: center;
       font-size: 0.9rem;
       color: var(--text-muted);
+      padding: 2rem 1rem;
+    }
+
+    .empty::before {
+      content: "\ud83d\udca1";
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 1rem;
+      opacity: 0.6;
     }
 
     .edit-input {
       border-radius: 12px;
-      border: 1px solid rgba(22, 35, 89, 0.12);
+      border: 1px solid rgba(22, 35, 89, 0.16);
       padding: 6px 8px;
       font-size: 0.88rem;
       width: 100%;
@@ -440,14 +492,15 @@
       min-height: 60px;
       max-height: 160px;
       outline: none;
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255, 255, 255, 0.98);
       overflow-y: auto;
+      color: var(--text-main);
     }
 
     @media (prefers-color-scheme: dark) {
       .edit-input {
-        background: rgba(8, 12, 32, 0.96);
-        border-color: rgba(255, 255, 255, 0.1);
+        background: rgba(6, 10, 30, 0.98);
+        border-color: rgba(255, 255, 255, 0.12);
         color: var(--text-main);
       }
     }
@@ -461,8 +514,8 @@
 
     .btn-small {
       border-radius: 999px;
-      border: 1px solid rgba(22, 35, 89, 0.14);
-      background: rgba(245, 247, 255, 0.95);
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      background: rgba(245, 247, 255, 0.98);
       font-size: 0.74rem;
       padding: 4px 9px;
       text-transform: uppercase;
@@ -478,8 +531,8 @@
 
     @media (prefers-color-scheme: dark) {
       .btn-small {
-        background: rgba(11, 16, 42, 0.96);
-        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(11, 16, 42, 0.98);
+        border-color: rgba(255, 255, 255, 0.14);
         color: var(--text-main);
       }
     }
@@ -495,20 +548,6 @@
       white-space: nowrap;
       border-width: 0;
     }
-      /* Force high-contrast text in inputs */
-    .idea-input,
-    .edit-input,
-    .tag-input {
-      color: #111827; /* dark text for light backgrounds */
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .idea-input,
-      .edit-input,
-      .tag-input {
-        color: #f5f5ff; /* light text for dark backgrounds */
-      }
-    }
   </style>
 </head>
 <body>
@@ -516,12 +555,20 @@
     <header class="header">
       <div class="title">
         <h1>Idea Whiteboard</h1>
-        <span>Pin, edit, and drag your thinking stream.</span>
+        <span>Pin, edit, search, and drag your thinking stream.</span>
       </div>
-      <div class="badge">Mobile-first</div>
+      <div class="header-actions">
+        <button class="icon-btn round" id="exportBtn" title="Export ideas">
+          <span>↓</span>
+        </button>
+        <button class="icon-btn round" id="importBtn" title="Import ideas">
+          <span>↑</span>
+        </button>
+        <div class="badge">Mobile-first</div>
+      </div>
     </header>
 
-    <main>
+    <main role="main">
       <section class="composer" aria-label="New idea">
         <div class="composer-top">
           <textarea
@@ -553,9 +600,20 @@
         <button class="chip active" data-filter="all">All</button>
         <button class="chip" data-filter="pinned">Pinned</button>
         <button class="chip" data-filter="recent">Last 24h</button>
+        <button class="chip" id="clearAllBtn" title="Delete all ideas">Clear All</button>
       </nav>
 
-      <section class="board" id="board" aria-label="Idea board"></section>
+      <div class="search-row">
+        <input
+          id="searchInput"
+          class="search-input"
+          type="search"
+          placeholder="Search ideas… (text or #tag)"
+          autocomplete="off"
+        />
+      </div>
+
+      <section class="board" id="board" aria-label="Idea board" role="list"></section>
       <div class="empty" id="emptyState" style="display:none;">
         No ideas yet. Type above and hit “Add” to pin your first thought.
       </div>
@@ -563,22 +621,124 @@
   </div>
 
   <script>
-    (function() {
-      const STORAGE_KEY = "ideaWhiteboard_v2";
+    (function () {
+      "use strict";
+
+      const STORAGE_KEY = "ideaWhiteboard_v3";
+      const ANALYTICS_KEY = "ideaWhiteboard_events_v1";
+
       const ideaInput = document.getElementById("ideaInput");
       const tagInput = document.getElementById("tagInput");
       const addBtn = document.getElementById("addBtn");
       const board = document.getElementById("board");
       const emptyState = document.getElementById("emptyState");
       const filterChips = document.querySelectorAll(".chip[data-filter]");
+      const clearAllBtn = document.getElementById("clearAllBtn");
+      const searchInput = document.getElementById("searchInput");
+      const exportBtn = document.getElementById("exportBtn");
+      const importBtn = document.getElementById("importBtn");
 
       let ideas = [];
       let filter = "all";
       let draggingId = null;
       let suppressClick = false;
+      let searchTerm = "";
+
+      // --- Utilities ---
 
       function haptic(ms = 30) {
-        if (navigator.vibrate) navigator.vibrate(ms);
+        try {
+          if (navigator.vibrate) {
+            navigator.vibrate(ms);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function trackEvent(event, data) {
+        try {
+          const raw = localStorage.getItem(ANALYTICS_KEY);
+          let events = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(events)) events = [];
+          events.push({
+            event,
+            ts: Date.now(),
+            ...(data || {})
+          });
+          if (events.length > 1000) {
+            events.splice(0, events.length - 1000);
+          }
+          localStorage.setItem(ANALYTICS_KEY, JSON.stringify(events));
+        } catch (e) {
+          // best-effort, ignore failures
+        }
+      }
+
+      function debounce(fn, wait) {
+        let timeout;
+        return function (...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            fn.apply(null, args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      function createId() {
+        return (
+          "idea_" +
+          Date.now().toString(36) +
+          "_" +
+          Math.random().toString(36).slice(2, 7)
+        );
+      }
+
+      // --- Data Logic ---
+
+      function normalizeIdeasArray(list) {
+        const now = Date.now();
+        const result = [];
+        list.forEach((item, index) => {
+          if (!item) return;
+          const text =
+            typeof item.text === "string" ? item.text.trim() : "";
+          if (!text) return;
+          const tag =
+            typeof item.tag === "string"
+              ? item.tag.trim().replace(/^#+/, "")
+              : "";
+          const id =
+            typeof item.id === "string" && item.id
+              ? item.id
+              : createId();
+          const createdAt =
+            typeof item.createdAt === "number" && item.createdAt > 0
+              ? item.createdAt
+              : now;
+          const pinned = !!item.pinned;
+          const order =
+            typeof item.order === "number" ? item.order : index;
+          result.push({
+            id,
+            text,
+            tag,
+            pinned,
+            createdAt,
+            order
+          });
+        });
+        result.sort((a, b) => {
+          const ao = typeof a.order === "number" ? a.order : 0;
+          const bo = typeof b.order === "number" ? b.order : 0;
+          return ao - bo;
+        });
+        result.forEach((idea, index) => {
+          idea.order = index;
+        });
+        return result;
       }
 
       function loadIdeas() {
@@ -586,7 +746,15 @@
           const raw = localStorage.getItem(STORAGE_KEY);
           if (!raw) return [];
           const parsed = JSON.parse(raw);
-          return Array.isArray(parsed) ? parsed : [];
+          let list;
+          if (Array.isArray(parsed)) {
+            list = parsed;
+          } else if (parsed && Array.isArray(parsed.ideas)) {
+            list = parsed.ideas;
+          } else {
+            return [];
+          }
+          return normalizeIdeasArray(list);
         } catch (e) {
           console.warn("Failed to parse stored ideas", e);
           return [];
@@ -595,28 +763,27 @@
 
       function saveIdeas() {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(ideas));
-        } catch (e) {
-          console.warn("Failed to save ideas", e);
-        }
-      }
-
-      function normalizeOrders() {
-        ideas.forEach((idea, index) => {
-          if (typeof idea.order !== "number") {
-            idea.order = index;
+          const payload = {
+            version: 3,
+            ideas: ideas
+          };
+          const data = JSON.stringify(payload);
+          if (data.length > 5000000) {
+            alert(
+              "Storage limit reached. Please export and clear some ideas."
+            );
+            return false;
           }
-        });
-      }
-
-      function reassignOrders() {
-        ideas.forEach((idea, index) => {
-          idea.order = index;
-        });
-      }
-
-      function createId() {
-        return "idea_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+          localStorage.setItem(STORAGE_KEY, data);
+          return true;
+        } catch (e) {
+          if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
+            alert("Storage full! Please export and clear ideas.");
+          } else {
+            console.warn("Failed to save ideas", e);
+          }
+          return false;
+        }
       }
 
       function formatTime(ts) {
@@ -634,24 +801,40 @@
         return date.toLocaleDateString();
       }
 
+      // --- Rendering ---
+
       function getFilteredIdeas() {
         const now = Date.now();
+        let base = ideas;
         if (filter === "pinned") {
-          return ideas.filter(i => i.pinned);
-        }
-        if (filter === "recent") {
+          base = ideas.filter((i) => i.pinned);
+        } else if (filter === "recent") {
           const cutoff = now - 24 * 60 * 60 * 1000;
-          return ideas.filter(i => i.createdAt >= cutoff);
+          base = ideas.filter((i) => i.createdAt >= cutoff);
         }
-        return ideas;
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          base = base.filter((idea) => {
+            const text = idea.text.toLowerCase();
+            const tag = (idea.tag || "").toLowerCase();
+            return (
+              text.includes(term) ||
+              tag.includes(term) ||
+              ("#" + tag).includes(term)
+            );
+          });
+        }
+        return base;
       }
 
       function sortIdeas(list) {
-        return list.slice().sort((a, b) => {
-          const ao = typeof a.order === "number" ? a.order : 0;
-          const bo = typeof b.order === "number" ? b.order : 0;
-          return ao - bo;
-        });
+        return list
+          .slice()
+          .sort((a, b) => {
+            const ao = typeof a.order === "number" ? a.order : 0;
+            const bo = typeof b.order === "number" ? b.order : 0;
+            return ao - bo;
+          });
       }
 
       function render() {
@@ -665,20 +848,21 @@
 
         const allowDrag = filter === "all";
 
-        filtered.forEach(idea => {
+        filtered.forEach((idea) => {
           const card = document.createElement("article");
-          card.className = "card-idea" + (idea.pinned ? " pinned" : "");
-          if (!allowDrag) {
-            card.classList.add("nodrag");
-          }
+          card.className =
+            "card-idea" + (idea.pinned ? " pinned" : "");
           card.dataset.id = idea.id;
+          card.setAttribute("role", "listitem");
+          card.tabIndex = 0;
           card.draggable = allowDrag;
 
           const actions = document.createElement("div");
           actions.className = "card-actions";
 
           const pinBtn = document.createElement("button");
-          pinBtn.className = "icon-btn" + (idea.pinned ? " pin-active" : "");
+          pinBtn.className =
+            "icon-btn" + (idea.pinned ? " pin-active" : "");
           pinBtn.type = "button";
           pinBtn.title = idea.pinned ? "Unpin" : "Pin";
           pinBtn.innerHTML = "<span>★</span>";
@@ -727,15 +911,31 @@
           meta.appendChild(leftMeta);
           meta.appendChild(rightMeta);
 
+          // Interaction: Edit
           card.addEventListener("click", () => {
             if (suppressClick) return;
             enterEditMode(card, idea);
           });
 
+          // Interaction: Focus style
+          card.addEventListener("focus", () => {
+            card.classList.add("card-focused");
+          });
+          card.addEventListener("blur", () => {
+            card.classList.remove("card-focused");
+          });
+
+          // Interaction: DnD
           if (allowDrag) {
-            card.addEventListener("dragstart", (e) => handleDragStart(e, idea.id));
-            card.addEventListener("dragover", (e) => handleDragOver(e, idea.id));
-            card.addEventListener("drop", (e) => handleDrop(e, idea.id));
+            card.addEventListener("dragstart", (e) =>
+              handleDragStart(e, idea.id)
+            );
+            card.addEventListener("dragover", (e) =>
+              handleDragOver(e, idea.id)
+            );
+            card.addEventListener("drop", (e) =>
+              handleDrop(e, idea.id)
+            );
             card.addEventListener("dragend", handleDragEnd);
           }
 
@@ -746,9 +946,11 @@
         });
       }
 
+      // --- Actions ---
+
       function addIdea() {
-        const text = ideaInput.value.trim();
-        const tag = tagInput.value.trim().replace(/^#+/, "");
+        const text = (ideaInput.value || "").trim();
+        const tag = (tagInput.value || "").trim().replace(/^#+/, "");
         if (!text) return;
         const idea = {
           id: createId(),
@@ -760,6 +962,7 @@
         };
         ideas.push(idea);
         haptic(25);
+        trackEvent("add", { tag: idea.tag || null });
         saveIdeas();
         ideaInput.value = "";
         ideaInput.style.height = "auto";
@@ -770,35 +973,52 @@
       }
 
       function togglePin(id) {
-        const idx = ideas.findIndex(i => i.id === id);
+        const idx = ideas.findIndex((i) => i.id === id);
         if (idx === -1) return;
         ideas[idx].pinned = !ideas[idx].pinned;
         haptic(15);
+        trackEvent("pin_toggle", { pinned: ideas[idx].pinned });
         saveIdeas();
         render();
       }
 
       function deleteIdea(id) {
-        ideas = ideas.filter(i => i.id !== id);
-        reassignOrders();
+        const before = ideas.length;
+        ideas = ideas.filter((i) => i.id !== id);
+        // Re-normalize order
+        ideas.forEach((idea, index) => {
+          idea.order = index;
+        });
         haptic(40);
+        trackEvent("delete", { before, after: ideas.length });
         saveIdeas();
         render();
       }
 
       function moveIdea(sourceId, targetId) {
         if (!sourceId || !targetId || sourceId === targetId) return;
-        const fromIndex = ideas.findIndex(i => i.id === sourceId);
-        const toIndex = ideas.findIndex(i => i.id === targetId);
+        const fromIndex = ideas.findIndex((i) => i.id === sourceId);
+        const toIndex = ideas.findIndex((i) => i.id === targetId);
         if (fromIndex === -1 || toIndex === -1) return;
+        // Move item
         const [moved] = ideas.splice(fromIndex, 1);
         ideas.splice(toIndex, 0, moved);
-        reassignOrders();
+        // Re-index
+        ideas.forEach((idea, index) => {
+          idea.order = index;
+        });
+        trackEvent("reorder", {});
         saveIdeas();
         render();
       }
 
+      // --- DnD ---
+
       function handleDragStart(e, id) {
+        if (filter !== "all") {
+          e.preventDefault();
+          return;
+        }
         draggingId = id;
         suppressClick = true;
         if (e.dataTransfer) {
@@ -816,27 +1036,34 @@
           e.dataTransfer.dropEffect = "move";
         }
         const cards = board.querySelectorAll(".card-idea");
-        cards.forEach(c => {
+        cards.forEach((c) => {
           c.classList.toggle("drop-target", c.dataset.id === targetId);
         });
       }
 
       function handleDrop(e, targetId) {
         e.preventDefault();
-        const sourceId = draggingId || (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+        const sourceId =
+          draggingId ||
+          (e.dataTransfer && e.dataTransfer.getData("text/plain"));
         moveIdea(sourceId, targetId);
       }
 
       function handleDragEnd() {
         const cards = board.querySelectorAll(".card-idea");
-        cards.forEach(c => c.classList.remove("dragging", "drop-target"));
+        cards.forEach((c) =>
+          c.classList.remove("dragging", "drop-target")
+        );
         draggingId = null;
         setTimeout(() => {
           suppressClick = false;
         }, 0);
       }
 
+      // --- Inline Edit ---
+
       function autoGrowTextArea(el) {
+        if (!el) return;
         el.style.height = "auto";
         el.style.height = el.scrollHeight + "px";
       }
@@ -846,6 +1073,7 @@
         card.dataset.editing = "1";
         const originalText = idea.text;
 
+        // Construct edit UI
         const textArea = document.createElement("textarea");
         textArea.className = "edit-input";
         textArea.value = originalText;
@@ -878,7 +1106,11 @@
 
         autoGrowTextArea(textArea);
         textArea.focus();
-        textArea.setSelectionRange(textArea.value.length, textArea.value.length);
+        // Cursor at end
+        textArea.setSelectionRange(
+          textArea.value.length,
+          textArea.value.length
+        );
 
         function cleanup() {
           card.dataset.editing = "0";
@@ -897,11 +1129,12 @@
           const newText = textArea.value.trim();
           if (!newText) {
             cleanup();
-            return;
+            return; // Don't delete on empty save, just cancel
           }
-          const idx = ideas.findIndex(i => i.id === idea.id);
+          const idx = ideas.findIndex((i) => i.id === idea.id);
           if (idx !== -1) {
             ideas[idx].text = newText;
+            trackEvent("edit", {});
             saveIdeas();
             render();
           } else {
@@ -909,28 +1142,250 @@
           }
         });
 
-        textArea.addEventListener("input", () => autoGrowTextArea(textArea));
+        textArea.addEventListener("input", () =>
+          autoGrowTextArea(textArea)
+        );
 
         textArea.addEventListener("keydown", (e) => {
           if (e.key === "Escape") {
             e.stopPropagation();
             cancelBtn.click();
+          } else if (
+            (e.key === "Enter" || e.key === "NumpadEnter") &&
+            (e.metaKey || e.ctrlKey)
+          ) {
+            e.preventDefault();
+            saveBtn.click();
           }
         });
       }
 
+      // --- Event Bindings ---
+
       function updateAddButtonState() {
-        const hasText = ideaInput.value.trim().length > 0;
+        const hasText = (ideaInput.value || "").trim().length > 0;
         addBtn.disabled = !hasText;
       }
 
       function setFilter(next) {
         filter = next;
-        filterChips.forEach(chip => {
+        filterChips.forEach((chip) => {
           chip.classList.toggle("active", chip.dataset.filter === filter);
+        });
+        trackEvent("filter", { filter });
+        render();
+      }
+
+      function setSearchTerm(term) {
+        searchTerm = term.trim();
+        trackEvent("search", {
+          length: searchTerm.length > 0 ? searchTerm.length : 0
         });
         render();
       }
+
+      function handleClearAll() {
+        if (!ideas.length) return;
+        if (
+          !confirm(
+            "Delete every idea permanently from this device? This cannot be undone."
+          )
+        ) {
+          return;
+        }
+        const count = ideas.length;
+        ideas = [];
+        saveIdeas();
+        render();
+        haptic(100);
+        trackEvent("clear_all", { count });
+      }
+
+      async function handleExport() {
+        try {
+          const payload = {
+            version: 3,
+            ideas: ideas
+          };
+          const json = JSON.stringify(payload);
+          const encoded = btoa(
+            unescape(encodeURIComponent(json))
+          );
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(encoded);
+            alert(
+              "Exported to clipboard.\nPaste this text into a safe place to back up your ideas."
+            );
+          } else {
+            // Fallback for older browsers
+            const helper = document.createElement("textarea");
+            helper.style.position = "fixed";
+            helper.style.opacity = "0";
+            helper.value = encoded;
+            document.body.appendChild(helper);
+            helper.select();
+            try {
+              document.execCommand("copy");
+              alert(
+                "Exported using fallback copy.\nIf unsure, choose OK and manually copy from the next prompt."
+              );
+            } catch (err) {
+              // ignore
+            }
+            document.body.removeChild(helper);
+            prompt("Copy this exported data manually:", encoded);
+          }
+          trackEvent("export", { count: ideas.length });
+        } catch (e) {
+          console.warn("Export failed", e);
+          prompt("Copy this exported data manually:", "");
+        }
+      }
+
+      async function handleImport() {
+        const text = prompt("Paste your exported data:");
+        if (!text) return;
+        try {
+          const decodedJson = decodeURIComponent(
+            escape(atob(text.trim()))
+          );
+          const parsed = JSON.parse(decodedJson);
+          let list;
+          if (Array.isArray(parsed)) {
+            list = parsed;
+          } else if (parsed && Array.isArray(parsed.ideas)) {
+            list = parsed.ideas;
+          } else {
+            throw new Error("Invalid structure");
+          }
+          const normalized = normalizeIdeasArray(list);
+          if (!normalized.length) {
+            alert("No ideas found in the imported data.");
+            return;
+          }
+          if (
+            !confirm(
+              "Import " +
+                normalized.length +
+                " ideas? This will replace your current board."
+            )
+          ) {
+            return;
+          }
+          ideas = normalized;
+          saveIdeas();
+          render();
+          haptic(60);
+          trackEvent("import", { count: ideas.length });
+        } catch (e) {
+          console.warn("Import failed", e);
+          alert("Could not import: invalid or corrupted data.");
+        }
+      }
+
+      function isTypingInInput() {
+        const el = document.activeElement;
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag === "TEXTAREA") return true;
+        if (tag === "INPUT") {
+          const type = (el.getAttribute("type") || "").toLowerCase();
+          return type !== "button" && type !== "submit";
+        }
+        return false;
+      }
+
+      function handleGlobalKeydown(e) {
+        if (e.defaultPrevented) return;
+
+        // Quick focus to idea input
+        if (
+          e.key === "/" &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          ideaInput.focus();
+          return;
+        }
+
+        // Shortcut help
+        if (
+          e.key === "?" &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          alert(
+            "Shortcuts:\n" +
+              "Ctrl/Cmd + Enter → Add idea\n" +
+              "/ → Focus idea input\n" +
+              "n → Focus idea input\n" +
+              "Esc → Cancel edit / blur\n" +
+              "Delete/Backspace → Delete focused card\n" +
+              "p → Pin/unpin focused card\n" +
+              "Drag (All view) → Reorder cards"
+          );
+          return;
+        }
+
+        if (
+          (e.key === "n" || e.key === "N") &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          ideaInput.focus();
+          return;
+        }
+
+        if (e.key === "Escape") {
+          if (
+            document.activeElement &&
+            document.activeElement !== document.body
+          ) {
+            document.activeElement.blur();
+          }
+          return;
+        }
+
+        // Keyboard management of cards
+        if (
+          (e.key === "Delete" || e.key === "Backspace") &&
+          !isTypingInInput()
+        ) {
+          const focused = document.querySelector(
+            ".card-idea.card-focused"
+          );
+          if (focused && focused.dataset.id) {
+            e.preventDefault();
+            deleteIdea(focused.dataset.id);
+          }
+          return;
+        }
+
+        if (
+          (e.key === "p" || e.key === "P") &&
+          !isTypingInInput()
+        ) {
+          const focused = document.querySelector(
+            ".card-idea.card-focused"
+          );
+          if (focused && focused.dataset.id) {
+            e.preventDefault();
+            togglePin(focused.dataset.id);
+          }
+        }
+      }
+
+      // --- Initialization ---
 
       ideaInput.addEventListener("input", () => {
         updateAddButtonState();
@@ -938,7 +1393,10 @@
       });
 
       ideaInput.addEventListener("keydown", (e) => {
-        if ((e.key === "Enter" || e.key === "NumpadEnter") && (e.ctrlKey || e.metaKey)) {
+        if (
+          (e.key === "Enter" || e.key === "NumpadEnter") &&
+          (e.ctrlKey || e.metaKey)
+        ) {
           e.preventDefault();
           if (!addBtn.disabled) addIdea();
         }
@@ -948,19 +1406,51 @@
         addIdea();
       });
 
-      filterChips.forEach(chip => {
+      filterChips.forEach((chip) => {
         chip.addEventListener("click", () => {
-          setFilter(chip.dataset.filter);
+          const next = chip.dataset.filter;
+          if (!next) return;
+          setFilter(next);
         });
       });
 
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", handleClearAll);
+      }
+
+      if (searchInput) {
+        const debouncedSearch = debounce((value) => {
+          setSearchTerm(value);
+        }, 120);
+        searchInput.addEventListener("input", (e) => {
+          debouncedSearch(e.target.value || "");
+        });
+      }
+
+      if (exportBtn) {
+        exportBtn.addEventListener("click", () => {
+          handleExport();
+        });
+      }
+
+      if (importBtn) {
+        importBtn.addEventListener("click", () => {
+          handleImport();
+        });
+      }
+
+      document.addEventListener("keydown", handleGlobalKeydown);
+
+      // Start
       ideas = loadIdeas();
-      normalizeOrders();
       saveIdeas();
       render();
       updateAddButtonState();
       autoGrowTextArea(ideaInput);
-      ideaInput.focus();
+      // Optional: focus on load for desktop
+      if (window.matchMedia("(min-width: 800px)").matches) {
+          ideaInput.focus();
+      }
     })();
   </script>
 </body>
