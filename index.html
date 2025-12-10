@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>Idea Whiteboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;Idea Whiteboard&quot;,&quot;short_name&quot;:&quot;Ideas&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#050816&quot;,&quot;theme_color&quot;:&quot;#4b6bff&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💡</text></svg>&quot;,&quot;sizes&quot;:&quot;any&quot;}]}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <style>
     :root {
       --bg: #f4f5fb;
@@ -280,8 +282,17 @@
       }
     }
 
+    .search-wrap {
+      margin: 12px 0 4px;
+    }
+
+    .search-input {
+      width: 100%;
+      max-width: 420px;
+    }
+
     .board {
-      margin-top: 14px;
+      margin-top: 10px;
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 10px;
@@ -504,7 +515,11 @@
         <h1>Idea Whiteboard</h1>
         <span>Pin, edit, and drag your thinking stream.</span>
       </div>
-      <div class="badge">Mobile-first</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="icon-btn" id="exportBtn" title="Export ideas"><span>↓</span></button>
+        <button class="icon-btn" id="importBtn" title="Import ideas"><span>↑</span></button>
+        <div class="badge">Mobile-first</div>
+      </div>
     </header>
 
     <main>
@@ -539,29 +554,48 @@
         <button class="chip active" data-filter="all">All</button>
         <button class="chip" data-filter="pinned">Pinned</button>
         <button class="chip" data-filter="recent">Last 24h</button>
+        <button class="chip" id="clearAll">Clear all</button>
       </nav>
+
+      <div class="search-wrap">
+        <input
+          id="searchInput"
+          class="tag-input search-input"
+          type="search"
+          autocomplete="off"
+          placeholder="Search ideas…"
+        />
+      </div>
 
       <section class="board" id="board" aria-label="Idea board"></section>
       <div class="empty" id="emptyState" style="display:none;">
-        No ideas yet. Type above and hit “Add” to pin your first thought.
+        No ideas yet. Type above and hit "Add" to pin your first thought.
       </div>
     </main>
   </div>
 
   <script>
     (function() {
-      const STORAGE_KEY = "ideaWhiteboard_v2";
+      const STORAGE_KEY = "ideaWhiteboard_v3";
+      const EMPTY_COPY = 'No ideas yet. Type above and hit "Add" to pin your first thought.';
+      const EMPTY_SEARCH_COPY = "No ideas match this search.";
+
       const ideaInput = document.getElementById("ideaInput");
       const tagInput = document.getElementById("tagInput");
       const addBtn = document.getElementById("addBtn");
       const board = document.getElementById("board");
       const emptyState = document.getElementById("emptyState");
       const filterChips = document.querySelectorAll(".chip[data-filter]");
+      const clearAllBtn = document.getElementById("clearAll");
+      const searchInput = document.getElementById("searchInput");
+      const exportBtn = document.getElementById("exportBtn");
+      const importBtn = document.getElementById("importBtn");
 
       let ideas = [];
       let filter = "all";
       let draggingId = null;
       let suppressClick = false;
+      let searchTerm = "";
 
       function haptic(ms = 30) {
         if (navigator.vibrate) navigator.vibrate(ms);
@@ -640,10 +674,46 @@
         });
       }
 
+      function applySearchFilter() {
+        const cards = board.querySelectorAll(".card-idea");
+        if (!cards.length) return;
+
+        if (!searchTerm) {
+          cards.forEach(card => {
+            card.style.display = "";
+          });
+          emptyState.textContent = EMPTY_COPY;
+          return;
+        }
+
+        const term = searchTerm;
+        let visibleCount = 0;
+        cards.forEach(card => {
+          const text = card.querySelector(".idea-text").textContent.toLowerCase();
+          const tagEl = card.querySelector(".pill-tag");
+          const tagText = tagEl ? tagEl.textContent.toLowerCase() : "";
+          if (text.includes(term) || tagText.includes(term)) {
+            card.style.display = "";
+            visibleCount++;
+          } else {
+            card.style.display = "none";
+          }
+        });
+
+        if (visibleCount === 0) {
+          emptyState.textContent = EMPTY_SEARCH_COPY;
+          emptyState.style.display = "block";
+        } else {
+          emptyState.textContent = EMPTY_COPY;
+          emptyState.style.display = "none";
+        }
+      }
+
       function render() {
         const filtered = sortIdeas(getFilteredIdeas());
         board.innerHTML = "";
         if (!filtered.length) {
+          emptyState.textContent = searchTerm ? EMPTY_SEARCH_COPY : EMPTY_COPY;
           emptyState.style.display = "block";
           return;
         }
@@ -730,6 +800,8 @@
           card.appendChild(meta);
           board.appendChild(card);
         });
+
+        applySearchFilter();
       }
 
       function addIdea() {
@@ -938,6 +1010,101 @@
         chip.addEventListener("click", () => {
           setFilter(chip.dataset.filter);
         });
+      });
+
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", () => {
+          if (!ideas.length) return;
+          if (confirm("Delete every idea permanently?")) {
+            ideas = [];
+            saveIdeas();
+            searchTerm = "";
+            if (searchInput) searchInput.value = "";
+            render();
+            haptic(100);
+          }
+        });
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+          searchTerm = e.target.value.trim().toLowerCase();
+          render();
+        });
+      }
+
+      if (exportBtn) {
+        exportBtn.addEventListener("click", async () => {
+          try {
+            const data = JSON.stringify(ideas);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(data);
+              alert("Exported ideas as JSON to clipboard. Paste anywhere to back up.");
+            } else {
+              const fallback = prompt("Copy your ideas backup JSON:", data);
+              if (!fallback) return;
+            }
+          } catch (e) {
+            console.warn("Export failed", e);
+            alert("Export failed.");
+          }
+        });
+      }
+
+      if (importBtn) {
+        importBtn.addEventListener("click", () => {
+          const text = prompt("Paste your exported ideas JSON:");
+          if (!text) return;
+          try {
+            const parsed = JSON.parse(text);
+            if (!Array.isArray(parsed)) {
+              throw new Error("Not an array");
+            }
+            if (!confirm("Import " + parsed.length + " ideas? This will replace your current board.")) {
+              return;
+            }
+            ideas = parsed.map((item, idx) => ({
+              id: typeof item.id === "string" ? item.id : createId(),
+              text: (item.text || "").toString(),
+              tag: item.tag ? item.tag.toString() : "",
+              pinned: Boolean(item.pinned),
+              createdAt: typeof item.createdAt === "number" ? item.createdAt : Date.now(),
+              order: typeof item.order === "number" ? item.order : idx
+            })).filter(i => i.text.trim().length > 0);
+            reassignOrders();
+            saveIdeas();
+            searchTerm = "";
+            if (searchInput) searchInput.value = "";
+            render();
+          } catch (e) {
+            console.warn("Import failed", e);
+            alert("Invalid data. Make sure you pasted the JSON from Export.");
+          }
+        });
+      }
+
+      document.addEventListener("keydown", (e) => {
+        const activeTag = document.activeElement && document.activeElement.tagName;
+        const inEditable =
+          activeTag === "TEXTAREA" ||
+          activeTag === "INPUT" ||
+          document.activeElement.isContentEditable;
+
+        if (e.key === "/" && !inEditable) {
+          e.preventDefault();
+          ideaInput.focus();
+          return;
+        }
+
+        if (e.key === "?") {
+          alert(
+            "Shortcuts:\n" +
+            "Ctrl/Cmd + Enter → Add idea\n" +
+            "/ → Focus input\n" +
+            "Esc → Cancel edit\n" +
+            "Drag → Reorder (All view only)"
+          );
+        }
       });
 
       ideas = loadIdeas();
