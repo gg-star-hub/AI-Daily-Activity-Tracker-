@@ -1,188 +1,1693 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Qwen 2.5 (0.5B) - Local AI</title>
-    
-    <!-- Markdown Support -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Idea Whiteboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050816" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>">
+  <link rel="manifest" href="data:application/manifest+json,{ &quot;name&quot;:&quot;Idea Whiteboard&quot;, &quot;short_name&quot;:&quot;Ideas&quot;, &quot;start_url&quot;:&quot;.&quot;, &quot;display&quot;:&quot;standalone&quot;, &quot;background_color&quot;:&quot;#050816&quot;, &quot;theme_color&quot;:&quot;#4b6bff&quot;, &quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>&quot;,&quot;sizes&quot;:&quot;any&quot;}] }">
+  <style>
+    :root {
+      --bg: #f4f5fb;
+      --bg-alt: #e7ebff;
+      --card: #ffffff;
+      --accent: #4b6bff;
+      --accent-soft: rgba(75, 107, 255, 0.12);
+      --danger: #ff4b6b;
+      --text-main: #161827;
+      --text-muted: #6b718c;
+      --border-subtle: rgba(19, 31, 71, 0.08);
+      --radius-lg: 20px;
+      --shadow-soft: 0 12px 30px rgba(15, 27, 71, 0.18);
+    }
 
-    <style>
-        :root { --bg:#0f172a; --chat:#1e293b; --input:#334155; --accent:#3b82f6; --text:#f8fafc; }
-        body { margin:0; font-family:system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-        
-        /* Loader */
-        #loader { position:absolute; inset:0; background:var(--bg); z-index:99; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:opacity 0.5s; }
-        .box { background:var(--chat); padding:2rem; border-radius:12px; width:90%; max-width:400px; text-align:center; border:1px solid var(--input); box-shadow:0 10px 30px rgba(0,0,0,0.5); }
-        .bar-bg { width:100%; height:8px; background:#020617; border-radius:4px; margin:15px 0; overflow:hidden; }
-        .bar { height:100%; background:var(--accent); width:0%; transition:width 0.2s; }
-        #status { margin:0 0 10px 0; font-weight:600; }
-        
-        /* Chat */
-        #app { display:flex; flex-direction:column; height:100%; opacity:0; transition:opacity 0.5s; pointer-events:none; }
-        #app.active { pointer-events:all; }
-        header { padding:15px; background:var(--chat); border-bottom:1px solid var(--input); font-weight:600; display:flex; justify-content:space-between; align-items:center; }
-        #msgs { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:15px; scroll-behavior:smooth; }
-        .msg { max-width:85%; padding:10px 15px; border-radius:10px; line-height:1.5; font-size:0.95rem; word-wrap:break-word; }
-        .msg p { margin:0; }
-        .user { align-self:flex-end; background:var(--accent); color:white; }
-        .bot { align-self:flex-start; background:var(--chat); border:1px solid var(--input); }
-        .bot pre { background:rgba(0,0,0,0.3); padding:10px; border-radius:6px; overflow-x:auto; }
-        
-        #input-area { padding:20px; background:var(--chat); border-top:1px solid var(--input); display:flex; gap:10px; }
-        input { flex:1; padding:12px; border-radius:8px; border:1px solid var(--input); background:var(--bg); color:white; outline:none; }
-        button { padding:0 20px; background:var(--accent); color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; }
-        button:disabled { background:var(--input); cursor:wait; }
-    </style>
+    :root[data-theme="dark"] {
+      --bg: #050816;
+      --bg-alt: #101426;
+      --card: #0f1424;
+      --accent: #4b9dff;
+      --accent-soft: rgba(75, 157, 255, 0.18);
+      --danger: #ff6b8a;
+      --text-main: #f9fafb;
+      --text-muted: #a2a9d0;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
+    }
 
-    <!-- COI Security Injector (Fixed to allow Caching) -->
-    <script>
-    (function() {
-        if (window.crossOriginIsolated) return; 
-        
-        const workerScript = `
-            self.addEventListener("install", () => self.skipWaiting());
-            self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
-            self.addEventListener("fetch", e => {
-                // Only intercept the main document to inject security headers.
-                // We let other requests (like the model download) go through normally to avoid breaking the Cache API.
-                if (e.request.mode === "navigate" || e.request.destination === "document") {
-                    e.respondWith(fetch(e.request).then(res => {
-                        const headers = new Headers(res.headers);
-                        headers.set("Cross-Origin-Embedder-Policy", "require-corp");
-                        headers.set("Cross-Origin-Opener-Policy", "same-origin");
-                        return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
-                    }));
-                }
-            });
-        `;
-        
-        const blob = new Blob([workerScript], { type: "application/javascript" });
-        const url = URL.createObjectURL(blob);
-        navigator.serviceWorker.register(url).then(reg => {
-            reg.addEventListener("updatefound", () => location.reload());
-            if (reg.active && !navigator.serviceWorker.controller) location.reload();
-        }).catch(err => {
-            console.error(err);
-            document.getElementById("status").textContent = "Error: Use a local server (http://localhost), not file://";
-        });
-    })();
-    </script>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, var(--bg-alt) 0, var(--bg) 48%, #02030a 100%);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px 14px 24px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .title span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.3));
+      color: #28304a;
+      box-shadow: 0 8px 22px rgba(9, 13, 40, 0.18);
+      white-space: nowrap;
+    }
+
+    [data-theme="dark"] .badge {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: linear-gradient(135deg, rgba(15, 24, 61, 0.9), rgba(75, 107, 255, 0.9));
+      color: #f5f5ff;
+    }
+
+    .composer {
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+      padding: 10px 11px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: var(--shadow-soft);
+    }
+
+    [data-theme="dark"] .composer {
+      background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.2), rgba(7, 11, 36, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .composer-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .idea-input {
+      flex: 1;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.96);
+      padding: 8px 10px;
+      min-height: 60px;
+      max-height: 160px;
+      resize: none;
+      font-size: 0.92rem;
+      color: var(--text-main);
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+      overflow-y: auto;
+    }
+
+    .idea-input::placeholder {
+      color: rgba(107, 114, 142, 0.9);
+    }
+
+    .idea-input:focus {
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 0 0 1px var(--accent),
+        0 10px 25px rgba(22, 35, 89, 0.3);
+      background: #ffffff;
+    }
+
+    [data-theme="dark"] .idea-input {
+      background: rgba(6, 10, 30, 0.98);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .idea-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .composer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tag-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tag-input-wrap span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .tag-input {
+      flex: 1;
+      min-width: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.12);
+      padding: 5px 9px;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.96);
+      outline: none;
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .tag-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .tag-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn-primary {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--accent), #7b5bff);
+      color: #ffffff;
+      box-shadow: 0 10px 26px rgba(11, 22, 68, 0.7);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.45;
+      box-shadow: none;
+      cursor: default;
+    }
+
+    .btn-primary span {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      margin-top: 12px;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.94);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .chip.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    [data-theme="dark"] .chip {
+      background: rgba(12, 17, 39, 0.96);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .search-row {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .search-input {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 6px 11px;
+      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.96);
+      outline: none;
+      color: var(--text-main);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    [data-theme="dark"] .search-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .board {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .card-idea {
+      border-radius: 16px;
+      background: var(--card);
+      padding: 10px 11px 8px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 9px 22px rgba(9, 16, 46, 0.17);
+      display: flex;
+      flex-direction: column;
+      min-height: 80px;
+      position: relative;
+      user-select: none;
+      outline: none;
+      transition: transform 0.09s ease, box-shadow 0.09s ease, background 0.12s ease;
+    }
+
+    .card-idea.pinned {
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 14px 32px rgba(14, 26, 78, 0.38);
+    }
+
+    .card-idea.dragging {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
+
+    .card-idea.drop-target {
+      outline: 2px dashed var(--accent);
+      outline-offset: 2px;
+    }
+
+    .card-idea.card-focused {
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 0 0 1px var(--accent);
+    }
+
+    .idea-text {
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      color: var(--text-main);
+    }
+
+    .idea-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+
+    .pill-tag {
+      font-size: 0.74rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(238, 240, 255, 0.96);
+      color: #3a4470;
+      border: 1px solid rgba(76, 88, 160, 0.22);
+    }
+
+    [data-theme="dark"] .pill-tag {
+      background: rgba(11, 18, 55, 0.96);
+      color: #c8cff8;
+      border-color: rgba(196, 200, 255, 0.3);
+    }
+
+    .meta-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .meta-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(99, 108, 169, 0.7);
+    }
+
+    .card-actions {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .icon-btn {
+      border: none;
+      border-radius: 999px;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .icon-btn span {
+      font-size: 0.98rem;
+      line-height: 1;
+    }
+
+    .icon-btn.pin-active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .icon-btn.danger {
+      color: var(--danger);
+    }
+
+    .icon-btn.round {
+      border-radius: 999px;
+      width: 28px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 6px 18px rgba(11, 18, 53, 0.26);
+    }
+
+    [data-theme="dark"] .icon-btn.round {
+      background: rgba(10, 14, 33, 0.98);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+    }
+
+    .empty {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      padding: 2rem 1rem;
+    }
+
+    .edit-input {
+      border-radius: 12px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 6px 8px;
+      font-size: 0.88rem;
+      width: 100%;
+      resize: none;
+      min-height: 60px;
+      max-height: 160px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.98);
+      overflow-y: auto;
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .edit-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    .edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .btn-small {
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      background: rgba(245, 247, 255, 0.98);
+      font-size: 0.74rem;
+      padding: 4px 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    .btn-small.primary {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    [data-theme="dark"] .btn-small {
+      background: rgba(11, 16, 42, 0.98);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: var(--text-main);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+  </style>
 </head>
 <body>
-
-<div id="loader">
-    <div class="box">
-        <h2 id="status">Initializing...</h2>
-        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#94a3b8;">
-            <span id="pct">0%</span>
-            <span id="txt">Preparing</span>
-        </div>
-        <div class="bar-bg"><div id="bar" class="bar"></div></div>
-    </div>
-</div>
-
-<div id="app">
-    <header>
-        <span>Local Chat</span>
-        <span style="font-size:0.8em; opacity:0.7; border:1px solid #334155; padding:2px 6px; border-radius:4px;">Qwen 2.5 (0.5B)</span>
+  <div class="app" id="app">
+    <header class="header">
+      <div class="title">
+        <h1>Idea Whiteboard</h1>
+        <span>Pin, edit, search, and drag your thinking stream.</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn round" id="exportBtn" title="Export ideas">
+          <span>↓</span>
+        </button>
+        <button class="icon-btn round" id="importBtn" title="Import ideas">
+          <span>↑</span>
+        </button>
+        <button class="icon-btn round" id="themeToggle" title="Toggle theme">
+          ☀️
+        </button>
+        <div class="badge">Mobile-first</div>
+      </div>
     </header>
-    <div id="msgs"></div>
-    <div id="input-area">
-        <input type="text" id="inp" placeholder="Type a message..." autocomplete="off">
-        <button id="btn">Send</button>
-    </div>
-</div>
 
-<script type="module">
-    import { CreateMLCEngine } from "https://esm.run/@mlc-ai/web-llm@0.2.46";
+    <main role="main">
+      <section class="composer" aria-label="New idea">
+        <div class="composer-top">
+          <textarea
+            id="ideaInput"
+            class="idea-input"
+            rows="3"
+            placeholder="Drop your idea here… (one clear thought per card)"
+          ></textarea>
+        </div>
+        <div class="composer-bottom">
+          <div class="tag-input-wrap">
+            <span>#</span>
+            <input
+              id="tagInput"
+              class="tag-input"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              placeholder="Tag (optional: focus, product, life, etc.)"
+            />
+          </div>
+          <button id="addBtn" class="btn-primary" disabled>
+            <span>＋</span> Add
+          </button>
+        </div>
+      </section>
 
-    const MODEL = "Qwen2.5-0.5B-Instruct-q4f32_1-MLC";
-    const CONFIG = {
-        model_list: [{
-            "model": "https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f32_1-MLC/resolve/main/",
-            "model_id": MODEL,
-            "model_lib": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0.2.46/Qwen2-0.5B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
-            "vram_required_MB": 800,
-            "low_resource_required": true
-        }]
-    };
+      <nav class="toolbar" aria-label="Filter ideas">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="pinned">Pinned</button>
+        <button class="chip" data-filter="recent">Last 24h</button>
+        <button class="chip" id="clearAllBtn" title="Delete all ideas">Clear All</button>
+      </nav>
 
-    const $ = id => document.getElementById(id);
-    let engine;
-    let hist = [{ role:"system", content:"You are a helpful AI assistant." }];
+      <div class="search-row">
+        <input
+          id="searchInput"
+          class="search-input"
+          type="search"
+          placeholder="Search ideas… (text or #tag)"
+          autocomplete="off"
+        />
+      </div>
 
-    async function init() {
-        if(!navigator.gpu) { 
-            $("status").textContent = "WebGPU not supported (Use Chrome/Edge)"; 
-            return; 
-        }
-        
+      <section class="board" id="board" aria-label="Idea board" role="list"></section>
+      <div class="empty" id="emptyState" style="display:none;">
+        No ideas yet. Type above and hit “Add” to pin your first thought.
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const STORAGE_KEY = "ideaWhiteboard_v3";
+      const ANALYTICS_KEY = "ideaWhiteboard_events_v1";
+      const THEME_KEY = "ideaWhiteboard_theme_v1";
+
+      const ideaInput = document.getElementById("ideaInput");
+      const tagInput = document.getElementById("tagInput");
+      const addBtn = document.getElementById("addBtn");
+      const board = document.getElementById("board");
+      const emptyState = document.getElementById("emptyState");
+      const filterChips = document.querySelectorAll(".chip[data-filter]");
+      const clearAllBtn = document.getElementById("clearAllBtn");
+      const searchInput = document.getElementById("searchInput");
+      const exportBtn = document.getElementById("exportBtn");
+      const importBtn = document.getElementById("importBtn");
+      const themeToggle = document.getElementById("themeToggle");
+
+      let ideas = [];
+      let filter = "all";
+      let draggingId = null;
+      let suppressClick = false;
+      let searchTerm = "";
+
+      // --- Utilities ---
+
+      function haptic(ms = 30) {
         try {
-            engine = await CreateMLCEngine(MODEL, {
-                appConfig: CONFIG,
-                initProgressCallback: (info) => {
-                    $("bar").style.width = info.progress * 100 + "%";
-                    $("pct").textContent = Math.floor(info.progress*100) + "%";
-                    $("txt").textContent = info.text.replace("Fetching","DL");
-                }
-            });
-            
-            $("loader").style.opacity = "0";
-            $("app").style.opacity = "1";
-            $("app").classList.add("active");
-            setTimeout(() => $("loader").style.display = "none", 500);
-            add("bot", "Hi! The model is loaded locally. Ask me anything!");
-            
-        } catch(e) {
-            $("status").textContent = "Load Error: " + e.message;
-            $("status").style.color = "#ef4444";
-            $("txt").textContent = "Check console (F12) for details";
+          if (navigator.vibrate) {
+            navigator.vibrate(ms);
+          }
+        } catch (e) {
+          // ignore
         }
-    }
+      }
 
-    async function send() {
-        const txt = $("inp").value.trim();
-        if(!txt) return;
-        
-        $("inp").value = ""; $("inp").disabled = true; $("btn").disabled = true;
-        add("user", txt);
-        hist.push({ role:"user", content:txt });
-        
-        const botDiv = add("bot", "...");
-        let full = "";
-
+      function trackEvent(event, data) {
         try {
-            const stream = await engine.chat.completions.create({ messages:hist, stream:true });
-            for await (const c of stream) {
-                full += c.choices[0]?.delta?.content || "";
-                botDiv.innerHTML = marked.parse(full);
-                $("msgs").scrollTop = $("msgs").scrollHeight;
+          const raw = localStorage.getItem(ANALYTICS_KEY);
+          let events = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(events)) events = [];
+          events.push({
+            event,
+            ts: Date.now(),
+            ...(data || {})
+          });
+          if (events.length > 1000) {
+            events.splice(0, events.length - 1000);
+          }
+          localStorage.setItem(ANALYTICS_KEY, JSON.stringify(events));
+        } catch (e) {
+          // best-effort, ignore failures
+        }
+      }
+
+      function debounce(fn, wait) {
+        let timeout;
+        return function (...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            fn.apply(null, args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      function createId() {
+        return (
+          "idea_" +
+          Date.now().toString(36) +
+          "_" +
+          Math.random().toString(36).slice(2, 7)
+        );
+      }
+
+      function showToast(message) {
+        try {
+          const existing = document.getElementById("ideaToast");
+          if (existing) {
+            existing.remove();
+          }
+          const toast = document.createElement("div");
+          toast.id = "ideaToast";
+          toast.textContent = message;
+          toast.style.position = "fixed";
+          toast.style.bottom = "24px";
+          toast.style.left = "50%";
+          toast.style.transform = "translateX(-50%)";
+          toast.style.padding = "8px 16px";
+          toast.style.borderRadius = "999px";
+          toast.style.fontSize = "0.9rem";
+          toast.style.zIndex = "9999";
+          toast.style.boxShadow = "0 12px 30px rgba(0, 0, 0, 0.35)";
+          toast.style.maxWidth = "90vw";
+          toast.style.textAlign = "center";
+          toast.style.whiteSpace = "nowrap";
+          toast.style.overflow = "hidden";
+          toast.style.textOverflow = "ellipsis";
+          toast.style.opacity = "0";
+          toast.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+          toast.style.backdropFilter = "blur(12px)";
+          toast.style.webkitBackdropFilter = "blur(12px)";
+          const isDark =
+            (document.documentElement.getAttribute("data-theme") || "light") === "dark";
+          toast.style.background = isDark
+            ? "rgba(15, 23, 42, 0.95)"
+            : "rgba(31, 41, 55, 0.95)";
+          toast.style.color = "#f9fafb";
+          document.body.appendChild(toast);
+          requestAnimationFrame(() => {
+            toast.style.opacity = "1";
+          });
+          setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(-50%) translateY(4px)";
+            setTimeout(() => {
+              const el = document.getElementById("ideaToast");
+              if (el) el.remove();
+            }, 220);
+          }, 1200);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function renderMarkdown(text) {
+        if (!text) return "";
+        let safe = String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+        // Normalize newlines
+        safe = safe.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+        // Basic markdown
+        safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        safe = safe.replace(/\*(.+?)\*/g, "<em>$1</em>");
+        safe = safe.replace(
+          /`(.+?)`/g,
+          "<code style='background:var(--accent-soft);padding:2px 5px;border-radius:4px;font-size:0.85em;'>$1</code>"
+        );
+
+        // Line breaks
+        safe = safe.replace(/\n/g, "<br>");
+        return safe;
+      }
+
+      function applyTheme(theme) {
+        const t = theme === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+        if (themeToggle) {
+          themeToggle.textContent = t === "dark" ? "🌙" : "☀️";
+        }
+      }
+
+      function initTheme() {
+        let stored = null;
+        try {
+          stored = localStorage.getItem(THEME_KEY);
+        } catch (e) {
+          stored = null;
+        }
+        let theme;
+        if (stored === "light" || stored === "dark") {
+          theme = stored;
+        } else {
+          const prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          theme = prefersDark ? "dark" : "light";
+        }
+        applyTheme(theme);
+
+        if (!stored && window.matchMedia) {
+          try {
+            const mql = window.matchMedia("(prefers-color-scheme: dark)");
+            const handler = function (e) {
+              let manual = null;
+              try {
+                manual = localStorage.getItem(THEME_KEY);
+              } catch (err) {
+                manual = null;
+              }
+              if (manual === "light" || manual === "dark") return;
+              applyTheme(e.matches ? "dark" : "light");
+            };
+            if (mql.addEventListener) {
+              mql.addEventListener("change", handler);
+            } else if (mql.addListener) {
+              mql.addListener(handler);
             }
-            hist.push({ role:"assistant", content:full });
-        } catch(e) {
-            botDiv.textContent = "Error: " + e.message;
+          } catch (e) {
+            // ignore
+          }
         }
-        
-        $("inp").disabled = false; $("btn").disabled = false; $("inp").focus();
-    }
+      }
 
-    function add(role, txt) {
-        const d = document.createElement("div");
-        d.className = `msg ${role}`;
-        d.innerHTML = role === "user" ? txt : marked.parse(txt);
-        $("msgs").appendChild(d);
-        $("msgs").scrollTop = $("msgs").scrollHeight;
-        return d;
-    }
+      // --- Data Logic ---
 
-    $("btn").onclick = send;
-    $("inp").onkeydown = (e) => { if(e.key === "Enter") send(); };
+      function normalizeIdeasArray(list) {
+        const now = Date.now();
+        const result = [];
+        list.forEach((item, index) => {
+          if (!item) return;
+          const text =
+            typeof item.text === "string" ? item.text.trim() : "";
+          if (!text) return;
+          const tag =
+            typeof item.tag === "string"
+              ? item.tag.trim().replace(/^#+/, "")
+              : "";
+          const id =
+            typeof item.id === "string" && item.id
+              ? item.id
+              : createId();
+          const createdAt =
+            typeof item.createdAt === "number" && item.createdAt > 0
+              ? item.createdAt
+              : now;
+          const pinned = !!item.pinned;
+          const order =
+            typeof item.order === "number" ? item.order : index;
+          result.push({
+            id,
+            text,
+            tag,
+            pinned,
+            createdAt,
+            order
+          });
+        });
+        result.sort((a, b) => {
+          const ao = typeof a.order === "number" ? a.order : 0;
+          const bo = typeof b.order === "number" ? b.order : 0;
+          return ao - bo;
+        });
+        result.forEach((idea, index) => {
+          idea.order = index;
+        });
+        return result;
+      }
 
-    // Start
-    init();
+      function loadIdeas() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          let list;
+          if (Array.isArray(parsed)) {
+            list = parsed;
+          } else if (parsed && Array.isArray(parsed.ideas)) {
+            list = parsed.ideas;
+          } else {
+            return [];
+          }
+          return normalizeIdeasArray(list);
+        } catch (e) {
+          console.warn("Failed to parse stored ideas", e);
+          return [];
+        }
+      }
 
-</script>
+      function saveIdeas() {
+        try {
+          const payload = {
+            version: 3,
+            ideas: ideas
+          };
+          const data = JSON.stringify(payload);
+          if (data.length > 5000000) {
+            alert(
+              "Storage limit reached. Please export and clear some ideas."
+            );
+            return false;
+          }
+          localStorage.setItem(STORAGE_KEY, data);
+          return true;
+        } catch (e) {
+          if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
+            alert("Storage full! Please export and clear ideas.");
+          } else {
+            console.warn("Failed to save ideas", e);
+          }
+          return false;
+        }
+      }
+
+      function formatTime(ts) {
+        const date = new Date(ts);
+        if (Number.isNaN(date.getTime())) return "";
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 1) return "just now";
+        if (diffMin < 60) return diffMin + " min ago";
+        const diffH = Math.floor(diffMin / 60);
+        if (diffH < 24) return diffH + " h ago";
+        const diffD = Math.floor(diffH / 24);
+        if (diffD < 7) return diffD + " d ago";
+        return date.toLocaleDateString();
+      }
+
+      // --- Rendering ---
+
+      function getFilteredIdeas() {
+        const now = Date.now();
+        let base = ideas;
+        if (filter === "pinned") {
+          base = ideas.filter((i) => i.pinned);
+        } else if (filter === "recent") {
+          const cutoff = now - 24 * 60 * 60 * 1000;
+          base = ideas.filter((i) => i.createdAt >= cutoff);
+        }
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          base = base.filter((idea) => {
+            const text = idea.text.toLowerCase();
+            const tag = (idea.tag || "").toLowerCase();
+            return (
+              text.includes(term) ||
+              tag.includes(term) ||
+              ("#" + tag).includes(term)
+            );
+          });
+        }
+        return base;
+      }
+
+      function sortIdeas(list) {
+        return list
+          .slice()
+          .sort((a, b) => {
+            const ao = typeof a.order === "number" ? a.order : 0;
+            const bo = typeof b.order === "number" ? b.order : 0;
+            return ao - bo;
+          });
+      }
+
+      function copyCardText(text) {
+        const value = String(text || "");
+        if (!value) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(value)
+            .then(
+              () => {
+                haptic(30);
+                showToast("Copied");
+                trackEvent("copy_card", { length: value.length });
+              },
+              () => {
+                showToast("Copy failed");
+              }
+            );
+        } else {
+          try {
+            const helper = document.createElement("textarea");
+            helper.style.position = "fixed";
+            helper.style.opacity = "0";
+            helper.value = value;
+            document.body.appendChild(helper);
+            helper.select();
+            const ok = document.execCommand("copy");
+            document.body.removeChild(helper);
+            if (ok) {
+              haptic(30);
+              showToast("Copied");
+              trackEvent("copy_card", { length: value.length });
+            } else {
+              prompt("Copy this text:", value);
+            }
+          } catch (err) {
+            prompt("Copy this text:", value);
+          }
+        }
+      }
+
+      function render() {
+        const filtered = sortIdeas(getFilteredIdeas());
+        board.innerHTML = "";
+        if (!filtered.length) {
+          emptyState.style.display = "block";
+          return;
+        }
+        emptyState.style.display = "none";
+
+        const allowDrag = filter === "all";
+
+        filtered.forEach((idea) => {
+          const card = document.createElement("article");
+          card.className =
+            "card-idea" + (idea.pinned ? " pinned" : "");
+          card.dataset.id = idea.id;
+          card.setAttribute("role", "listitem");
+          card.tabIndex = 0;
+          card.draggable = allowDrag;
+
+          const actions = document.createElement("div");
+          actions.className = "card-actions";
+
+          const pinBtn = document.createElement("button");
+          pinBtn.className =
+            "icon-btn" + (idea.pinned ? " pin-active" : "");
+          pinBtn.type = "button";
+          pinBtn.title = idea.pinned ? "Unpin" : "Pin";
+          pinBtn.innerHTML = "<span>★</span>";
+          pinBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            togglePin(idea.id);
+          });
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "icon-btn danger";
+          delBtn.type = "button";
+          delBtn.title = "Delete";
+          delBtn.innerHTML = "<span>✕</span>";
+          delBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteIdea(idea.id);
+          });
+
+          actions.appendChild(pinBtn);
+          actions.appendChild(delBtn);
+
+          const textEl = document.createElement("div");
+          textEl.className = "idea-text";
+          textEl.innerHTML = renderMarkdown(idea.text);
+
+          const meta = document.createElement("div");
+          meta.className = "idea-meta";
+
+          const leftMeta = document.createElement("div");
+          if (idea.tag) {
+            const tag = document.createElement("span");
+            tag.className = "pill-tag";
+            tag.textContent = "#" + idea.tag;
+            leftMeta.appendChild(tag);
+          }
+
+          const rightMeta = document.createElement("div");
+          rightMeta.className = "meta-right";
+          const dot = document.createElement("span");
+          dot.className = "meta-dot";
+          const time = document.createElement("span");
+          time.textContent = formatTime(idea.createdAt);
+          rightMeta.appendChild(dot);
+          rightMeta.appendChild(time);
+
+          meta.appendChild(leftMeta);
+          meta.appendChild(rightMeta);
+
+          // Interaction: Edit with single-click
+          let clickTimeout = null;
+          card.addEventListener("click", () => {
+            if (suppressClick) return;
+            if (clickTimeout) {
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+            }
+            clickTimeout = setTimeout(() => {
+              enterEditMode(card, idea);
+              clickTimeout = null;
+            }, 220);
+          });
+
+          // Copy on double-click
+          card.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            if (clickTimeout) {
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+            }
+            copyCardText(idea.text);
+          });
+
+          // Focus style
+          card.addEventListener("focus", () => {
+            card.classList.add("card-focused");
+          });
+          card.addEventListener("blur", () => {
+            card.classList.remove("card-focused");
+          });
+
+          // Drag and drop
+          if (allowDrag) {
+            card.addEventListener("dragstart", (e) =>
+              handleDragStart(e, idea.id)
+            );
+            card.addEventListener("dragover", (e) =>
+              handleDragOver(e, idea.id)
+            );
+            card.addEventListener("drop", (e) =>
+              handleDrop(e, idea.id)
+            );
+            card.addEventListener("dragend", handleDragEnd);
+          }
+
+          card.appendChild(actions);
+          card.appendChild(textEl);
+          card.appendChild(meta);
+          board.appendChild(card);
+        });
+      }
+
+      // --- Actions ---
+
+      function addIdea() {
+        const text = (ideaInput.value || "").trim();
+        const tag = (tagInput.value || "").trim().replace(/^#+/, "");
+        if (!text) return;
+        const idea = {
+          id: createId(),
+          text,
+          tag: tag || "",
+          pinned: false,
+          createdAt: Date.now(),
+          order: ideas.length
+        };
+        ideas.push(idea);
+        haptic(25);
+        trackEvent("add", { tag: idea.tag || null });
+        saveIdeas();
+        ideaInput.value = "";
+        ideaInput.style.height = "auto";
+        tagInput.value = "";
+        updateAddButtonState();
+        render();
+        ideaInput.focus();
+      }
+
+      function togglePin(id) {
+        const idx = ideas.findIndex((i) => i.id === id);
+        if (idx === -1) return;
+        ideas[idx].pinned = !ideas[idx].pinned;
+        haptic(15);
+        trackEvent("pin_toggle", { pinned: ideas[idx].pinned });
+        saveIdeas();
+        render();
+      }
+
+      function deleteIdea(id) {
+        const before = ideas.length;
+        ideas = ideas.filter((i) => i.id !== id);
+        ideas.forEach((idea, index) => {
+          idea.order = index;
+        });
+        haptic(40);
+        trackEvent("delete", { before, after: ideas.length });
+        saveIdeas();
+        render();
+      }
+
+      function moveIdea(sourceId, targetId) {
+        if (!sourceId || !targetId || sourceId === targetId) return;
+        const fromIndex = ideas.findIndex((i) => i.id === sourceId);
+        const toIndex = ideas.findIndex((i) => i.id === targetId);
+        if (fromIndex === -1 || toIndex === -1) return;
+        const [moved] = ideas.splice(fromIndex, 1);
+        ideas.splice(toIndex, 0, moved);
+        ideas.forEach((idea, index) => {
+          idea.order = index;
+        });
+        trackEvent("reorder", {});
+        saveIdeas();
+        render();
+      }
+
+      // --- DnD ---
+
+      function handleDragStart(e, id) {
+        if (filter !== "all") {
+          e.preventDefault();
+          return;
+        }
+        draggingId = id;
+        suppressClick = true;
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", id);
+        }
+        const el = e.currentTarget;
+        el.classList.add("dragging");
+      }
+
+      function handleDragOver(e, targetId) {
+        if (!draggingId || draggingId === targetId) return;
+        e.preventDefault();
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = "move";
+        }
+        const cards = board.querySelectorAll(".card-idea");
+        cards.forEach((c) => {
+          c.classList.toggle("drop-target", c.dataset.id === targetId);
+        });
+      }
+
+      function handleDrop(e, targetId) {
+        e.preventDefault();
+        const sourceId =
+          draggingId ||
+          (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+        moveIdea(sourceId, targetId);
+      }
+
+      function handleDragEnd() {
+        const cards = board.querySelectorAll(".card-idea");
+        cards.forEach((c) =>
+          c.classList.remove("dragging", "drop-target")
+        );
+        draggingId = null;
+        setTimeout(() => {
+          suppressClick = false;
+        }, 0);
+      }
+
+      // --- Inline Edit ---
+
+      function autoGrowTextArea(el) {
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+
+      function enterEditMode(card, idea) {
+        if (card.dataset.editing === "1") return;
+        card.dataset.editing = "1";
+        const originalText = idea.text;
+
+        const textArea = document.createElement("textarea");
+        textArea.className = "edit-input";
+        textArea.value = originalText;
+
+        const existingTextEl = card.querySelector(".idea-text");
+        const existingMeta = card.querySelector(".idea-meta");
+        existingTextEl.style.display = "none";
+        existingMeta.style.display = "none";
+
+        const editWrap = document.createElement("div");
+        editWrap.appendChild(textArea);
+
+        const actions = document.createElement("div");
+        actions.className = "edit-actions";
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "btn-small";
+        cancelBtn.textContent = "Cancel";
+
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "btn-small primary";
+        saveBtn.textContent = "Save";
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(saveBtn);
+        editWrap.appendChild(actions);
+        card.appendChild(editWrap);
+
+        autoGrowTextArea(textArea);
+        textArea.focus();
+        textArea.setSelectionRange(
+          textArea.value.length,
+          textArea.value.length
+        );
+
+        function cleanup() {
+          card.dataset.editing = "0";
+          card.removeChild(editWrap);
+          existingTextEl.style.display = "";
+          existingMeta.style.display = "";
+        }
+
+        cancelBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          cleanup();
+        });
+
+        saveBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const newText = textArea.value.trim();
+          if (!newText) {
+            cleanup();
+            return;
+          }
+          const idx = ideas.findIndex((i) => i.id === idea.id);
+          if (idx !== -1) {
+            ideas[idx].text = newText;
+            trackEvent("edit", {});
+            saveIdeas();
+            render();
+          } else {
+            cleanup();
+          }
+        });
+
+        textArea.addEventListener("input", () =>
+          autoGrowTextArea(textArea)
+        );
+
+        textArea.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            cancelBtn.click();
+          } else if (
+            (e.key === "Enter" || e.key === "NumpadEnter") &&
+            (e.metaKey || e.ctrlKey)
+          ) {
+            e.preventDefault();
+            saveBtn.click();
+          }
+        });
+      }
+
+      // --- Export / Import ---
+
+      async function handleExport() {
+        try {
+          const payload = {
+            version: 3,
+            ideas: ideas,
+            exportedAt: new Date().toISOString()
+          };
+          const json = JSON.stringify(payload, null, 2);
+          const encoded = btoa(unescape(encodeURIComponent(json)));
+
+          let clipboardOk = false;
+          let fileDownloaded = false;
+
+          // 1) Try to copy backup string to clipboard
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+              await navigator.clipboard.writeText(encoded);
+              clipboardOk = true;
+            } catch (err) {
+              clipboardOk = false;
+            }
+          }
+
+          if (clipboardOk) {
+            // 2) Ask if user also wants JSON file
+            const alsoFile = confirm(
+              "Backup string copied to clipboard.\n\nDo you also want to download a .json file?"
+            );
+
+            if (
+              alsoFile &&
+              typeof Blob !== "undefined" &&
+              typeof URL !== "undefined" &&
+              URL.createObjectURL
+            ) {
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download =
+                "idea-whiteboard-" +
+                new Date().toISOString().slice(0, 10) +
+                ".json";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              fileDownloaded = true;
+            }
+          } else {
+            // Clipboard not available → fallback to file download
+            if (
+              typeof Blob !== "undefined" &&
+              typeof URL !== "undefined" &&
+              URL.createObjectURL
+            ) {
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download =
+                "idea-whiteboard-" +
+                new Date().toISOString().slice(0, 10) +
+                ".json";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              fileDownloaded = true;
+
+              alert(
+                "Clipboard export is not supported in this browser. A JSON file has been downloaded instead."
+              );
+            } else {
+              // Last-resort: manual copy of backup string
+              prompt(
+                "Clipboard and file download are not available. You can still copy this backup string manually:",
+                encoded
+              );
+            }
+          }
+
+          trackEvent("export", {
+            count: ideas.length,
+            clipboard: clipboardOk,
+            file: fileDownloaded
+          });
+        } catch (e) {
+          console.warn("Export failed", e);
+          try {
+            const fallbackPayload = {
+              version: 3,
+              ideas: ideas
+            };
+            const fallbackJson = JSON.stringify(fallbackPayload);
+            const encoded = btoa(unescape(encodeURIComponent(fallbackJson)));
+            prompt(
+              "Export failed. You can still copy this backup string manually:",
+              encoded
+            );
+          } catch (e2) {
+            alert("Export failed and no fallback is available in this browser.");
+          }
+        }
+      }
+
+      async function handleImport() {
+        const text = prompt("Paste your exported data (backup string):");
+        if (!text) return;
+        try {
+          const trimmed = text.trim();
+          let decodedJson;
+          try {
+            decodedJson = decodeURIComponent(escape(atob(trimmed)));
+          } catch (e) {
+            decodedJson = trimmed;
+          }
+          const parsed = JSON.parse(decodedJson);
+          let list;
+          if (Array.isArray(parsed)) {
+            list = parsed;
+          } else if (parsed && Array.isArray(parsed.ideas)) {
+            list = parsed.ideas;
+          } else {
+            throw new Error("Invalid structure");
+          }
+          const normalized = normalizeIdeasArray(list);
+          if (!normalized.length) {
+            alert("No ideas found in the imported data.");
+            return;
+          }
+          if (
+            !confirm(
+              "Import " +
+                normalized.length +
+                " ideas? This will replace your current board."
+            )
+          ) {
+            return;
+          }
+          ideas = normalized;
+          saveIdeas();
+          render();
+          haptic(60);
+          trackEvent("import", { count: ideas.length });
+        } catch (e) {
+          console.warn("Import failed", e);
+          alert("Could not import: invalid or corrupted data.");
+        }
+      }
+
+      // --- Keyboard & global ---
+
+      function isTypingInInput() {
+        const el = document.activeElement;
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag === "TEXTAREA") return true;
+        if (tag === "INPUT") {
+          const type = (el.getAttribute("type") || "").toLowerCase();
+          return type !== "button" && type !== "submit";
+        }
+        return false;
+      }
+
+      function handleGlobalKeydown(e) {
+        if (e.defaultPrevented) return;
+
+        // Quick focus to idea input
+        if (
+          e.key === "/" &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          ideaInput.focus();
+          return;
+        }
+
+        // Shortcut help
+        if (
+          e.key === "?" &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          alert(
+            "Shortcuts:\n" +
+              "Ctrl/Cmd + Enter → Add idea\n" +
+              "/ → Focus idea input\n" +
+              "n → Focus idea input\n" +
+              "Esc → Cancel edit / blur\n" +
+              "Delete/Backspace → Delete focused card\n" +
+              "p → Pin/unpin focused card\n" +
+              "Drag (All view) → Reorder cards\n" +
+              "Double-click card → Copy text"
+          );
+          return;
+        }
+
+        if (
+          (e.key === "n" || e.key === "N") &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          ideaInput.focus();
+          return;
+        }
+
+        if (e.key === "Escape") {
+          if (
+            document.activeElement &&
+            document.activeElement !== document.body
+          ) {
+            document.activeElement.blur();
+          }
+          return;
+        }
+
+        // Delete focused card
+        if (
+          (e.key === "Delete" || e.key === "Backspace") &&
+          !isTypingInInput()
+        ) {
+          const focused = document.querySelector(
+            ".card-idea.card-focused"
+          );
+          if (focused && focused.dataset.id) {
+            e.preventDefault();
+            deleteIdea(focused.dataset.id);
+          }
+          return;
+        }
+
+        // Toggle pin on focused card
+        if (
+          (e.key === "p" || e.key === "P") &&
+          !isTypingInInput()
+        ) {
+          const focused = document.querySelector(
+            ".card-idea.card-focused"
+          );
+          if (focused && focused.dataset.id) {
+            e.preventDefault();
+            togglePin(focused.dataset.id);
+          }
+        }
+      }
+
+      // --- Clear all ---
+
+      function handleClearAll() {
+        if (!ideas.length) return;
+        if (
+          !confirm(
+            "Delete every idea permanently from this device? This cannot be undone."
+          )
+        ) {
+          return;
+        }
+        const count = ideas.length;
+        ideas = [];
+        saveIdeas();
+        render();
+        haptic(100);
+        trackEvent("clear_all", { count });
+      }
+
+      // --- Initialization ---
+
+      initTheme();
+
+      ideaInput.addEventListener("input", () => {
+        updateAddButtonState();
+        autoGrowTextArea(ideaInput);
+      });
+
+      ideaInput.addEventListener("keydown", (e) => {
+        if (
+          (e.key === "Enter" || e.key === "NumpadEnter") &&
+          (e.ctrlKey || e.metaKey)
+        ) {
+          e.preventDefault();
+          if (!addBtn.disabled) addIdea();
+        }
+      });
+
+      function updateAddButtonState() {
+        const hasText = (ideaInput.value || "").trim().length > 0;
+        addBtn.disabled = !hasText;
+      }
+
+      addBtn.addEventListener("click", () => {
+        addIdea();
+      });
+
+      filterChips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const next = chip.dataset.filter;
+          if (!next) return;
+          filter = next;
+          filterChips.forEach((c) => {
+            c.classList.toggle("active", c.dataset.filter === filter);
+          });
+          trackEvent("filter", { filter });
+          render();
+        });
+      });
+
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", handleClearAll);
+      }
+
+      if (searchInput) {
+        const debouncedSearch = debounce((value) => {
+          searchTerm = value.trim();
+          trackEvent("search", {
+            length: searchTerm.length > 0 ? searchTerm.length : 0
+          });
+          render();
+        }, 120);
+        searchInput.addEventListener("input", (e) => {
+          debouncedSearch(e.target.value || "");
+        });
+      }
+
+      if (exportBtn) {
+        exportBtn.addEventListener("click", () => {
+          handleExport();
+        });
+      }
+
+      if (importBtn) {
+        importBtn.addEventListener("click", () => {
+          handleImport();
+        });
+      }
+
+      if (themeToggle) {
+        themeToggle.addEventListener("click", () => {
+          const current =
+            document.documentElement.getAttribute("data-theme") || "light";
+          const next = current === "dark" ? "light" : "dark";
+          try {
+            localStorage.setItem(THEME_KEY, next);
+          } catch (e) {
+            // ignore
+          }
+          applyTheme(next);
+          haptic(20);
+          trackEvent("theme_toggle", { theme: next });
+        });
+      }
+
+      document.addEventListener("keydown", handleGlobalKeydown);
+
+      ideas = loadIdeas();
+      saveIdeas();
+      render();
+      updateAddButtonState();
+      autoGrowTextArea(ideaInput);
+
+      if (window.matchMedia && window.matchMedia("(min-width: 800px)").matches) {
+        ideaInput.focus();
+      }
+    })();
+  </script>
 </body>
 </html>
