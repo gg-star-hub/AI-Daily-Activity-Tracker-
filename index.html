@@ -50,7 +50,7 @@
       padding: 2rem;
       border-radius: 12px;
       width: 92%;
-      max-width: 520px;
+      max-width: 560px;
       text-align: center;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       border: 1px solid var(--input-bg);
@@ -83,7 +83,7 @@
       border-radius: 10px;
       padding: 10px;
       line-height: 1.35;
-      max-height: 180px;
+      max-height: 220px;
       overflow: auto;
       display: none;
       white-space: pre-wrap;
@@ -212,8 +212,7 @@
 
   <!--
     COI (Cross-Origin Isolation) is needed for SharedArrayBuffer.
-    Some setups fail when COEP is "require-corp" because cross-origin model assets
-    may not send CORP headers; "credentialless" is more tolerant.
+    "credentialless" is generally more tolerant than "require-corp".
 
     This Service Worker injects COOP/COEP headers.
     NOTE: Service Workers require http(s) (e.g., localhost). Not file://
@@ -232,20 +231,11 @@ self.addEventListener('fetch', (e) => {
   if (e.request.cache === 'only-if-cached' && e.request.mode !== 'same-origin') return;
 
   e.respondWith((async () => {
-    let res;
-    try {
-      res = await fetch(e.request);
-    } catch (err) {
-      // If network fails, fall back to default behavior by rethrowing.
-      throw err;
-    }
-
-    // Opaque responses can't be modified.
-    if (!res || res.status === 0) return res;
+    const res = await fetch(e.request);
+    if (!res || res.status === 0) return res; // opaque can't be changed
 
     const headers = new Headers(res.headers);
     headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-    // More tolerant than require-corp; still enables SAB on supported browsers.
     headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
 
     return new Response(res.body, {
@@ -266,7 +256,7 @@ self.addEventListener('fetch', (e) => {
           location.reload();
         }
       }).catch(() => {
-        // UI reports this after DOM is ready.
+        // UI will report this.
       });
     })();
   </script>
@@ -274,13 +264,7 @@ self.addEventListener('fetch', (e) => {
   <!--
     Robustness patch:
     Some environments throw "Failed to execute 'add' on 'Cache': Request failed".
-    This typically happens when a resource fetch fails during caching.
-
-    We make Cache.add/AddAll non-fatal:
-    - still try original add
-    - if it fails, do a best-effort fetch and continue
-
-    This keeps the app working even if persistent caching is blocked.
+    We make Cache.add/AddAll non-fatal.
   -->
   <script>
     (function patchCacheAddNonFatal() {
@@ -290,7 +274,6 @@ self.addEventListener('fetch', (e) => {
       caches.open = async function(...args) {
         const cache = await origOpen(...args);
         if (cache.__patched_add) return cache;
-
         cache.__patched_add = true;
 
         const origAdd = cache.add ? cache.add.bind(cache) : null;
@@ -298,13 +281,10 @@ self.addEventListener('fetch', (e) => {
 
         if (origAdd) {
           cache.add = async (request) => {
-            try {
-              return await origAdd(request);
-            } catch (e) {
-              // Best-effort fetch to keep downstream logic happy.
-              try {
-                await fetch(request, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
-              } catch (_) {}
+            try { return await origAdd(request); }
+            catch (_) {
+              try { await fetch(request, { mode: 'cors', credentials: 'omit', cache: 'no-store' }); }
+              catch (_) {}
               return undefined;
             }
           };
@@ -312,7 +292,6 @@ self.addEventListener('fetch', (e) => {
 
         if (origAddAll) {
           cache.addAll = async (requests) => {
-            // Ensure failures don't abort the whole batch.
             for (const r of requests) {
               try {
                 if (cache.add) await cache.add(r);
@@ -340,9 +319,7 @@ self.addEventListener('fetch', (e) => {
       </div>
       <p id="pct" style="margin-bottom:0; font-size:0.8rem; color:#64748b; margin-top:5px;">0%</p>
       <div style="margin-top: 8px; color:#64748b; font-size:0.8rem; line-height:1.35;" id="hint"></div>
-      <button class="diag-toggle" id="diag-toggle" type="button" aria-expanded="false">
-        Diagnostics
-      </button>
+      <button class="diag-toggle" id="diag-toggle" type="button" aria-expanded="false">Diagnostics</button>
       <div class="diag" id="diag"></div>
     </div>
   </div>
@@ -365,17 +342,20 @@ self.addEventListener('fetch', (e) => {
   <script type="module">
     import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.46";
 
+    // ===== Expected behavior =====
+    // This page should:
+    // 1) Initialize WebLLM in the browser via WebGPU.
+    // 2) Download model + wasm runtime libraries from public CDNs.
+    // 3) Provide a local chat UI streaming responses.
+    //
+    // If you want different behavior (offline-first caching, different model, etc.), specify it.
+
     // --------- Model Selection ---------
     const selectedModel = "Qwen2.5-0.5B-Instruct-q4f32_1-MLC";
-
-    // Prefer WebLLM's internal modelLibURLPrefix/version for consistency.
-    const MODEL_LIB_BASE = (webllm.modelLibURLPrefix || "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/") + (webllm.modelVersion || "v0.2.46") + "/";
-
-    // Use HF repo base URL (not /resolve/main/) for better compatibility.
     const MODEL_REPO = "https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f32_1-MLC";
 
-    // Candidate wasm names (we'll probe what exists).
-    const MODEL_LIB_CANDIDATES = [
+    // Candidate wasm filenames (we'll probe what exists).
+    const MODEL_LIB_FILENAMES = [
       "Qwen2.5-0.5B-Instruct-q4f32_1-ctx32k_cs2k-webgpu.wasm",
       "Qwen2.5-0.5B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
       "Qwen2-0.5B-Instruct-q4f32_1-ctx32k_cs2k-webgpu.wasm",
@@ -383,6 +363,31 @@ self.addEventListener('fetch', (e) => {
       "Qwen2.5-0.5B-Instruct-q4f32_1-webgpu.wasm",
       "Qwen2-0.5B-Instruct-q4f32_1-webgpu.wasm",
     ];
+
+    // CDN base candidates for binary wasm libs.
+    // NOTE: The reported error was for raw.githubusercontent.com + a version folder like v0_2_43.
+    // Some environments block raw.githubusercontent.com or that specific version folder may not exist.
+    // We probe multiple mirrors + version folder spellings.
+    const LIB_CDN_BASES = [
+      // jsDelivr (usually the most reliable for browser assets)
+      "https://cdn.jsdelivr.net/gh/mlc-ai/binary-mlc-llm-libs@main/web-llm-models/",
+      // Raw GitHub (sometimes blocked)
+      "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/",
+    ];
+
+    // Version candidates: normalize v0_2_43 <-> v0.2.43, and prefer the WebLLM import version.
+    function normalizeVersionVariants(v) {
+      const out = new Set();
+      if (!v) return [...out];
+      out.add(v);
+      out.add(v.replace(/_/g, '.'));
+      out.add(v.replace(/\./g, '_'));
+      return [...out];
+    }
+
+    const importPreferredVersions = ["v0.2.46", "v0_2_46", "v0.2.43", "v0_2_43"]; // include common fallbacks
+    const webllmVersions = normalizeVersionVariants(webllm.modelVersion || "");
+    const VERSION_FOLDERS = Array.from(new Set([...importPreferredVersions, ...webllmVersions].filter(Boolean)));
 
     // --------- UI Helpers ---------
     const $ = (id) => document.getElementById(id);
@@ -429,9 +434,7 @@ self.addEventListener('fetch', (e) => {
       }, 500);
     }
 
-    function diagLine(k, v) {
-      return `${k}: ${v}`;
-    }
+    function diagLine(k, v) { return `${k}: ${v}`; }
 
     function updateDiag(extra = {}) {
       const lines = [];
@@ -439,9 +442,9 @@ self.addEventListener('fetch', (e) => {
       lines.push(diagLine('serviceWorker.controller', String(!!navigator.serviceWorker?.controller)));
       lines.push(diagLine('navigator.gpu', String(!!navigator.gpu)));
       lines.push(diagLine('webllm.modelVersion', String(webllm.modelVersion || '')));
-      lines.push(diagLine('MODEL_LIB_BASE', MODEL_LIB_BASE));
-      if (extra.modelLib) lines.push(diagLine('resolved model_lib', extra.modelLib));
-      if (extra.note) lines.push(diagLine('note', extra.note));
+      lines.push(diagLine('VERSION_FOLDERS', VERSION_FOLDERS.join(', ')));
+      if (extra.resolved) lines.push(diagLine('resolved model_lib', extra.resolved));
+      if (extra.tried) lines.push(diagLine('tried', extra.tried));
       if (extra.error) lines.push(diagLine('lastError', extra.error));
       $diag.textContent = lines.join('\n');
     }
@@ -452,28 +455,42 @@ self.addEventListener('fetch', (e) => {
       $diagToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
     });
 
-    // --------- Self-tests (smoke) ---------
+    // --------- Self-tests ---------
     function assert(name, cond) {
       if (!cond) throw new Error(`Self-test failed: ${name}`);
     }
 
     function runSelfTests() {
-      // Minimal smoke tests for DOM + dependencies.
       assert('marked loaded', typeof window.marked?.parse === 'function');
       assert('#loader exists', !!$loader);
       assert('#app exists', !!$app);
       assert('#messages exists', !!$msgs);
       assert('#user-input exists', !!$input);
       assert('#send-btn exists', !!$btn);
-      // WebGPU may be absent in some environments; do not hard-fail here.
+
+      // URL/version normalization tests (pure, no network)
+      const variants = normalizeVersionVariants('v0_2_43');
+      assert('version variants include dotted', variants.includes('v0.2.43'));
+      assert('version variants include underscored', variants.includes('v0_2_43'));
+
+      // Ensure we have at least one CDN base and version folder
+      assert('LIB_CDN_BASES non-empty', Array.isArray(LIB_CDN_BASES) && LIB_CDN_BASES.length > 0);
+      assert('VERSION_FOLDERS non-empty', Array.isArray(VERSION_FOLDERS) && VERSION_FOLDERS.length > 0);
+
       return true;
     }
 
-    // --------- Model lib probing ---------
-    async function probeURL(url) {
-      // Use GET Range first; HEAD is sometimes blocked.
+    // --------- Network probing ---------
+    async function probeExists(url) {
       try {
-        const r = await fetch(url, { method: 'GET', headers: { 'Range': 'bytes=0-0' }, cache: 'no-store', mode: 'cors', credentials: 'omit' });
+        // Range GET avoids downloading the full wasm just to test existence.
+        const r = await fetch(url, {
+          method: 'GET',
+          headers: { 'Range': 'bytes=0-0' },
+          cache: 'no-store',
+          mode: 'cors',
+          credentials: 'omit'
+        });
         return r.ok || r.status === 206;
       } catch (_) {
         return false;
@@ -481,25 +498,34 @@ self.addEventListener('fetch', (e) => {
     }
 
     async function resolveModelLibURL() {
-      for (const name of MODEL_LIB_CANDIDATES) {
-        const url = MODEL_LIB_BASE + name;
-        if (await probeURL(url)) return url;
+      const tried = [];
+
+      for (const base of LIB_CDN_BASES) {
+        for (const ver of VERSION_FOLDERS) {
+          const prefix = base + ver + "/";
+          for (const file of MODEL_LIB_FILENAMES) {
+            const url = prefix + file;
+            tried.push(url);
+            if (await probeExists(url)) {
+              return { url, tried };
+            }
+          }
+        }
       }
-      return MODEL_LIB_BASE + MODEL_LIB_CANDIDATES[0];
+
+      return { url: null, tried };
     }
 
     // --------- WebLLM init + chat ---------
     let engine;
-    const messages = [
-      { role: "system", content: "You are Qwen, a helpful and concise AI assistant." }
-    ];
+    const messages = [{ role: "system", content: "You are Qwen, a helpful and concise AI assistant." }];
 
     async function initialize() {
       try {
         runSelfTests();
       } catch (e) {
         setStatus(e.message, 'danger');
-        setHint('A required dependency failed to load. Check the Diagnostics panel.', 'danger');
+        setHint('A required dependency failed to load. Check Diagnostics.', 'danger');
         updateDiag({ error: e.message });
         return;
       }
@@ -513,60 +539,52 @@ self.addEventListener('fetch', (e) => {
       }
 
       if (!window.crossOriginIsolated) {
-        // Don’t hard-fail here; some WebLLM paths can still run, but SAB-dependent paths may fail.
         setStatus('Cross-origin isolation not active (yet).', 'warn');
-        setHint('If initialization fails, serve via localhost and reload once so the Service Worker can apply COOP/COEP.', 'warn');
+        setHint('Serve via localhost and reload once so the Service Worker can apply COOP/COEP.', 'warn');
       } else {
         setHint('');
       }
 
       try {
-        setStatus('Starting engine…');
+        setStatus('Resolving model library URL…');
+        const resolved = await resolveModelLibURL();
 
-        // First attempt: use WebLLM defaults. This tends to be the most compatible.
-        try {
-          engine = await webllm.CreateMLCEngine(selectedModel, {
-            initProgressCallback: (info) => {
-              const p = Math.max(0, Math.min(1, Number(info?.progress ?? 0)));
-              const pct = Math.floor(p * 100);
-              $progress.style.width = pct + '%';
-              $pct.textContent = pct + '%';
-              const t = String(info?.text ?? '').replace('Fetching', 'Downloading');
-              setStatus(t || 'Downloading…');
-            }
-          });
-        } catch (e1) {
-          // Fallback: inject model record with a resolved model_lib URL.
-          setStatus('Default config failed, trying patched config…', 'warn');
-
-          const modelLib = await resolveModelLibURL();
-          updateDiag({ modelLib, note: 'Using patched appConfig model record' });
-
-          const appConfig = JSON.parse(JSON.stringify(webllm.prebuiltAppConfig ?? { model_list: [] }));
-          appConfig.model_list = appConfig.model_list ?? [];
-
-          // Replace or add our record.
-          appConfig.model_list = appConfig.model_list.filter(m => m.model_id !== selectedModel);
-          appConfig.model_list.push({
-            model: MODEL_REPO,
-            model_id: selectedModel,
-            model_lib: modelLib,
-            vram_required_MB: 900,
-            low_resource_required: true,
-          });
-
-          engine = await webllm.CreateMLCEngine(selectedModel, {
-            appConfig,
-            initProgressCallback: (info) => {
-              const p = Math.max(0, Math.min(1, Number(info?.progress ?? 0)));
-              const pct = Math.floor(p * 100);
-              $progress.style.width = pct + '%';
-              $pct.textContent = pct + '%';
-              const t = String(info?.text ?? '').replace('Fetching', 'Downloading');
-              setStatus(t || 'Downloading…');
-            }
-          });
+        if (!resolved.url) {
+          setStatus('Error: Could not locate the model .wasm library on known mirrors.', 'danger');
+          setHint('This environment may block fetching large WASM from public CDNs. Open Diagnostics to see tried URLs.', 'warn');
+          updateDiag({ tried: `Tried ${resolved.tried.length} URLs (see below)`, error: 'Cannot fetch model wasm' });
+          // Dump tried URLs into diagnostics for quick copy/paste.
+          $diag.textContent = ($diag.textContent + "\n\n" + resolved.tried.join("\n")).trim();
+          $diag.style.display = 'block';
+          $diagToggle.setAttribute('aria-expanded', 'true');
+          return;
         }
+
+        updateDiag({ resolved: resolved.url });
+
+        // Always provide appConfig so WebLLM doesn't use a wrong/blocked default lib URL.
+        const appConfig = JSON.parse(JSON.stringify(webllm.prebuiltAppConfig ?? { model_list: [] }));
+        appConfig.model_list = (appConfig.model_list ?? []).filter(m => m.model_id !== selectedModel);
+        appConfig.model_list.push({
+          model: MODEL_REPO,
+          model_id: selectedModel,
+          model_lib: resolved.url,
+          vram_required_MB: 900,
+          low_resource_required: true,
+        });
+
+        setStatus('Starting engine & downloading…');
+        engine = await webllm.CreateMLCEngine(selectedModel, {
+          appConfig,
+          initProgressCallback: (info) => {
+            const p = Math.max(0, Math.min(1, Number(info?.progress ?? 0)));
+            const pct = Math.floor(p * 100);
+            $progress.style.width = pct + '%';
+            $pct.textContent = pct + '%';
+            const t = String(info?.text ?? '').replace('Fetching', 'Downloading');
+            setStatus(t || 'Downloading…');
+          }
+        });
 
         showApp();
         appendMessage('assistant', 'Loaded. Ask me anything.');
@@ -578,11 +596,10 @@ self.addEventListener('fetch', (e) => {
         setStatus('Error initializing model: ' + msg, 'danger');
         updateDiag({ error: msg });
 
-        // Specific hint for Cache.add failures.
-        if (String(msg).includes("Failed to execute 'add' on 'Cache'") || String(msg).includes('Cache')) {
-          setHint('Caching failed (often due to blocked/failed cross-origin fetch). This build makes cache.add non-fatal. If it still fails, check Network tab for 404/CORS on model files.', 'warn');
+        if (String(msg).includes('Cannot fetch') || String(msg).includes('.wasm')) {
+          setHint('WASM fetch failed (404/CORS/network). Use Diagnostics to see the resolved/attempted URLs and check DevTools → Network for the failing request.', 'warn');
         } else if (!window.crossOriginIsolated) {
-          setHint('Likely missing cross-origin isolation. Serve via localhost and reload once so the SW can apply COOP/COEP.', 'warn');
+          setHint('Likely missing cross-origin isolation. Serve via localhost and reload once.', 'warn');
         } else {
           setHint('Open Diagnostics and DevTools Console/Network to identify the failing URL.', 'warn');
         }
