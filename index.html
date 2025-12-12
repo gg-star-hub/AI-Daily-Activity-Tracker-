@@ -2,659 +2,1692 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Qwen 2.5 (0.5B) - Local Browser Chat</title>
-
-  <!-- Markdown Parser (nice bot output) -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" crossorigin="anonymous"></script>
-
+  <title>Idea Whiteboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050816" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>">
+  <link rel="manifest" href="data:application/manifest+json,{ &quot;name&quot;:&quot;Idea Whiteboard&quot;, &quot;short_name&quot;:&quot;Ideas&quot;, &quot;start_url&quot;:&quot;.&quot;, &quot;display&quot;:&quot;standalone&quot;, &quot;background_color&quot;:&quot;#050816&quot;, &quot;theme_color&quot;:&quot;#4b6bff&quot;, &quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>&quot;,&quot;sizes&quot;:&quot;any&quot;}] }">
   <style>
     :root {
-      --bg: #0f172a;
-      --chat-bg: #1e293b;
-      --input-bg: #334155;
-      --accent: #3b82f6;
-      --text: #f8fafc;
-      --user-msg: #2563eb;
-      --danger: #ef4444;
-      --warn: #f59e0b;
-      --muted: #94a3b8;
+      --bg: #f4f5fb;
+      --bg-alt: #e7ebff;
+      --card: #ffffff;
+      --accent: #4b6bff;
+      --accent-soft: rgba(75, 107, 255, 0.12);
+      --danger: #ff4b6b;
+      --text-main: #161827;
+      --text-muted: #6b718c;
+      --border-subtle: rgba(19, 31, 71, 0.08);
+      --radius-lg: 20px;
+      --shadow-soft: 0 12px 30px rgba(15, 27, 71, 0.18);
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #050816;
+      --bg-alt: #101426;
+      --card: #0f1424;
+      --accent: #4b9dff;
+      --accent-soft: rgba(75, 157, 255, 0.18);
+      --danger: #ff6b8a;
+      --text-main: #f9fafb;
+      --text-muted: #a2a9d0;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
     }
 
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, var(--bg-alt) 0, var(--bg) 48%, #02030a 100%);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* --- Loading Screen --- */
-    #loader {
-      position: absolute;
-      inset: 0;
-      background: var(--bg);
-      z-index: 50;
+    .app {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px 14px 24px;
+    }
+
+    .header {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      transition: opacity 0.5s ease;
-    }
-
-    .loader-box {
-      background: var(--chat-bg);
-      padding: 2rem;
-      border-radius: 12px;
-      width: 92%;
-      max-width: 560px;
-      text-align: center;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-      border: 1px solid var(--input-bg);
-    }
-
-    .progress-bar-bg {
-      width: 100%;
-      height: 8px;
-      background: #020617;
-      border-radius: 4px;
-      margin-top: 15px;
-      overflow: hidden;
-    }
-
-    .progress-bar {
-      height: 100%;
-      background: var(--accent);
-      width: 0%;
-      transition: width 0.2s;
-    }
-
-    .diag {
-      margin-top: 12px;
-      text-align: left;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      color: #cbd5e1;
-      background: rgba(2,6,23,0.55);
-      border: 1px solid rgba(51,65,85,0.7);
-      border-radius: 10px;
-      padding: 10px;
-      line-height: 1.35;
-      max-height: 220px;
-      overflow: auto;
-      display: none;
-      white-space: pre-wrap;
-    }
-
-    .diag-toggle {
-      margin-top: 10px;
-      border: 1px solid rgba(51,65,85,0.7);
-      background: rgba(2,6,23,0.35);
-      color: #cbd5e1;
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-weight: 600;
-      cursor: pointer;
-      user-select: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* --- Chat Interface --- */
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      opacity: 0;
-      transition: opacity 0.5s;
-    }
-
-    header {
-      padding: 15px 20px;
-      background: var(--chat-bg);
-      border-bottom: 1px solid var(--input-bg);
-      display: flex;
       justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .title span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
       align-items: center;
+      gap: 6px;
     }
 
     .badge {
-      font-size: 0.75rem;
-      background: #0f172a;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
       padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid var(--input-bg);
-      color: var(--muted);
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.3));
+      color: #28304a;
+      box-shadow: 0 8px 22px rgba(9, 13, 40, 0.18);
+      white-space: nowrap;
     }
 
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
+    [data-theme="dark"] .badge {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: linear-gradient(135deg, rgba(15, 24, 61, 0.9), rgba(75, 107, 255, 0.9));
+      color: #f5f5ff;
+    }
+
+    .composer {
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+      padding: 10px 11px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: var(--shadow-soft);
+    }
+
+    [data-theme="dark"] .composer {
+      background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.2), rgba(7, 11, 36, 0.98));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .composer-top {
       display: flex;
-      flex-direction: column;
-      gap: 15px;
-      scroll-behavior: smooth;
-    }
-
-    .msg {
-      max-width: 85%;
-      padding: 10px 16px;
-      border-radius: 10px;
-      line-height: 1.5;
-      font-size: 0.95rem;
-      animation: fadeIn 0.3s ease;
-      word-wrap: break-word;
-      overflow-wrap: anywhere;
-    }
-
-    .msg p { margin: 0; }
-    .msg pre { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; overflow-x: auto; }
-
-    .user {
-      align-self: flex-end;
-      background: var(--user-msg);
-      color: white;
-      border-bottom-right-radius: 2px;
-    }
-
-    .bot {
-      align-self: flex-start;
-      background: var(--chat-bg);
-      border: 1px solid var(--input-bg);
-      border-bottom-left-radius: 2px;
-    }
-
-    #input-area {
-      padding: 20px;
-      background: var(--chat-bg);
-      border-top: 1px solid var(--input-bg);
-      display: flex;
+      align-items: flex-start;
       gap: 10px;
     }
 
-    input {
+    .idea-input {
       flex: 1;
-      background: var(--bg);
-      border: 1px solid var(--input-bg);
-      color: white;
-      padding: 12px;
-      border-radius: 8px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.96);
+      padding: 8px 10px;
+      min-height: 60px;
+      max-height: 160px;
+      resize: none;
+      font-size: 0.92rem;
+      color: var(--text-main);
       outline: none;
-      font-size: 1rem;
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+      overflow-y: auto;
     }
 
-    input:focus { border-color: var(--accent); }
+    .idea-input::placeholder {
+      color: rgba(107, 114, 142, 0.9);
+    }
 
-    button {
-      background: var(--accent);
-      color: white;
+    .idea-input:focus {
+      border-color: var(--accent);
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 0 0 1px var(--accent),
+        0 10px 25px rgba(22, 35, 89, 0.3);
+      background: #ffffff;
+    }
+
+    [data-theme="dark"] .idea-input {
+      background: rgba(6, 10, 30, 0.98);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .idea-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .composer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tag-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tag-input-wrap span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .tag-input {
+      flex: 1;
+      min-width: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.12);
+      padding: 5px 9px;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.96);
+      outline: none;
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .tag-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .tag-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .btn-primary {
       border: none;
-      padding: 0 24px;
-      border-radius: 8px;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 0.86rem;
       font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--accent), #7b5bff);
+      color: #ffffff;
+      box-shadow: 0 10px 26px rgba(11, 22, 68, 0.7);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
       cursor: pointer;
-      transition: filter 0.2s;
     }
 
-    button:hover { filter: brightness(1.1); }
-    button:disabled { background: var(--input-bg); cursor: not-allowed; opacity: 0.7; }
+    .btn-primary:disabled {
+      opacity: 0.45;
+      box-shadow: none;
+      cursor: default;
+    }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
+    .btn-primary span {
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      margin-top: 12px;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.94);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .chip.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    [data-theme="dark"] .chip {
+      background: rgba(12, 17, 39, 0.96);
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .search-row {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .search-input {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 6px 11px;
+      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.96);
+      outline: none;
+      color: var(--text-main);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    [data-theme="dark"] .search-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .search-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .board {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    @media (min-width: 640px) {
+      .board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .card-idea {
+      border-radius: 16px;
+      background: var(--card);
+      padding: 10px 11px 8px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 9px 22px rgba(9, 16, 46, 0.17);
+      display: flex;
+      flex-direction: column;
+      min-height: 80px;
+      position: relative;
+      user-select: none;
+      outline: none;
+      transition: transform 0.09s ease, box-shadow 0.09s ease, background 0.12s ease;
+    }
+
+    .card-idea.pinned {
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 14px 32px rgba(14, 26, 78, 0.38);
+    }
+
+    .card-idea.dragging {
+      opacity: 0.9;
+      transform: scale(0.98);
+    }
+
+    .card-idea.drop-target {
+      outline: 2px dashed var(--accent);
+      outline-offset: 2px;
+    }
+
+    .card-idea.card-focused {
+      box-shadow:
+        0 0 0 1px var(--accent-soft),
+        0 0 0 1px var(--accent);
+    }
+
+    .idea-text {
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      color: var(--text-main);
+    }
+
+    .idea-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+
+    .pill-tag {
+      font-size: 0.74rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(238, 240, 255, 0.96);
+      color: #3a4470;
+      border: 1px solid rgba(76, 88, 160, 0.22);
+    }
+
+    [data-theme="dark"] .pill-tag {
+      background: rgba(11, 18, 55, 0.96);
+      color: #c8cff8;
+      border-color: rgba(196, 200, 255, 0.3);
+    }
+
+    .meta-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .meta-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(99, 108, 169, 0.7);
+    }
+
+    .card-actions {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .icon-btn {
+      border: none;
+      border-radius: 999px;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .icon-btn span {
+      font-size: 0.98rem;
+      line-height: 1;
+    }
+
+    .icon-btn.pin-active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .icon-btn.danger {
+      color: var(--danger);
+    }
+
+    .icon-btn.round {
+      border-radius: 999px;
+      width: 28px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 6px 18px rgba(11, 18, 53, 0.26);
+    }
+
+    [data-theme="dark"] .icon-btn.round {
+      background: rgba(10, 14, 33, 0.98);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+    }
+
+    .empty {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      padding: 2rem 1rem;
+    }
+
+    .edit-input {
+      border-radius: 12px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      padding: 6px 8px;
+      font-size: 0.88rem;
+      width: 100%;
+      resize: none;
+      min-height: 60px;
+      max-height: 160px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.98);
+      overflow-y: auto;
+      color: var(--text-main);
+    }
+
+    [data-theme="dark"] .edit-input {
+      background: rgba(6, 10, 30, 0.98);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+
+    .edit-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .btn-small {
+      border-radius: 999px;
+      border: 1px solid rgba(22, 35, 89, 0.16);
+      background: rgba(245, 247, 255, 0.98);
+      font-size: 0.74rem;
+      padding: 4px 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+    }
+
+    .btn-small.primary {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    [data-theme="dark"] .btn-small {
+      background: rgba(11, 16, 42, 0.98);
+      border-color: rgba(255, 255, 255, 0.14);
+      color: var(--text-main);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
     }
   </style>
-
-  <!--
-    COI (Cross-Origin Isolation) is needed for SharedArrayBuffer.
-    "credentialless" is generally more tolerant than "require-corp".
-
-    This Service Worker injects COOP/COEP headers.
-    NOTE: Service Workers require http(s) (e.g., localhost). Not file://
-  -->
-  <script>
-    (function setupCOIServiceWorker() {
-      if (window.crossOriginIsolated) return;
-      if (!('serviceWorker' in navigator)) return;
-
-      const alreadyReloaded = sessionStorage.getItem('coi_reloaded') === '1';
-
-      const workerScript = `
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', (e) => {
-  if (e.request.cache === 'only-if-cached' && e.request.mode !== 'same-origin') return;
-
-  e.respondWith((async () => {
-    const res = await fetch(e.request);
-    if (!res || res.status === 0) return res; // opaque can't be changed
-
-    const headers = new Headers(res.headers);
-    headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-    headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
-
-    return new Response(res.body, {
-      status: res.status,
-      statusText: res.statusText,
-      headers,
-    });
-  })());
-});
-      `;
-
-      const blob = new Blob([workerScript], { type: 'application/javascript' });
-      const url = URL.createObjectURL(blob);
-
-      navigator.serviceWorker.register(url).then((reg) => {
-        if (reg.active && !navigator.serviceWorker.controller && !alreadyReloaded) {
-          sessionStorage.setItem('coi_reloaded', '1');
-          location.reload();
-        }
-      }).catch(() => {
-        // UI will report this.
-      });
-    })();
-  </script>
-
-  <!--
-    Robustness patch:
-    Some environments throw "Failed to execute 'add' on 'Cache': Request failed".
-    We make Cache.add/AddAll non-fatal.
-  -->
-  <script>
-    (function patchCacheAddNonFatal() {
-      if (!('caches' in window)) return;
-
-      const origOpen = caches.open.bind(caches);
-      caches.open = async function(...args) {
-        const cache = await origOpen(...args);
-        if (cache.__patched_add) return cache;
-        cache.__patched_add = true;
-
-        const origAdd = cache.add ? cache.add.bind(cache) : null;
-        const origAddAll = cache.addAll ? cache.addAll.bind(cache) : null;
-
-        if (origAdd) {
-          cache.add = async (request) => {
-            try { return await origAdd(request); }
-            catch (_) {
-              try { await fetch(request, { mode: 'cors', credentials: 'omit', cache: 'no-store' }); }
-              catch (_) {}
-              return undefined;
-            }
-          };
-        }
-
-        if (origAddAll) {
-          cache.addAll = async (requests) => {
-            for (const r of requests) {
-              try {
-                if (cache.add) await cache.add(r);
-                else await fetch(r, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
-              } catch (_) {}
-            }
-            return undefined;
-          };
-        }
-
-        return cache;
-      };
-    })();
-  </script>
 </head>
 <body>
-
-  <!-- Loader -->
-  <div id="loader">
-    <div class="loader-box">
-      <h2 style="margin-top:0">Initializing Qwen 2.5</h2>
-      <p id="status-text" style="color: var(--muted); font-size:0.9rem;">Preparing…</p>
-      <div class="progress-bar-bg">
-        <div id="progress" class="progress-bar"></div>
+  <div class="app" id="app">
+    <header class="header">
+      <div class="title">
+        <h1>Idea Whiteboard</h1>
+        <span>Pin, edit, search, and drag your thinking stream.</span>
       </div>
-      <p id="pct" style="margin-bottom:0; font-size:0.8rem; color:#64748b; margin-top:5px;">0%</p>
-      <div style="margin-top: 8px; color:#64748b; font-size:0.8rem; line-height:1.35;" id="hint"></div>
-      <button class="diag-toggle" id="diag-toggle" type="button" aria-expanded="false">Diagnostics</button>
-      <div class="diag" id="diag"></div>
-    </div>
-  </div>
-
-  <!-- Main App -->
-  <div id="app">
-    <header>
-      <div style="font-weight:600;">LocalChat</div>
-      <div class="badge">Qwen 2.5 (0.5B)</div>
+      <div class="header-actions">
+        <button class="icon-btn round" id="exportBtn" title="Export ideas">
+          <span>↓</span>
+        </button>
+        <button class="icon-btn round" id="importBtn" title="Import ideas">
+          <span>↑</span>
+        </button>
+        <button class="icon-btn round" id="themeToggle" title="Toggle theme">
+          ☀️
+        </button>
+        <div class="badge">Mobile-first</div>
+      </div>
     </header>
 
-    <div id="messages"></div>
+    <main role="main">
+      <section class="composer" aria-label="New idea">
+        <div class="composer-top">
+          <textarea
+            id="ideaInput"
+            class="idea-input"
+            rows="3"
+            placeholder="Drop your idea here… (one clear thought per card)"
+          ></textarea>
+        </div>
+        <div class="composer-bottom">
+          <div class="tag-input-wrap">
+            <span>#</span>
+            <input
+              id="tagInput"
+              class="tag-input"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              placeholder="Tag (optional: focus, product, life, etc.)"
+            />
+          </div>
+          <button id="addBtn" class="btn-primary" disabled>
+            <span>＋</span> Add
+          </button>
+        </div>
+      </section>
 
-    <div id="input-area">
-      <input type="text" id="user-input" placeholder="Type a message…" autocomplete="off" />
-      <button id="send-btn">Send</button>
-    </div>
+      <nav class="toolbar" aria-label="Filter ideas">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="pinned">Pinned</button>
+        <button class="chip" data-filter="recent">Last 24h</button>
+        <button class="chip" id="clearAllBtn" title="Delete all ideas">Clear All</button>
+      </nav>
+
+      <div class="search-row">
+        <input
+          id="searchInput"
+          class="search-input"
+          type="search"
+          placeholder="Search ideas… (text or #tag)"
+          autocomplete="off"
+        />
+      </div>
+
+      <section class="board" id="board" aria-label="Idea board" role="list"></section>
+      <div class="empty" id="emptyState" style="display:none;">
+        No ideas yet. Type above and hit “Add” to pin your first thought.
+      </div>
+    </main>
   </div>
 
-  <script type="module">
-    import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.46";
+  <script>
+    (function () {
+      "use strict";
 
-    // ===== Expected behavior =====
-    // This page should:
-    // 1) Initialize WebLLM in the browser via WebGPU.
-    // 2) Download model + wasm runtime libraries from public CDNs.
-    // 3) Provide a local chat UI streaming responses.
-    //
-    // If you want different behavior (offline-first caching, different model, etc.), specify it.
+      const STORAGE_KEY = "ideaWhiteboard_v3";
+      const ANALYTICS_KEY = "ideaWhiteboard_events_v1";
+      const THEME_KEY = "ideaWhiteboard_theme_v1";
 
-    // --------- Model Selection ---------
-    const selectedModel = "Qwen2.5-0.5B-Instruct-q4f32_1-MLC";
-    const MODEL_REPO = "https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f32_1-MLC";
+      const ideaInput = document.getElementById("ideaInput");
+      const tagInput = document.getElementById("tagInput");
+      const addBtn = document.getElementById("addBtn");
+      const board = document.getElementById("board");
+      const emptyState = document.getElementById("emptyState");
+      const filterChips = document.querySelectorAll(".chip[data-filter]");
+      const clearAllBtn = document.getElementById("clearAllBtn");
+      const searchInput = document.getElementById("searchInput");
+      const exportBtn = document.getElementById("exportBtn");
+      const importBtn = document.getElementById("importBtn");
+      const themeToggle = document.getElementById("themeToggle");
 
-    // Candidate wasm filenames (we'll probe what exists).
-    const MODEL_LIB_FILENAMES = [
-      "Qwen2.5-0.5B-Instruct-q4f32_1-ctx32k_cs2k-webgpu.wasm",
-      "Qwen2.5-0.5B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
-      "Qwen2-0.5B-Instruct-q4f32_1-ctx32k_cs2k-webgpu.wasm",
-      "Qwen2-0.5B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
-      "Qwen2.5-0.5B-Instruct-q4f32_1-webgpu.wasm",
-      "Qwen2-0.5B-Instruct-q4f32_1-webgpu.wasm",
-    ];
+      let ideas = [];
+      let filter = "all";
+      let draggingId = null;
+      let suppressClick = false;
+      let searchTerm = "";
 
-    // CDN base candidates for binary wasm libs.
-    // NOTE: The reported error was for raw.githubusercontent.com + a version folder like v0_2_43.
-    // Some environments block raw.githubusercontent.com or that specific version folder may not exist.
-    // We probe multiple mirrors + version folder spellings.
-    const LIB_CDN_BASES = [
-      // jsDelivr (usually the most reliable for browser assets)
-      "https://cdn.jsdelivr.net/gh/mlc-ai/binary-mlc-llm-libs@main/web-llm-models/",
-      // Raw GitHub (sometimes blocked)
-      "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/",
-    ];
+      // --- Utilities ---
 
-    // Version candidates: normalize v0_2_43 <-> v0.2.43, and prefer the WebLLM import version.
-    function normalizeVersionVariants(v) {
-      const out = new Set();
-      if (!v) return [...out];
-      out.add(v);
-      out.add(v.replace(/_/g, '.'));
-      out.add(v.replace(/\./g, '_'));
-      return [...out];
-    }
-
-    const importPreferredVersions = ["v0.2.46", "v0_2_46", "v0.2.43", "v0_2_43"]; // include common fallbacks
-    const webllmVersions = normalizeVersionVariants(webllm.modelVersion || "");
-    const VERSION_FOLDERS = Array.from(new Set([...importPreferredVersions, ...webllmVersions].filter(Boolean)));
-
-    // --------- UI Helpers ---------
-    const $ = (id) => document.getElementById(id);
-    const $loader = $("loader");
-    const $app = $("app");
-    const $status = $("status-text");
-    const $progress = $("progress");
-    const $pct = $("pct");
-    const $hint = $("hint");
-    const $msgs = $("messages");
-    const $input = $("user-input");
-    const $btn = $("send-btn");
-    const $diag = $("diag");
-    const $diagToggle = $("diag-toggle");
-
-    function setHint(text, tone = 'muted') {
-      $hint.textContent = text;
-      $hint.style.color = tone === 'danger' ? 'var(--danger)' : (tone === 'warn' ? 'var(--warn)' : '#64748b');
-    }
-
-    function setStatus(text, tone = 'muted') {
-      $status.textContent = text;
-      $status.style.color = tone === 'danger' ? 'var(--danger)' : (tone === 'warn' ? 'var(--warn)' : 'var(--muted)');
-    }
-
-    function appendMessage(role, text, asMarkdown = true) {
-      const div = document.createElement("div");
-      div.className = `msg ${role === 'user' ? 'user' : 'bot'}`;
-      if (role === 'user') {
-        div.textContent = text;
-      } else {
-        div.innerHTML = asMarkdown ? marked.parse(text) : text;
+      function haptic(ms = 30) {
+        try {
+          if (navigator.vibrate) {
+            navigator.vibrate(ms);
+          }
+        } catch (e) {
+          // ignore
+        }
       }
-      $msgs.appendChild(div);
-      $msgs.scrollTop = $msgs.scrollHeight;
-      return div;
-    }
 
-    function showApp() {
-      $loader.style.opacity = "0";
-      setTimeout(() => {
-        $loader.style.display = "none";
-        $app.style.opacity = "1";
-      }, 500);
-    }
-
-    function diagLine(k, v) { return `${k}: ${v}`; }
-
-    function updateDiag(extra = {}) {
-      const lines = [];
-      lines.push(diagLine('crossOriginIsolated', String(window.crossOriginIsolated)));
-      lines.push(diagLine('serviceWorker.controller', String(!!navigator.serviceWorker?.controller)));
-      lines.push(diagLine('navigator.gpu', String(!!navigator.gpu)));
-      lines.push(diagLine('webllm.modelVersion', String(webllm.modelVersion || '')));
-      lines.push(diagLine('VERSION_FOLDERS', VERSION_FOLDERS.join(', ')));
-      if (extra.resolved) lines.push(diagLine('resolved model_lib', extra.resolved));
-      if (extra.tried) lines.push(diagLine('tried', extra.tried));
-      if (extra.error) lines.push(diagLine('lastError', extra.error));
-      $diag.textContent = lines.join('\n');
-    }
-
-    $diagToggle.addEventListener('click', () => {
-      const open = $diag.style.display === 'block';
-      $diag.style.display = open ? 'none' : 'block';
-      $diagToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
-    });
-
-    // --------- Self-tests ---------
-    function assert(name, cond) {
-      if (!cond) throw new Error(`Self-test failed: ${name}`);
-    }
-
-    function runSelfTests() {
-      assert('marked loaded', typeof window.marked?.parse === 'function');
-      assert('#loader exists', !!$loader);
-      assert('#app exists', !!$app);
-      assert('#messages exists', !!$msgs);
-      assert('#user-input exists', !!$input);
-      assert('#send-btn exists', !!$btn);
-
-      // URL/version normalization tests (pure, no network)
-      const variants = normalizeVersionVariants('v0_2_43');
-      assert('version variants include dotted', variants.includes('v0.2.43'));
-      assert('version variants include underscored', variants.includes('v0_2_43'));
-
-      // Ensure we have at least one CDN base and version folder
-      assert('LIB_CDN_BASES non-empty', Array.isArray(LIB_CDN_BASES) && LIB_CDN_BASES.length > 0);
-      assert('VERSION_FOLDERS non-empty', Array.isArray(VERSION_FOLDERS) && VERSION_FOLDERS.length > 0);
-
-      return true;
-    }
-
-    // --------- Network probing ---------
-    async function probeExists(url) {
-      try {
-        // Range GET avoids downloading the full wasm just to test existence.
-        const r = await fetch(url, {
-          method: 'GET',
-          headers: { 'Range': 'bytes=0-0' },
-          cache: 'no-store',
-          mode: 'cors',
-          credentials: 'omit'
-        });
-        return r.ok || r.status === 206;
-      } catch (_) {
-        return false;
+      function trackEvent(event, data) {
+        try {
+          const raw = localStorage.getItem(ANALYTICS_KEY);
+          let events = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(events)) events = [];
+          events.push({
+            event,
+            ts: Date.now(),
+            ...(data || {})
+          });
+          if (events.length > 1000) {
+            events.splice(0, events.length - 1000);
+          }
+          localStorage.setItem(ANALYTICS_KEY, JSON.stringify(events));
+        } catch (e) {
+          // best-effort, ignore failures
+        }
       }
-    }
 
-    async function resolveModelLibURL() {
-      const tried = [];
+      function debounce(fn, wait) {
+        let timeout;
+        return function (...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            fn.apply(null, args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
 
-      for (const base of LIB_CDN_BASES) {
-        for (const ver of VERSION_FOLDERS) {
-          const prefix = base + ver + "/";
-          for (const file of MODEL_LIB_FILENAMES) {
-            const url = prefix + file;
-            tried.push(url);
-            if (await probeExists(url)) {
-              return { url, tried };
+      function createId() {
+        return (
+          "idea_" +
+          Date.now().toString(36) +
+          "_" +
+          Math.random().toString(36).slice(2, 7)
+        );
+      }
+
+      function showToast(message) {
+        try {
+          const existing = document.getElementById("ideaToast");
+          if (existing) {
+            existing.remove();
+          }
+          const toast = document.createElement("div");
+          toast.id = "ideaToast";
+          toast.textContent = message;
+          toast.style.position = "fixed";
+          toast.style.bottom = "24px";
+          toast.style.left = "50%";
+          toast.style.transform = "translateX(-50%)";
+          toast.style.padding = "8px 16px";
+          toast.style.borderRadius = "999px";
+          toast.style.fontSize = "0.9rem";
+          toast.style.zIndex = "9999";
+          toast.style.boxShadow = "0 12px 30px rgba(0, 0, 0, 0.35)";
+          toast.style.maxWidth = "90vw";
+          toast.style.textAlign = "center";
+          toast.style.whiteSpace = "nowrap";
+          toast.style.overflow = "hidden";
+          toast.style.textOverflow = "ellipsis";
+          toast.style.opacity = "0";
+          toast.style.transition = "opacity 0.2s ease, transform 0.2s ease";
+          toast.style.backdropFilter = "blur(12px)";
+          toast.style.webkitBackdropFilter = "blur(12px)";
+          const isDark =
+            (document.documentElement.getAttribute("data-theme") || "light") === "dark";
+          toast.style.background = isDark
+            ? "rgba(15, 23, 42, 0.95)"
+            : "rgba(31, 41, 55, 0.95)";
+          toast.style.color = "#f9fafb";
+          document.body.appendChild(toast);
+          requestAnimationFrame(() => {
+            toast.style.opacity = "1";
+          });
+          setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateX(-50%) translateY(4px)";
+            setTimeout(() => {
+              const el = document.getElementById("ideaToast");
+              if (el) el.remove();
+            }, 220);
+          }, 1200);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function renderMarkdown(text) {
+        if (!text) return "";
+        let safe = String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+        // Normalize newlines
+        safe = safe.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+        // Basic markdown
+        safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        safe = safe.replace(/\*(.+?)\*/g, "<em>$1</em>");
+        safe = safe.replace(
+          /`(.+?)`/g,
+          "<code style='background:var(--accent-soft);padding:2px 5px;border-radius:4px;font-size:0.85em;'>$1</code>"
+        );
+
+        // Line breaks
+        safe = safe.replace(/\n/g, "<br>");
+        return safe;
+      }
+
+      function applyTheme(theme) {
+        const t = theme === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+        if (themeToggle) {
+          themeToggle.textContent = t === "dark" ? "🌙" : "☀️";
+        }
+      }
+
+      function initTheme() {
+        let stored = null;
+        try {
+          stored = localStorage.getItem(THEME_KEY);
+        } catch (e) {
+          stored = null;
+        }
+        let theme;
+        if (stored === "light" || stored === "dark") {
+          theme = stored;
+        } else {
+          const prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          theme = prefersDark ? "dark" : "light";
+        }
+        applyTheme(theme);
+
+        if (!stored && window.matchMedia) {
+          try {
+            const mql = window.matchMedia("(prefers-color-scheme: dark)");
+            const handler = function (e) {
+              let manual = null;
+              try {
+                manual = localStorage.getItem(THEME_KEY);
+              } catch (err) {
+                manual = null;
+              }
+              if (manual === "light" || manual === "dark") return;
+              applyTheme(e.matches ? "dark" : "light");
+            };
+            if (mql.addEventListener) {
+              mql.addEventListener("change", handler);
+            } else if (mql.addListener) {
+              mql.addListener(handler);
             }
+          } catch (e) {
+            // ignore
           }
         }
       }
 
-      return { url: null, tried };
-    }
+      // --- Data Logic ---
 
-    // --------- WebLLM init + chat ---------
-    let engine;
-    const messages = [{ role: "system", content: "You are Qwen, a helpful and concise AI assistant." }];
-
-    async function initialize() {
-      try {
-        runSelfTests();
-      } catch (e) {
-        setStatus(e.message, 'danger');
-        setHint('A required dependency failed to load. Check Diagnostics.', 'danger');
-        updateDiag({ error: e.message });
-        return;
+      function normalizeIdeasArray(list) {
+        const now = Date.now();
+        const result = [];
+        list.forEach((item, index) => {
+          if (!item) return;
+          const text =
+            typeof item.text === "string" ? item.text.trim() : "";
+          if (!text) return;
+          const tag =
+            typeof item.tag === "string"
+              ? item.tag.trim().replace(/^#+/, "")
+              : "";
+          const id =
+            typeof item.id === "string" && item.id
+              ? item.id
+              : createId();
+          const createdAt =
+            typeof item.createdAt === "number" && item.createdAt > 0
+              ? item.createdAt
+              : now;
+          const pinned = !!item.pinned;
+          const order =
+            typeof item.order === "number" ? item.order : index;
+          result.push({
+            id,
+            text,
+            tag,
+            pinned,
+            createdAt,
+            order
+          });
+        });
+        result.sort((a, b) => {
+          const ao = typeof a.order === "number" ? a.order : 0;
+          const bo = typeof b.order === "number" ? b.order : 0;
+          return ao - bo;
+        });
+        result.forEach((idea, index) => {
+          idea.order = index;
+        });
+        return result;
       }
 
-      updateDiag();
-
-      if (!navigator.gpu) {
-        setStatus('Error: WebGPU is not supported/enabled in this browser.', 'danger');
-        setHint('Use Chrome/Edge with WebGPU enabled. WebLLM requires WebGPU.', 'danger');
-        return;
+      function loadIdeas() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          let list;
+          if (Array.isArray(parsed)) {
+            list = parsed;
+          } else if (parsed && Array.isArray(parsed.ideas)) {
+            list = parsed.ideas;
+          } else {
+            return [];
+          }
+          return normalizeIdeasArray(list);
+        } catch (e) {
+          console.warn("Failed to parse stored ideas", e);
+          return [];
+        }
       }
 
-      if (!window.crossOriginIsolated) {
-        setStatus('Cross-origin isolation not active (yet).', 'warn');
-        setHint('Serve via localhost and reload once so the Service Worker can apply COOP/COEP.', 'warn');
-      } else {
-        setHint('');
+      function saveIdeas() {
+        try {
+          const payload = {
+            version: 3,
+            ideas: ideas
+          };
+          const data = JSON.stringify(payload);
+          if (data.length > 5000000) {
+            alert(
+              "Storage limit reached. Please export and clear some ideas."
+            );
+            return false;
+          }
+          localStorage.setItem(STORAGE_KEY, data);
+          return true;
+        } catch (e) {
+          if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
+            alert("Storage full! Please export and clear ideas.");
+          } else {
+            console.warn("Failed to save ideas", e);
+          }
+          return false;
+        }
       }
 
-      try {
-        setStatus('Resolving model library URL…');
-        const resolved = await resolveModelLibURL();
+      function formatTime(ts) {
+        const date = new Date(ts);
+        if (Number.isNaN(date.getTime())) return "";
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMin = Math.floor(diffMs / 60000);
+        if (diffMin < 1) return "just now";
+        if (diffMin < 60) return diffMin + " min ago";
+        const diffH = Math.floor(diffMin / 60);
+        if (diffH < 24) return diffH + " h ago";
+        const diffD = Math.floor(diffH / 24);
+        if (diffD < 7) return diffD + " d ago";
+        return date.toLocaleDateString();
+      }
 
-        if (!resolved.url) {
-          setStatus('Error: Could not locate the model .wasm library on known mirrors.', 'danger');
-          setHint('This environment may block fetching large WASM from public CDNs. Open Diagnostics to see tried URLs.', 'warn');
-          updateDiag({ tried: `Tried ${resolved.tried.length} URLs (see below)`, error: 'Cannot fetch model wasm' });
-          // Dump tried URLs into diagnostics for quick copy/paste.
-          $diag.textContent = ($diag.textContent + "\n\n" + resolved.tried.join("\n")).trim();
-          $diag.style.display = 'block';
-          $diagToggle.setAttribute('aria-expanded', 'true');
+      // --- Rendering ---
+
+      function getFilteredIdeas() {
+        const now = Date.now();
+        let base = ideas;
+        if (filter === "pinned") {
+          base = ideas.filter((i) => i.pinned);
+        } else if (filter === "recent") {
+          const cutoff = now - 24 * 60 * 60 * 1000;
+          base = ideas.filter((i) => i.createdAt >= cutoff);
+        }
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          base = base.filter((idea) => {
+            const text = idea.text.toLowerCase();
+            const tag = (idea.tag || "").toLowerCase();
+            return (
+              text.includes(term) ||
+              tag.includes(term) ||
+              ("#" + tag).includes(term)
+            );
+          });
+        }
+        return base;
+      }
+
+      function sortIdeas(list) {
+        return list
+          .slice()
+          .sort((a, b) => {
+            const ao = typeof a.order === "number" ? a.order : 0;
+            const bo = typeof b.order === "number" ? b.order : 0;
+            return ao - bo;
+          });
+      }
+
+      function copyCardText(text) {
+        const value = String(text || "");
+        if (!value) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(value)
+            .then(
+              () => {
+                haptic(30);
+                showToast("Copied");
+                trackEvent("copy_card", { length: value.length });
+              },
+              () => {
+                showToast("Copy failed");
+              }
+            );
+        } else {
+          try {
+            const helper = document.createElement("textarea");
+            helper.style.position = "fixed";
+            helper.style.opacity = "0";
+            helper.value = value;
+            document.body.appendChild(helper);
+            helper.select();
+            const ok = document.execCommand("copy");
+            document.body.removeChild(helper);
+            if (ok) {
+              haptic(30);
+              showToast("Copied");
+              trackEvent("copy_card", { length: value.length });
+            } else {
+              prompt("Copy this text:", value);
+            }
+          } catch (err) {
+            prompt("Copy this text:", value);
+          }
+        }
+      }
+
+      function render() {
+        const filtered = sortIdeas(getFilteredIdeas());
+        board.innerHTML = "";
+        if (!filtered.length) {
+          emptyState.style.display = "block";
+          return;
+        }
+        emptyState.style.display = "none";
+
+        const allowDrag = filter === "all";
+
+        filtered.forEach((idea) => {
+          const card = document.createElement("article");
+          card.className =
+            "card-idea" + (idea.pinned ? " pinned" : "");
+          card.dataset.id = idea.id;
+          card.setAttribute("role", "listitem");
+          card.tabIndex = 0;
+          card.draggable = allowDrag;
+
+          const actions = document.createElement("div");
+          actions.className = "card-actions";
+
+          const pinBtn = document.createElement("button");
+          pinBtn.className =
+            "icon-btn" + (idea.pinned ? " pin-active" : "");
+          pinBtn.type = "button";
+          pinBtn.title = idea.pinned ? "Unpin" : "Pin";
+          pinBtn.innerHTML = "<span>★</span>";
+          pinBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            togglePin(idea.id);
+          });
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "icon-btn danger";
+          delBtn.type = "button";
+          delBtn.title = "Delete";
+          delBtn.innerHTML = "<span>✕</span>";
+          delBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteIdea(idea.id);
+          });
+
+          actions.appendChild(pinBtn);
+          actions.appendChild(delBtn);
+
+          const textEl = document.createElement("div");
+          textEl.className = "idea-text";
+          textEl.innerHTML = renderMarkdown(idea.text);
+
+          const meta = document.createElement("div");
+          meta.className = "idea-meta";
+
+          const leftMeta = document.createElement("div");
+          if (idea.tag) {
+            const tag = document.createElement("span");
+            tag.className = "pill-tag";
+            tag.textContent = "#" + idea.tag;
+            leftMeta.appendChild(tag);
+          }
+
+          const rightMeta = document.createElement("div");
+          rightMeta.className = "meta-right";
+          const dot = document.createElement("span");
+          dot.className = "meta-dot";
+          const time = document.createElement("span");
+          time.textContent = formatTime(idea.createdAt);
+          rightMeta.appendChild(dot);
+          rightMeta.appendChild(time);
+
+          meta.appendChild(leftMeta);
+          meta.appendChild(rightMeta);
+
+          // Interaction: Edit with single-click
+          let clickTimeout = null;
+          card.addEventListener("click", () => {
+            if (suppressClick) return;
+            if (clickTimeout) {
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+            }
+            clickTimeout = setTimeout(() => {
+              enterEditMode(card, idea);
+              clickTimeout = null;
+            }, 220);
+          });
+
+          // Copy on double-click
+          card.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            if (clickTimeout) {
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+            }
+            copyCardText(idea.text);
+          });
+
+          // Focus style
+          card.addEventListener("focus", () => {
+            card.classList.add("card-focused");
+          });
+          card.addEventListener("blur", () => {
+            card.classList.remove("card-focused");
+          });
+
+          // Drag and drop
+          if (allowDrag) {
+            card.addEventListener("dragstart", (e) =>
+              handleDragStart(e, idea.id)
+            );
+            card.addEventListener("dragover", (e) =>
+              handleDragOver(e, idea.id)
+            );
+            card.addEventListener("drop", (e) =>
+              handleDrop(e, idea.id)
+            );
+            card.addEventListener("dragend", handleDragEnd);
+          }
+
+          card.appendChild(actions);
+          card.appendChild(textEl);
+          card.appendChild(meta);
+          board.appendChild(card);
+        });
+      }
+
+      // --- Actions ---
+
+      function addIdea() {
+        const text = (ideaInput.value || "").trim();
+        const tag = (tagInput.value || "").trim().replace(/^#+/, "");
+        if (!text) return;
+        const idea = {
+          id: createId(),
+          text,
+          tag: tag || "",
+          pinned: false,
+          createdAt: Date.now(),
+          order: ideas.length
+        };
+        ideas.push(idea);
+        haptic(25);
+        trackEvent("add", { tag: idea.tag || null });
+        saveIdeas();
+        ideaInput.value = "";
+        ideaInput.style.height = "auto";
+        tagInput.value = "";
+        updateAddButtonState();
+        render();
+        ideaInput.focus();
+      }
+
+      function togglePin(id) {
+        const idx = ideas.findIndex((i) => i.id === id);
+        if (idx === -1) return;
+        ideas[idx].pinned = !ideas[idx].pinned;
+        haptic(15);
+        trackEvent("pin_toggle", { pinned: ideas[idx].pinned });
+        saveIdeas();
+        render();
+      }
+
+      function deleteIdea(id) {
+        const before = ideas.length;
+        ideas = ideas.filter((i) => i.id !== id);
+        ideas.forEach((idea, index) => {
+          idea.order = index;
+        });
+        haptic(40);
+        trackEvent("delete", { before, after: ideas.length });
+        saveIdeas();
+        render();
+      }
+
+      function moveIdea(sourceId, targetId) {
+        if (!sourceId || !targetId || sourceId === targetId) return;
+        const fromIndex = ideas.findIndex((i) => i.id === sourceId);
+        const toIndex = ideas.findIndex((i) => i.id === targetId);
+        if (fromIndex === -1 || toIndex === -1) return;
+        const [moved] = ideas.splice(fromIndex, 1);
+        ideas.splice(toIndex, 0, moved);
+        ideas.forEach((idea, index) => {
+          idea.order = index;
+        });
+        trackEvent("reorder", {});
+        saveIdeas();
+        render();
+      }
+
+      // --- DnD ---
+
+      function handleDragStart(e, id) {
+        if (filter !== "all") {
+          e.preventDefault();
+          return;
+        }
+        draggingId = id;
+        suppressClick = true;
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", id);
+        }
+        const el = e.currentTarget;
+        el.classList.add("dragging");
+      }
+
+      function handleDragOver(e, targetId) {
+        if (!draggingId || draggingId === targetId) return;
+        e.preventDefault();
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = "move";
+        }
+        const cards = board.querySelectorAll(".card-idea");
+        cards.forEach((c) => {
+          c.classList.toggle("drop-target", c.dataset.id === targetId);
+        });
+      }
+
+      function handleDrop(e, targetId) {
+        e.preventDefault();
+        const sourceId =
+          draggingId ||
+          (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+        moveIdea(sourceId, targetId);
+      }
+
+      function handleDragEnd() {
+        const cards = board.querySelectorAll(".card-idea");
+        cards.forEach((c) =>
+          c.classList.remove("dragging", "drop-target")
+        );
+        draggingId = null;
+        setTimeout(() => {
+          suppressClick = false;
+        }, 0);
+      }
+
+      // --- Inline Edit ---
+
+      function autoGrowTextArea(el) {
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+
+      function enterEditMode(card, idea) {
+        if (card.dataset.editing === "1") return;
+        card.dataset.editing = "1";
+        const originalText = idea.text;
+
+        const textArea = document.createElement("textarea");
+        textArea.className = "edit-input";
+        textArea.value = originalText;
+
+        const existingTextEl = card.querySelector(".idea-text");
+        const existingMeta = card.querySelector(".idea-meta");
+        existingTextEl.style.display = "none";
+        existingMeta.style.display = "none";
+
+        const editWrap = document.createElement("div");
+        editWrap.appendChild(textArea);
+
+        const actions = document.createElement("div");
+        actions.className = "edit-actions";
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "btn-small";
+        cancelBtn.textContent = "Cancel";
+
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "button";
+        saveBtn.className = "btn-small primary";
+        saveBtn.textContent = "Save";
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(saveBtn);
+        editWrap.appendChild(actions);
+        card.appendChild(editWrap);
+
+        autoGrowTextArea(textArea);
+        textArea.focus();
+        textArea.setSelectionRange(
+          textArea.value.length,
+          textArea.value.length
+        );
+
+        function cleanup() {
+          card.dataset.editing = "0";
+          card.removeChild(editWrap);
+          existingTextEl.style.display = "";
+          existingMeta.style.display = "";
+        }
+
+        cancelBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          cleanup();
+        });
+
+        saveBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const newText = textArea.value.trim();
+          if (!newText) {
+            cleanup();
+            return;
+          }
+          const idx = ideas.findIndex((i) => i.id === idea.id);
+          if (idx !== -1) {
+            ideas[idx].text = newText;
+            trackEvent("edit", {});
+            saveIdeas();
+            render();
+          } else {
+            cleanup();
+          }
+        });
+
+        textArea.addEventListener("input", () =>
+          autoGrowTextArea(textArea)
+        );
+
+        textArea.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            cancelBtn.click();
+          } else if (
+            (e.key === "Enter" || e.key === "NumpadEnter") &&
+            (e.metaKey || e.ctrlKey)
+          ) {
+            e.preventDefault();
+            saveBtn.click();
+          }
+        });
+      }
+
+      // --- Export / Import ---
+
+      async function handleExport() {
+        try {
+          const payload = {
+            version: 3,
+            ideas: ideas,
+            exportedAt: new Date().toISOString()
+          };
+          const json = JSON.stringify(payload, null, 2);
+          const encoded = btoa(unescape(encodeURIComponent(json)));
+
+          let clipboardOk = false;
+          let fileDownloaded = false;
+
+          // 1) Try to copy backup string to clipboard
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+              await navigator.clipboard.writeText(encoded);
+              clipboardOk = true;
+            } catch (err) {
+              clipboardOk = false;
+            }
+          }
+
+          if (clipboardOk) {
+            // 2) Ask if user also wants JSON file
+            const alsoFile = confirm(
+              "Backup string copied to clipboard.\n\nDo you also want to download a .json file?"
+            );
+
+            if (
+              alsoFile &&
+              typeof Blob !== "undefined" &&
+              typeof URL !== "undefined" &&
+              URL.createObjectURL
+            ) {
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download =
+                "idea-whiteboard-" +
+                new Date().toISOString().slice(0, 10) +
+                ".json";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              fileDownloaded = true;
+            }
+          } else {
+            // Clipboard not available → fallback to file download
+            if (
+              typeof Blob !== "undefined" &&
+              typeof URL !== "undefined" &&
+              URL.createObjectURL
+            ) {
+              const blob = new Blob([json], { type: "application/json" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download =
+                "idea-whiteboard-" +
+                new Date().toISOString().slice(0, 10) +
+                ".json";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              fileDownloaded = true;
+
+              alert(
+                "Clipboard export is not supported in this browser. A JSON file has been downloaded instead."
+              );
+            } else {
+              // Last-resort: manual copy of backup string
+              prompt(
+                "Clipboard and file download are not available. You can still copy this backup string manually:",
+                encoded
+              );
+            }
+          }
+
+          trackEvent("export", {
+            count: ideas.length,
+            clipboard: clipboardOk,
+            file: fileDownloaded
+          });
+        } catch (e) {
+          console.warn("Export failed", e);
+          try {
+            const fallbackPayload = {
+              version: 3,
+              ideas: ideas
+            };
+            const fallbackJson = JSON.stringify(fallbackPayload);
+            const encoded = btoa(unescape(encodeURIComponent(fallbackJson)));
+            prompt(
+              "Export failed. You can still copy this backup string manually:",
+              encoded
+            );
+          } catch (e2) {
+            alert("Export failed and no fallback is available in this browser.");
+          }
+        }
+      }
+
+      async function handleImport() {
+        const text = prompt("Paste your exported data (backup string):");
+        if (!text) return;
+        try {
+          const trimmed = text.trim();
+          let decodedJson;
+          try {
+            decodedJson = decodeURIComponent(escape(atob(trimmed)));
+          } catch (e) {
+            decodedJson = trimmed;
+          }
+          const parsed = JSON.parse(decodedJson);
+          let list;
+          if (Array.isArray(parsed)) {
+            list = parsed;
+          } else if (parsed && Array.isArray(parsed.ideas)) {
+            list = parsed.ideas;
+          } else {
+            throw new Error("Invalid structure");
+          }
+          const normalized = normalizeIdeasArray(list);
+          if (!normalized.length) {
+            alert("No ideas found in the imported data.");
+            return;
+          }
+          if (
+            !confirm(
+              "Import " +
+                normalized.length +
+                " ideas? This will replace your current board."
+            )
+          ) {
+            return;
+          }
+          ideas = normalized;
+          saveIdeas();
+          render();
+          haptic(60);
+          trackEvent("import", { count: ideas.length });
+        } catch (e) {
+          console.warn("Import failed", e);
+          alert("Could not import: invalid or corrupted data.");
+        }
+      }
+
+      // --- Keyboard & global ---
+
+      function isTypingInInput() {
+        const el = document.activeElement;
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag === "TEXTAREA") return true;
+        if (tag === "INPUT") {
+          const type = (el.getAttribute("type") || "").toLowerCase();
+          return type !== "button" && type !== "submit";
+        }
+        return false;
+      }
+
+      function handleGlobalKeydown(e) {
+        if (e.defaultPrevented) return;
+
+        // Quick focus to idea input
+        if (
+          e.key === "/" &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          ideaInput.focus();
           return;
         }
 
-        updateDiag({ resolved: resolved.url });
+        // Shortcut help
+        if (
+          e.key === "?" &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          alert(
+            "Shortcuts:\n" +
+              "Ctrl/Cmd + Enter → Add idea\n" +
+              "/ → Focus idea input\n" +
+              "n → Focus idea input\n" +
+              "Esc → Cancel edit / blur\n" +
+              "Delete/Backspace → Delete focused card\n" +
+              "p → Pin/unpin focused card\n" +
+              "Drag (All view) → Reorder cards\n" +
+              "Double-click card → Copy text"
+          );
+          return;
+        }
 
-        // Always provide appConfig so WebLLM doesn't use a wrong/blocked default lib URL.
-        const appConfig = JSON.parse(JSON.stringify(webllm.prebuiltAppConfig ?? { model_list: [] }));
-        appConfig.model_list = (appConfig.model_list ?? []).filter(m => m.model_id !== selectedModel);
-        appConfig.model_list.push({
-          model: MODEL_REPO,
-          model_id: selectedModel,
-          model_lib: resolved.url,
-          vram_required_MB: 900,
-          low_resource_required: true,
-        });
+        if (
+          (e.key === "n" || e.key === "N") &&
+          !e.ctrlKey &&
+          !e.metaKey &&
+          !e.altKey &&
+          !isTypingInInput()
+        ) {
+          e.preventDefault();
+          ideaInput.focus();
+          return;
+        }
 
-        setStatus('Starting engine & downloading…');
-        engine = await webllm.CreateMLCEngine(selectedModel, {
-          appConfig,
-          initProgressCallback: (info) => {
-            const p = Math.max(0, Math.min(1, Number(info?.progress ?? 0)));
-            const pct = Math.floor(p * 100);
-            $progress.style.width = pct + '%';
-            $pct.textContent = pct + '%';
-            const t = String(info?.text ?? '').replace('Fetching', 'Downloading');
-            setStatus(t || 'Downloading…');
+        if (e.key === "Escape") {
+          if (
+            document.activeElement &&
+            document.activeElement !== document.body
+          ) {
+            document.activeElement.blur();
           }
-        });
-
-        showApp();
-        appendMessage('assistant', 'Loaded. Ask me anything.');
-        $input.focus();
-
-      } catch (err) {
-        console.error(err);
-        const msg = (err && err.message) ? err.message : String(err);
-        setStatus('Error initializing model: ' + msg, 'danger');
-        updateDiag({ error: msg });
-
-        if (String(msg).includes('Cannot fetch') || String(msg).includes('.wasm')) {
-          setHint('WASM fetch failed (404/CORS/network). Use Diagnostics to see the resolved/attempted URLs and check DevTools → Network for the failing request.', 'warn');
-        } else if (!window.crossOriginIsolated) {
-          setHint('Likely missing cross-origin isolation. Serve via localhost and reload once.', 'warn');
-        } else {
-          setHint('Open Diagnostics and DevTools Console/Network to identify the failing URL.', 'warn');
-        }
-      }
-    }
-
-    async function handleSend() {
-      const text = $input.value.trim();
-      if (!text || !engine) return;
-
-      $input.value = '';
-      $input.disabled = true;
-      $btn.disabled = true;
-
-      appendMessage('user', text, false);
-      messages.push({ role: 'user', content: text });
-
-      const botBubble = appendMessage('assistant', '…', false);
-      let fullResponse = '';
-
-      try {
-        const chunks = await engine.chat.completions.create({
-          messages,
-          stream: true,
-          temperature: 0.7,
-        });
-
-        for await (const chunk of chunks) {
-          const content = chunk?.choices?.[0]?.delta?.content || '';
-          fullResponse += content;
-          botBubble.innerHTML = marked.parse(fullResponse || '…');
-          $msgs.scrollTop = $msgs.scrollHeight;
+          return;
         }
 
-        messages.push({ role: 'assistant', content: fullResponse });
+        // Delete focused card
+        if (
+          (e.key === "Delete" || e.key === "Backspace") &&
+          !isTypingInInput()
+        ) {
+          const focused = document.querySelector(
+            ".card-idea.card-focused"
+          );
+          if (focused && focused.dataset.id) {
+            e.preventDefault();
+            deleteIdea(focused.dataset.id);
+          }
+          return;
+        }
 
-      } catch (err) {
-        console.error(err);
-        botBubble.textContent = 'Error: ' + ((err && err.message) ? err.message : String(err));
-      } finally {
-        $input.disabled = false;
-        $btn.disabled = false;
-        $input.focus();
+        // Toggle pin on focused card
+        if (
+          (e.key === "p" || e.key === "P") &&
+          !isTypingInInput()
+        ) {
+          const focused = document.querySelector(
+            ".card-idea.card-focused"
+          );
+          if (focused && focused.dataset.id) {
+            e.preventDefault();
+            togglePin(focused.dataset.id);
+          }
+        }
       }
-    }
 
-    $btn.addEventListener('click', handleSend);
-    $input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
+      // --- Clear all ---
+
+      function handleClearAll() {
+        if (!ideas.length) return;
+        if (
+          !confirm(
+            "Delete every idea permanently from this device? This cannot be undone."
+          )
+        ) {
+          return;
+        }
+        const count = ideas.length;
+        ideas = [];
+        saveIdeas();
+        render();
+        haptic(100);
+        trackEvent("clear_all", { count });
       }
-    });
 
-    initialize();
+      // --- Initialization ---
+
+      initTheme();
+
+      ideaInput.addEventListener("input", () => {
+        updateAddButtonState();
+        autoGrowTextArea(ideaInput);
+      });
+
+      ideaInput.addEventListener("keydown", (e) => {
+        if (
+          (e.key === "Enter" || e.key === "NumpadEnter") &&
+          (e.ctrlKey || e.metaKey)
+        ) {
+          e.preventDefault();
+          if (!addBtn.disabled) addIdea();
+        }
+      });
+
+      function updateAddButtonState() {
+        const hasText = (ideaInput.value || "").trim().length > 0;
+        addBtn.disabled = !hasText;
+      }
+
+      addBtn.addEventListener("click", () => {
+        addIdea();
+      });
+
+      filterChips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const next = chip.dataset.filter;
+          if (!next) return;
+          filter = next;
+          filterChips.forEach((c) => {
+            c.classList.toggle("active", c.dataset.filter === filter);
+          });
+          trackEvent("filter", { filter });
+          render();
+        });
+      });
+
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", handleClearAll);
+      }
+
+      if (searchInput) {
+        const debouncedSearch = debounce((value) => {
+          searchTerm = value.trim();
+          trackEvent("search", {
+            length: searchTerm.length > 0 ? searchTerm.length : 0
+          });
+          render();
+        }, 120);
+        searchInput.addEventListener("input", (e) => {
+          debouncedSearch(e.target.value || "");
+        });
+      }
+
+      if (exportBtn) {
+        exportBtn.addEventListener("click", () => {
+          handleExport();
+        });
+      }
+
+      if (importBtn) {
+        importBtn.addEventListener("click", () => {
+          handleImport();
+        });
+      }
+
+      if (themeToggle) {
+        themeToggle.addEventListener("click", () => {
+          const current =
+            document.documentElement.getAttribute("data-theme") || "light";
+          const next = current === "dark" ? "light" : "dark";
+          try {
+            localStorage.setItem(THEME_KEY, next);
+          } catch (e) {
+            // ignore
+          }
+          applyTheme(next);
+          haptic(20);
+          trackEvent("theme_toggle", { theme: next });
+        });
+      }
+
+      document.addEventListener("keydown", handleGlobalKeydown);
+
+      ideas = loadIdeas();
+      saveIdeas();
+      render();
+      updateAddButtonState();
+      autoGrowTextArea(ideaInput);
+
+      if (window.matchMedia && window.matchMedia("(min-width: 800px)").matches) {
+        ideaInput.focus();
+      }
+    })();
   </script>
 </body>
 </html>
