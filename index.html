@@ -1,588 +1,547 @@
-report:
-  title: "OpenAI vs Anthropic: 24-Hour Model & Agent Release Forecast"
-  report_version: "v4.6-24H-NULL-AWARE-YAML"
-  prepared_at: "2026-05-17T23:18:27Z"
-  forecast_window:
-    start: "2026-05-17T23:18:27Z"
-    end: "2026-05-18T23:18:27Z"
-    timezone: "UTC"
-  sources_checked_through: "2026-05-17T23:18:27Z"
-  source_access_limitations:
-    current_source_access_available: true
-    limitations:
-      - "Official OpenAI and Anthropic pages often expose calendar dates without exact UTC publication times."
-      - "Some product and model catalog pages are undated in the crawled HTML, so they are stronger for current-state evidence than exact launch timing."
-    probability_cap_applied: false
-    cap_reason: ""
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenAI vs Anthropic: 24-Hour Model & Agent Release Forecast</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --text: #15171a;
+      --muted: #5f6773;
+      --line: #d8dde5;
+      --accent: #0f6b57;
+      --accent-soft: #e6f2ef;
+      --warn: #8a5a00;
+      --warn-soft: #fff4d8;
+      --code: #f0f3f6;
+    }
 
-  strict_scoring_policy:
-    exact_window_required: true
-    deadline_inclusive: true
-    near_misses_count_as_true: false
-    date_only_deadline_sources_require_timestamp: true
-    allowed_timing_evidence:
-      - "official_metadata"
-      - "official_rss_or_atom"
-      - "official_changelog_timestamp"
-      - "official_git_or_docs_deploy_timestamp"
-      - "official_social_timestamp"
-      - "reputable_timestamped_secondary_reporting"
-    date_only_policy: >
-      If a source only shows a calendar date and that date overlaps the forecast boundary,
-      do not assume the event occurred inside the window. Use timestamp evidence, otherwise
-      apply false or unresolved according to the resolution rules.
+    * {
+      box-sizing: border-box;
+    }
 
-  bottom_line: >
-    The highest-probability forecast is no scoreable OpenAI or Anthropic model, agent,
-    cyber-model access, or cyber-agent release between 2026-05-17T23:18:27Z and
-    2026-05-18T23:18:27Z. Recent official releases are real, including OpenAI personal
-    finance, Codex remote access, Realtime 2, Daybreak, and Anthropic Claude for Small
-    Business, finance agents, Opus 4.7, and Claude Platform agent updates, but the checked
-    official sources show no concrete dated signal for another release in this exact
-    window. Evidence rating: E4 for source checks S1 through S8.
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.55;
+    }
 
-  source_ledger:
-    sources:
-      - id: "S1"
-        name: "OpenAI Product Releases"
-        lab: "OpenAI"
-        source_type: "official_news"
-        source_date: "2026-05-15"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "date_only"
-        timing_confidence: "medium"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://openai.com/news/product-releases/"
-        evidence_rating: "E4"
-        release_relevance: "Official index for OpenAI product releases, including recent ChatGPT, Codex, and model-related launches."
-        key_claims:
-          - claim: "The latest visible OpenAI product item checked was dated 2026-05-15, with Codex dated 2026-05-14 and Realtime model news dated 2026-05-07."
-            evidence_rating: "E4"
-      - id: "S2"
-        name: "OpenAI API Changelog"
-        lab: "OpenAI"
-        source_type: "official_changelog"
-        source_date: "2026-05-12"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "date_only"
-        timing_confidence: "medium"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://developers.openai.com/api/docs/changelog"
-        evidence_rating: "E4"
-        release_relevance: "Official API release log for model availability, model retirements, tools, and agent platform changes."
-        key_claims:
-          - claim: "The latest checked May 2026 API changelog entries were dated 2026-05-12, 2026-05-11, and 2026-05-07; no 2026-05-17 or 2026-05-18 entry was visible."
-            evidence_rating: "E4"
-      - id: "S3"
-        name: "OpenAI API Model Catalog"
-        lab: "OpenAI"
-        source_type: "official_docs"
-        source_date: "undated"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "undated"
-        timing_confidence: "low"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://developers.openai.com/api/docs/models/all"
-        evidence_rating: "E4"
-        release_relevance: "Official current-state model catalog for OpenAI API availability."
-        key_claims:
-          - claim: "The checked catalog listed GPT-5.5, GPT-5.4, GPT-5.3-Codex, GPT Image 2, and Realtime 2 families, with no checked future-dated release marker."
-            evidence_rating: "E4"
-      - id: "S4"
-        name: "OpenAI Codex Changelog"
-        lab: "OpenAI"
-        source_type: "official_changelog"
-        source_date: "2026-05-14"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "date_only"
-        timing_confidence: "medium"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://developers.openai.com/codex/changelog"
-        evidence_rating: "E4"
-        release_relevance: "Official Codex release log for agent availability, remote access, hooks, tokens, and enterprise controls."
-        key_claims:
-          - claim: "The latest visible Codex changelog entry checked was dated 2026-05-14 and covered mobile remote access, Hooks general availability, access tokens, and enterprise setup guidance."
-            evidence_rating: "E4"
-      - id: "S5"
-        name: "OpenAI Daybreak"
-        lab: "OpenAI"
-        source_type: "official_product_page"
-        source_date: "undated"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "undated"
-        timing_confidence: "low"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://openai.com/daybreak"
-        evidence_rating: "E4"
-        release_relevance: "Official cyber-defense product page relevant to GPT-5.5-Cyber, Trusted Access for Cyber, and Codex Security."
-        key_claims:
-          - claim: "The page describes Daybreak, GPT-5.5 Trusted Access for Cyber, and GPT-5.5-Cyber, and uses coming-weeks language rather than a dated release commitment inside this window."
-            evidence_rating: "E4"
-      - id: "S6"
-        name: "Anthropic Newsroom"
-        lab: "Anthropic"
-        source_type: "official_news"
-        source_date: "2026-05-14"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "date_only"
-        timing_confidence: "medium"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://www.anthropic.com/news"
-        evidence_rating: "E4"
-        release_relevance: "Official Anthropic index for model, product, agent, and cyber announcements."
-        key_claims:
-          - claim: "The latest visible Anthropic newsroom entries checked were dated 2026-05-14 and were announcements, not new model or agent launches inside the forecast window."
-            evidence_rating: "E4"
-      - id: "S7"
-        name: "Claude Platform Release Notes"
-        lab: "Anthropic"
-        source_type: "official_changelog"
-        source_date: "2026-05-12"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "date_only"
-        timing_confidence: "medium"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://platform.claude.com/docs/en/release-notes/overview"
-        evidence_rating: "E4"
-        release_relevance: "Official Claude Platform release notes for API models, Managed Agents, agent tools, and platform availability."
-        key_claims:
-          - claim: "The latest visible Claude Platform release-note entry checked was dated 2026-05-12 and concerned Fast mode support for Claude Opus 4.7."
-            evidence_rating: "E4"
-      - id: "S8"
-        name: "Claude Models Overview"
-        lab: "Anthropic"
-        source_type: "official_docs"
-        source_date: "undated"
-        source_timestamp_utc: "unknown"
-        timestamp_type: "undated"
-        timing_confidence: "low"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://platform.claude.com/docs/en/about-claude/models/overview"
-        evidence_rating: "E4"
-        release_relevance: "Official current-state model catalog for Claude model availability and Mythos Preview status."
-        key_claims:
-          - claim: "The checked model overview lists Claude Opus 4.7 as the most capable generally available model and states Claude Mythos Preview is invitation-only."
-            evidence_rating: "E4"
-    checked_no_material_update:
-      - id: "N1"
-        name: "OpenAI Product Releases"
-        lab: "OpenAI"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://openai.com/news/product-releases/"
-        evidence_rating: "E4"
-        reason_it_matters: "No visible OpenAI product item dated 2026-05-17 or 2026-05-18 reduces the probability of an already-staged official release."
-      - id: "N2"
-        name: "OpenAI API Changelog"
-        lab: "OpenAI"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://developers.openai.com/api/docs/changelog"
-        evidence_rating: "E4"
-        reason_it_matters: "No visible API changelog entry after 2026-05-12 reduces near-term model availability and retirement risk."
-      - id: "N3"
-        name: "OpenAI Codex Changelog"
-        lab: "OpenAI"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://developers.openai.com/codex/changelog"
-        evidence_rating: "E4"
-        reason_it_matters: "No visible Codex changelog entry after 2026-05-14 reduces near-term agent availability expansion risk."
-      - id: "N4"
-        name: "Anthropic Newsroom"
-        lab: "Anthropic"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://www.anthropic.com/news"
-        evidence_rating: "E4"
-        reason_it_matters: "No visible Anthropic newsroom item dated 2026-05-17 or 2026-05-18 reduces imminent model or agent release risk."
-      - id: "N5"
-        name: "Claude Platform Release Notes"
-        lab: "Anthropic"
-        accessed_at: "2026-05-17T23:18:27Z"
-        url: "https://platform.claude.com/docs/en/release-notes/overview"
-        evidence_rating: "E4"
-        reason_it_matters: "No visible Claude Platform release-note entry after 2026-05-12 reduces imminent Claude API or Managed Agents release risk."
-    timing_sources:
-      - id: "T1"
-        source_id: "S4"
-        timing_source_name: "OpenAI Codex Changelog"
-        url: "https://developers.openai.com/codex/changelog"
-        timing_claim: "The Codex mobile and remote-access release is shown as 2026-05-14 with no exact UTC timestamp in the checked page."
-        timing_evidence_rating: "E4"
-      - id: "T2"
-        source_id: "S4"
-        timing_source_name: "Axios"
-        url: "https://www.axios.com/2026/05/14/openai-brings-codex-to-your-phone"
-        timing_claim: "Secondary reporting timestamped the Codex mobile story at 2026-05-14T20:00:06Z."
-        timing_evidence_rating: "E3"
-      - id: "T3"
-        source_id: "S2"
-        timing_source_name: "OpenAI API Changelog"
-        url: "https://developers.openai.com/api/docs/changelog"
-        timing_claim: "The latest checked OpenAI API changelog entries are date-only, so same-day scoring would require additional timestamp evidence."
-        timing_evidence_rating: "E4"
-      - id: "T4"
-        source_id: "S7"
-        timing_source_name: "Claude Platform Release Notes"
-        url: "https://platform.claude.com/docs/en/release-notes/overview"
-        timing_claim: "The latest checked Claude Platform entries are date-only, so same-day scoring would require additional timestamp evidence."
-        timing_evidence_rating: "E4"
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
 
-  pre_release_signals:
-    - id: "PRS1"
-      signal: "Checked official OpenAI release indexes showed no visible product, API, or Codex release dated 2026-05-17 or 2026-05-18."
-      lab: "OpenAI"
-      source_id: "S1"
-      source_url: "https://openai.com/news/product-releases/"
-      observed_at: "2026-05-17T23:18:27Z"
-      signal_type: "checked_absence"
-      why_it_may_precede_news: "A lack of official dated entries close to the window supports the no-release forecast."
-      false_positive_risk: "OpenAI can publish new release pages without prior public staging, and date-only pages may appear after publication."
-      affected_prediction_ids: []
-      evidence_rating: "E4"
-    - id: "PRS2"
-      signal: "Checked official Anthropic newsroom and Claude Platform release notes showed no visible model or agent release dated 2026-05-17 or 2026-05-18."
-      lab: "Anthropic"
-      source_id: "S6"
-      source_url: "https://www.anthropic.com/news"
-      observed_at: "2026-05-17T23:18:27Z"
-      signal_type: "checked_absence"
-      why_it_may_precede_news: "A lack of official dated entries close to the window supports the no-release forecast."
-      false_positive_risk: "Anthropic can publish new release notes or newsroom entries without public pre-release artifacts."
-      affected_prediction_ids: []
-      evidence_rating: "E4"
-    - id: "PRS3"
-      signal: "OpenAI Daybreak uses coming-weeks language for increasingly cyber-capable models, without a date inside this exact window."
-      lab: "OpenAI"
-      source_id: "S5"
-      source_url: "https://openai.com/daybreak"
-      observed_at: "2026-05-17T23:18:27Z"
-      signal_type: "official_docs"
-      why_it_may_precede_news: "Roadmap language can precede cyber-model access or cyber-agent availability changes."
-      false_positive_risk: "Coming-weeks language is weak timing evidence and should not be treated as a 24-hour launch signal."
-      affected_prediction_ids: []
-      evidence_rating: "E4"
-    - id: "PRS4"
-      signal: "Claude Platform release notes show active Managed Agents and Opus 4.7 platform work, but the latest checked date is 2026-05-12."
-      lab: "Anthropic"
-      source_id: "S7"
-      source_url: "https://platform.claude.com/docs/en/release-notes/overview"
-      observed_at: "2026-05-17T23:18:27Z"
-      signal_type: "official_changelog"
-      why_it_may_precede_news: "Recent platform activity can precede additional agent or model availability updates."
-      false_positive_risk: "A release cluster without a dated commitment is weak evidence for the next exact 24 hours."
-      affected_prediction_ids: []
-      evidence_rating: "E4"
+    header {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
 
-  forecast_edges:
-    - id: "E1"
-      edge: "Null forecast over release-cluster extrapolation"
-      consensus_or_expected_view: "Recent OpenAI and Anthropic launch cadence may make another near-term release feel likely."
-      forecast_view: "Without a dated commitment, staged docs, or fresh official changelog movement, no material release is still more likely."
-      evidence_rating: "E4"
-      source_ids: ["S1", "S2", "S6", "S7"]
-    - id: "E2"
-      edge: "Cyber releases are important but not timed"
-      consensus_or_expected_view: "Daybreak, GPT-5.5-Cyber, Trusted Access for Cyber, and Mythos Preview create a visible cyber race."
-      forecast_view: "The cyber race matters strategically, but the public timing evidence does not justify a positive 24-hour prediction."
-      evidence_rating: "E4"
-      source_ids: ["S5", "S8"]
-    - id: "E3"
-      edge: "Agent stack activity without fresh trigger"
-      consensus_or_expected_view: "Codex, Claude Code, Claude Cowork, and Claude Managed Agents are active release surfaces."
-      forecast_view: "The agent surface is the most plausible surprise area, but checked official sources show no fresh 2026-05-17 or 2026-05-18 trigger."
-      evidence_rating: "E4"
-      source_ids: ["S4", "S7"]
+    h1 {
+      margin: 0 0 12px;
+      font-size: 30px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
 
-  why_this_window_matters:
-    - id: "W1"
-      point: "The window includes a full U.S. Monday workday, which is a plausible launch period, but the checked official pages lack a concrete dated launch signal. Evidence rating: E4."
-      evidence_rating: "E4"
-      source_ids: ["S1", "S2", "S6", "S7"]
-    - id: "W2"
-      point: "Recent Codex and Claude agent releases make developer and enterprise monitoring decision-relevant, even if no new release is most likely. Evidence rating: E4."
-      evidence_rating: "E4"
-      source_ids: ["S4", "S7"]
-    - id: "W3"
-      point: "Cyber-model access changes would be high-impact for security teams, but the checked sources provide roadmap language rather than a 24-hour launch commitment. Evidence rating: E4."
-      evidence_rating: "E4"
-      source_ids: ["S5", "S8"]
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
 
-  big_picture:
-    paragraphs:
-      - >
-        OpenAI and Anthropic are both actively shipping models, agent products, and cyber-defense access paths, but the evidence checked here is backward-looking rather than launch-triggering for this exact 24-hour window. OpenAI has the more visible recent Codex and cyber-defense release surface, while Anthropic has the more explicit Managed Agents and Claude model catalog surface. Evidence rating: E4 from S1 through S8.
-      - >
-        The competitive dynamic raises the value of watching Codex, Claude Managed Agents, Daybreak, and Mythos, but it does not overcome the absence of concrete public timing evidence. Evidence rating: E4 from S4, S5, S7, and S8.
+    h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
 
-  no_material_release_forecast:
-    title: "No material model, agent, cyber-model, or cyber-agent release"
-    claim: >
-      No scoreable OpenAI or Anthropic model release, model availability release,
-      model retirement, model card tied to a release, agent release, agent availability
-      release, agent platform release, cyber-model access release, or cyber-agent release
-      will occur inside the exact forecast window.
-    window_start: "2026-05-17T23:18:27Z"
-    deadline: "2026-05-18T23:18:27Z"
-    probability: 0.65
-    probability_percent: 65
-    probability_band: "plausible_but_fragile"
-    resolution:
-      true_if: "No official or reputable timestamped source confirms a scoreable OpenAI or Anthropic release inside the exact window."
-      false_if: "Any scoreable OpenAI or Anthropic model, agent, cyber-model access, or cyber-agent release occurs inside the exact window."
-      partial_if: "A release appears just after the deadline or a date-only deadline source cannot be timestamped; audit-only, not true."
-      unresolved_if: "Official sources are inaccessible after good-faith checking and no reliable secondary timing source exists."
-      date_only_source_policy: "Deadline-day date-only sources require exact timestamp evidence before overturning the no-release forecast."
-      post_window_near_miss_policy: "A release after the deadline does not falsify this forecast; record it as a near miss."
-      scoring_sources:
-        - name: "OpenAI API Changelog"
-          url: "https://developers.openai.com/api/docs/changelog"
-        - name: "OpenAI Product Releases"
-          url: "https://openai.com/news/product-releases/"
-        - name: "OpenAI Codex Changelog"
-          url: "https://developers.openai.com/codex/changelog"
-        - name: "Claude Platform Release Notes"
-          url: "https://platform.claude.com/docs/en/release-notes/overview"
-        - name: "Anthropic Newsroom"
-          url: "https://www.anthropic.com/news"
-      scorer: "Any reviewer checking the named sources after the forecast window closes."
-    evidence:
-      - source_id: "S1"
-        claim: "OpenAI Product Releases showed no visible item dated 2026-05-17 or 2026-05-18 at access time."
-        evidence_rating: "E4"
-      - source_id: "S2"
-        claim: "OpenAI API Changelog showed no visible entry after 2026-05-12 at access time."
-        evidence_rating: "E4"
-      - source_id: "S6"
-        claim: "Anthropic Newsroom showed no visible model or agent launch dated 2026-05-17 or 2026-05-18 at access time."
-        evidence_rating: "E4"
-      - source_id: "S7"
-        claim: "Claude Platform release notes showed no visible entry after 2026-05-12 at access time."
-        evidence_rating: "E4"
-    reasoning: >
-      No material release is more likely than any individual positive release because the checked official pages show no dated event, no fresh changelog movement, no visible model catalog surprise, and no official today or tomorrow language for this window. The main counterweight is that both labs have shipped frequently in May 2026 and the window includes a U.S. Monday workday. That counterweight keeps the probability at 0.65 rather than high confidence.
-    what_would_falsify: "A timestamped official release or reputable timestamped report inside the window."
-    what_would_change_my_mind: "A fresh official RSS item, changelog entry, docs deployment, model ID, launch page, or official social post with a timestamp inside the window."
-    decision_implications:
-      developers: "Do not change model routing or agent integration plans unless a new official release appears."
-      businesses: "Do not adjust procurement, vendor-risk, or rollout decisions based only on release-cluster speculation."
-      safety_researchers: "Keep monitoring Daybreak, GPT-5.5-Cyber, Mythos Preview, Codex, and Claude Managed Agents, but do not start new eval work until a named release lands."
+    p {
+      margin: 0 0 12px;
+    }
 
-  predictions_meta:
-    total_positive_predictions: 0
-    model_release_predictions: 0
-    agent_release_predictions: 0
-    cyber_release_predictions: 0
-    no_material_release_forecast_included: true
-    null_forecast_allowed: true
-    competitive_response_quantified: false
-    min_positive_prediction_probability: 0.00
-    max_positive_prediction_probability: 0.00
-    no_release_probability: 0.65
-    weak_positive_predictions_omitted: true
-    timing_ambiguity_penalized: true
+    a {
+      color: #064f8f;
+    }
 
-  predictions: []
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
 
-  high_value_surprises: []
+    .meta div,
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
 
-  how_the_pieces_connect:
-    - id: "A"
-      openai_release: "A Daybreak or GPT-5.5-Cyber access expansion would raise pressure on Anthropic cyber releases."
-      anthropic_release: "A Mythos Preview or Claude Security access expansion would raise pressure on OpenAI cyber releases."
-      competitive_outcome: "Cyber-model access is the highest-impact competitive axis, but current timing evidence is weak."
-    - id: "B"
-      openai_release: "A Codex availability or deployment-control release would affect developer workflows."
-      anthropic_release: "A Claude Code, Claude Cowork, or Managed Agents release would affect the same developer and enterprise workflow market."
-      competitive_outcome: "Agent availability is the most plausible surprise category if the null forecast fails."
-    - id: "C"
-      release_timing_or_availability_change: "A date-only page appearing on 2026-05-18 would create timing ambiguity unless exact metadata is found."
-      response: "Use official metadata, RSS, docs deploy times, Git timestamps, official social posts, or timestamped reputable reporting."
-      deployment_implication: "Do not score a same-day date-only source as inside the window without timestamp evidence."
+    .meta div {
+      padding: 12px 14px;
+    }
 
-  scenarios:
-    most_likely:
-      probability: 0.65
-      probability_percent: 65
-      label: "No scoreable OpenAI or Anthropic model, agent, cyber-model, or cyber-agent release."
-      signal: "Official sources remain unchanged or only show non-release posts through 2026-05-18T23:18:27Z."
-      abandon_if: "A named model, agent, cyber-model access path, or cyber-agent release appears with timestamp evidence inside the window."
-    upside_acceleration:
-      probability: 0.25
-      probability_percent: 25
-      label: "One lab ships a scoreable agent or model availability update."
-      signal: "A new official product page, API changelog entry, Codex changelog entry, Claude Platform release note, or newsroom post appears."
-      abandon_if: "No official release source changes by the end of the U.S. business day on 2026-05-18."
-    downside_stall:
-      probability: 0.10
-      probability_percent: 10
-      label: "Ambiguous date-only or post-window near miss."
-      signal: "A same-day source appears without timestamp evidence, or a release appears shortly after 2026-05-18T23:18:27Z."
-      abandon_if: "Exact timestamp evidence cleanly places the event inside or outside the window."
-    probabilities_sum_to_1_00: true
+    section {
+      margin: 16px 0;
+      padding: 18px;
+    }
 
-  industry_expectations:
-    - id: "I1"
-      expected: "Recent release density keeps attention high on OpenAI Codex, Daybreak, Anthropic Managed Agents, Claude Code, and Claude cyber access."
-      surprise: "A timestamped release of a named model, agent, cyber-model access tier, or cyber-agent product inside this exact window."
-      non_event: "Partnership, funding, policy, capacity, generic security, or documentation-only news without a named model or agent release."
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
 
-  knowledge_gaps:
-    - id: "G1"
-      unknown: "Exact publication timestamps for several official date-only pages."
-      why_it_matters: "Same-day scoring depends on whether an event landed inside the 24-hour window."
-      resolving_evidence: "Official metadata, RSS, changelog timestamps, docs deploy timestamps, Git commit timestamps, or timestamped reputable reporting."
-    - id: "G2"
-      unknown: "Whether OpenAI or Anthropic has unpublished launch pages, staged model IDs, or embargoed briefings for 2026-05-18."
-      why_it_matters: "Hidden launch preparation can make a no-release forecast wrong despite clean public source checks."
-      resolving_evidence: "New official source entries, model catalog diffs, package releases, app-store updates, or reputable timestamped reporting."
-    - id: "G3"
-      unknown: "Whether minor Claude Code or Codex CLI releases should be classified as material agent releases."
-      why_it_matters: "Small CLI changes can be frequent but not always decision-relevant or scoreable under the prompt."
-      resolving_evidence: "A changelog entry that changes availability, controls, permissions, deployment, or agent capability materially."
+    .value {
+      display: block;
+      margin-top: 3px;
+      font-weight: 700;
+    }
 
-  timing_risk_register:
-    - id: "TR1"
-      risk: "Date-only source could make same-day scoring ambiguous."
-      affected_prediction_ids: []
-      mitigation: "Use official metadata, RSS, docs commit timestamps, social timestamps, or reputable timestamped reporting."
-    - id: "TR2"
-      risk: "A release shortly after 2026-05-18T23:18:27Z could look like a near miss."
-      affected_prediction_ids: []
-      mitigation: "Score it false for the exact window and record it only as an audit near miss."
-    - id: "TR3"
-      risk: "Undated model catalog or product page edits could reflect availability changes without visible publication time."
-      affected_prediction_ids: []
-      mitigation: "Require corroborating changelog, RSS, Git, official social, or reputable timestamped reporting before scoring."
+    .callout {
+      border-color: #b7d8cf;
+      background: var(--accent-soft);
+    }
 
-  pre_mortem:
-    paragraph_1: >
-      It is 2026-05-19, and the forecast was wrong because one lab shipped from a staged but publicly invisible surface: a model catalog update, Codex or Claude Code changelog, or cyber access page that did not show up in the checked indexes before publication.
-    paragraph_2: >
-      The timing failure is a date-only official page on 2026-05-18 that later proves to have been published before 2026-05-18T23:18:27Z through metadata or reputable reporting. The null forecast explicitly depends on finding that timing evidence after the window.
+    .warning {
+      border-color: #e6c778;
+      background: var(--warn-soft);
+    }
 
-  adversarial_review:
-    most_overconfident_prediction_id: "no_material_release_forecast"
-    most_overconfident_reason: "The null forecast may overweight checked absence because both labs have frequent recent release activity and the window includes a U.S. Monday."
-    most_underconfident_prediction_id: "none"
-    most_underconfident_reason: "A low-probability OpenAI cyber-access or Anthropic agent-platform release may be underweighted because official pre-release surfaces are sparse."
-    most_fragile_evidence: "Checked absence on official indexes can be misleading when launch pages are published only at release time."
-    most_fragile_timing_evidence: "Date-only official sources are the main timing weakness."
-    biggest_omitted_model_or_agent_release_risk: "A named Codex, Claude Code, Managed Agents, Daybreak, GPT-5.5-Cyber, or Mythos access change with no public pre-release signal."
-    weakest_decision_value_prediction_cut_or_retained: "All positive predictions were cut because none cleared the concrete-signal threshold for the exact 24-hour window."
-    source_media_bias_check: "OpenAI has more visible current product surfaces in the checked results, but Anthropic official docs and newsroom were checked symmetrically enough for the null forecast."
-    date_only_source_bias_check: "Date-only timing ambiguity was penalized and is included in the scoring policy."
-    probability_revised_after_review:
-      revised: true
-      changes: "No-release probability was kept at 0.65 rather than raised because Monday launch risk and recent release cadence remain meaningful."
+    .probability {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 0;
+    }
 
-  watchlist:
-    - id: "WL1"
-      what_to_watch: "New OpenAI product release entry."
-      where: "OpenAI Product Releases"
-      how_often: "every 6 hours"
-      release_signal_meaning: "A named ChatGPT, Codex, model, or cyber product release may falsify the null forecast."
-      who_or_what_to_follow: "https://openai.com/news/product-releases/"
-      timing_verification_method: "Check page metadata, RSS, official social timestamp, and reputable timestamped reporting."
-    - id: "WL2"
-      what_to_watch: "New OpenAI API changelog or model catalog entry."
-      where: "OpenAI API Changelog and model catalog"
-      how_often: "every 6 hours"
-      release_signal_meaning: "A new model ID, availability change, retirement, or API release may falsify the null forecast."
-      who_or_what_to_follow: "https://developers.openai.com/api/docs/changelog"
-      timing_verification_method: "Use official changelog date plus metadata, RSS, or docs deploy timestamp if the entry is date-only."
-    - id: "WL3"
-      what_to_watch: "New OpenAI Codex changelog entry."
-      where: "OpenAI Codex Changelog"
-      how_often: "every 6 hours"
-      release_signal_meaning: "A Codex availability, remote access, hooks, token, sandbox, or enterprise-control release may falsify the null forecast."
-      who_or_what_to_follow: "https://developers.openai.com/codex/changelog"
-      timing_verification_method: "Use official changelog date plus docs metadata or reputable timestamped reporting."
-    - id: "WL4"
-      what_to_watch: "New Anthropic newsroom item."
-      where: "Anthropic Newsroom"
-      how_often: "every 6 hours"
-      release_signal_meaning: "A Claude model, agent, cyber, or availability launch may falsify the null forecast."
-      who_or_what_to_follow: "https://www.anthropic.com/news"
-      timing_verification_method: "Check official page metadata, newsroom index, RSS if available, and timestamped secondary reporting."
-    - id: "WL5"
-      what_to_watch: "New Claude Platform release note or model overview change."
-      where: "Claude Platform Release Notes and Models Overview"
-      how_often: "every 6 hours"
-      release_signal_meaning: "A Claude API model, Managed Agents, Mythos, or model retirement release may falsify the null forecast."
-      who_or_what_to_follow: "https://platform.claude.com/docs/en/release-notes/overview"
-      timing_verification_method: "Use official docs metadata, Git/docs deploy timestamp, or reputable timestamped secondary reporting."
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      white-space: nowrap;
+    }
 
-  self_audit:
-    positive_predictions_included: 0
-    no_material_release_forecast_included: true
-    predictions_list_may_be_empty: true
-    every_positive_prediction_is_model_agent_or_cyber_release: true
-    every_positive_prediction_about_openai_or_anthropic: true
-    every_positive_prediction_names_lab: true
-    every_positive_prediction_scoreable_inside_window: true
-    every_positive_prediction_has_scoring_source: true
-    every_positive_prediction_has_timing_resolution_policy: true
-    every_positive_prediction_handles_date_only_sources: true
-    every_positive_prediction_supported_by_pre_release_signal_or_clearly_labeled_low_probability: true
-    near_misses_not_counted_as_true: true
-    every_key_factual_claim_has_evidence_rating: true
-    every_positive_prediction_has_evidence_quality_sentence: true
-    every_positive_prediction_has_base_rate: true
-    every_positive_prediction_has_competitive_link_when_competitive_response_is_relevant: true
-    no_material_release_probability_estimated_before_positive_predictions: true
-    no_weak_positive_predictions_forced: true
-    model_agent_mix_not_forced_without_evidence: true
-    cyber_releases_considered_when_supported_by_e4_or_e3: true
-    competitive_responses_quantified_when_positive_predictions_included: true
-    no_unrelated_pricing_capacity_security_enterprise_partnership_funding_leadership_or_policy_predictions: true
-    generic_security_updates_excluded_unless_named_cyber_model_access_or_agent_release: true
-    engineering_posts_excluded_unless_they_change_agent_availability_controls_or_implementation: true
-    model_card_predictions_tied_to_named_model_releases: true
-    agent_documentation_predictions_materially_enable_named_agent_release: true
-    positive_predictions_are_differentiated: true
-    probabilities_rounded_to_nearest_5_percent: true
-    no_release_probability_calibrated: true
-    roadmap_language_probabilities_penalized: true
-    release_cluster_timing_not_overweighted: true
-    weak_signal_claims_not_overconfident: true
-    predictions_above_70_percent_include_counterarguments: true
-    high_value_surprises_included_count: 0
-    high_value_surprises_below_35_percent_if_any: true
-    scenario_probabilities_sum_to_100_percent: true
-    no_stock_price_or_market_cap_framing: true
-    no_hype_language: true
-    source_limitations_and_conflicts_disclosed: true
-    knowledge_gaps_pre_mortem_adversarial_review_watchlist_and_bottom_line_included: true
-    key_takeaways_included: true
-    key_takeaways_introduce_no_new_claims: true
-    conclusion_included: true
-    conclusion_introduces_no_new_claims: true
-    conclusion_names_decision_priority: true
+    .badge.secondary {
+      background: #4b5563;
+    }
 
-  key_takeaways:
-    - audience: "developers"
-      takeaway: "No new model or agent integration change is forecast as more likely than no release. Evidence rating: E4."
-      action_now: "Keep current model routing and agent integration plans unchanged during the window."
-      trigger_to_revise: "A new OpenAI API changelog, Codex changelog, Claude Platform release note, or model catalog update."
-    - audience: "businesses"
-      takeaway: "Procurement and deployment decisions should not move on release-cluster speculation alone. Evidence rating: E4."
-      action_now: "Monitor official release pages but do not rebaseline vendor plans unless a named release lands."
-      trigger_to_revise: "A timestamped official launch for Codex, Claude Code, Claude Managed Agents, Daybreak, or a named model."
-    - audience: "safety_or_security_researchers"
-      takeaway: "Cyber-model and cyber-agent access paths remain high-value watch items but lack a 24-hour timing signal. Evidence rating: E4."
-      action_now: "Keep eval and monitoring plans ready for Daybreak, GPT-5.5-Cyber, Mythos Preview, and Claude Security changes."
-      trigger_to_revise: "A new official cyber access, model card, system card, or agent release with timestamp evidence."
-    - audience: "openai_position"
-      takeaway: "OpenAI has visible recent Codex, Daybreak, and model-release activity, but no checked official signal for another exact-window release. Evidence rating: E4."
-      action_now: "Watch OpenAI Product Releases, API Changelog, Codex Changelog, and Daybreak."
-      trigger_to_revise: "A new dated OpenAI release page, model ID, or Codex release note."
-    - audience: "anthropic_position"
-      takeaway: "Anthropic has active Claude Platform, Managed Agents, Claude Code, and Mythos surfaces, but no checked official signal for another exact-window release. Evidence rating: E4."
-      action_now: "Watch Anthropic Newsroom, Claude Platform release notes, Models Overview, and Claude Code changelog."
-      trigger_to_revise: "A new dated Anthropic release note, newsroom item, model page update, or Managed Agents change."
+    .badge.warn {
+      background: var(--warn);
+    }
 
-  conclusion:
-    synthesis: >
-      The most likely outcome is no scoreable OpenAI or Anthropic model, agent, cyber-model access, or cyber-agent release by 2026-05-18T23:18:27Z. The forecast is not high confidence because both labs have frequent recent release activity and the window includes a U.S. Monday, but the checked official evidence is absence-heavy and timing-fragile rather than launch-positive. If wrong, the highest-value miss is likely an agent availability or cyber access release from Codex, Claude Managed Agents, Daybreak, GPT-5.5-Cyber, or Mythos. OpenAI has the more visible near-term cyber and Codex watch surface; Anthropic has the clearer Managed Agents and Claude model catalog watch surface.
-    decision_priority: "Monitor official release and changelog surfaces without changing deployment plans until a named release lands."
-    highest_value_signal: "A timestamped official changelog, model catalog update, product page, or official social post inside the window."
-    ignore_unless: "Ignore partnerships, funding, policy, generic safety, capacity, or documentation-only updates unless tied to a named model, agent, cyber-model access path, or cyber-agent release."
-    confidence_statement: "Confidence is moderate because official source access was available, but date-only pages and hidden launch preparation remain the main limitation."
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .item {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      background: #fff;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      padding: 10px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      background: #eef1f5;
+      font-size: 13px;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code,
+    pre {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: var(--code);
+      border-radius: 6px;
+    }
+
+    code {
+      padding: 2px 4px;
+    }
+
+    pre {
+      margin: 10px 0 0;
+      padding: 14px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 22px 12px 40px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      section {
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>OpenAI vs Anthropic: 24-Hour Model &amp; Agent Release Forecast</h1>
+      <p>Report version v4.6-24H-NULL-AWARE-YAML converted to standalone HTML.</p>
+      <div class="meta">
+        <div>
+          <span class="label">Prepared At</span>
+          <span class="value">2026-05-17T23:18:27Z</span>
+        </div>
+        <div>
+          <span class="label">Forecast Window</span>
+          <span class="value">2026-05-17T23:18:27Z to 2026-05-18T23:18:27Z</span>
+        </div>
+        <div>
+          <span class="label">Sources Checked Through</span>
+          <span class="value">2026-05-17T23:18:27Z</span>
+        </div>
+        <div>
+          <span class="label">Positive Predictions</span>
+          <span class="value">0</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="callout">
+      <h2>Bottom Line</h2>
+      <p>The highest-probability forecast is no scoreable OpenAI or Anthropic model, agent, cyber-model access, or cyber-agent release between <code>2026-05-17T23:18:27Z</code> and <code>2026-05-18T23:18:27Z</code>.</p>
+      <p>Recent official releases are real, including OpenAI personal finance, Codex remote access, Realtime 2, Daybreak, and Anthropic Claude for Small Business, finance agents, Opus 4.7, and Claude Platform agent updates. The checked official sources show no concrete dated signal for another release in this exact window.</p>
+      <div class="probability">
+        <span class="badge">No Material Release: 65%</span>
+        <span class="badge secondary">Band: plausible_but_fragile</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Strict Scoring Policy</h2>
+      <ul>
+        <li>Exact window required: true.</li>
+        <li>Deadline inclusive: true.</li>
+        <li>Near misses count as true: false.</li>
+        <li>Deadline-day date-only sources require timestamp evidence.</li>
+        <li>Allowed timing evidence: official metadata, official RSS or Atom, official changelog timestamp, official Git or docs deploy timestamp, official social timestamp, or reputable timestamped secondary reporting.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>No Material Release Forecast</h2>
+      <p><strong>Claim:</strong> No scoreable OpenAI or Anthropic model release, model availability release, model retirement, model card tied to a release, agent release, agent availability release, agent platform release, cyber-model access release, or cyber-agent release will occur inside the exact forecast window.</p>
+      <div class="grid">
+        <div class="item">
+          <h3>True If</h3>
+          <p>No official or reputable timestamped source confirms a scoreable OpenAI or Anthropic release inside the exact window.</p>
+        </div>
+        <div class="item">
+          <h3>False If</h3>
+          <p>Any scoreable OpenAI or Anthropic model, agent, cyber-model access, or cyber-agent release occurs inside the exact window.</p>
+        </div>
+        <div class="item">
+          <h3>Partial If</h3>
+          <p>A release appears just after the deadline or a date-only deadline source cannot be timestamped; audit-only, not true.</p>
+        </div>
+        <div class="item">
+          <h3>Unresolved If</h3>
+          <p>Official sources are inaccessible after good-faith checking and no reliable secondary timing source exists.</p>
+        </div>
+      </div>
+      <p><strong>Reasoning:</strong> No material release is more likely than any individual positive release because the checked official pages show no dated event, no fresh changelog movement, no visible model catalog surprise, and no official today or tomorrow language for this window. The main counterweight is that both labs have shipped frequently in May 2026 and the window includes a U.S. Monday workday.</p>
+    </section>
+
+    <section>
+      <h2>Sources</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Source</th>
+            <th>Lab</th>
+            <th>Date</th>
+            <th>Rating</th>
+            <th>Release Relevance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>S1</td>
+            <td><a href="https://openai.com/news/product-releases/">OpenAI Product Releases</a></td>
+            <td>OpenAI</td>
+            <td>2026-05-15</td>
+            <td>E4</td>
+            <td>Official index for OpenAI product releases, including recent ChatGPT, Codex, and model-related launches.</td>
+          </tr>
+          <tr>
+            <td>S2</td>
+            <td><a href="https://developers.openai.com/api/docs/changelog">OpenAI API Changelog</a></td>
+            <td>OpenAI</td>
+            <td>2026-05-12</td>
+            <td>E4</td>
+            <td>Official API release log for model availability, model retirements, tools, and agent platform changes.</td>
+          </tr>
+          <tr>
+            <td>S3</td>
+            <td><a href="https://developers.openai.com/api/docs/models/all">OpenAI API Model Catalog</a></td>
+            <td>OpenAI</td>
+            <td>Undated</td>
+            <td>E4</td>
+            <td>Official current-state model catalog for OpenAI API availability.</td>
+          </tr>
+          <tr>
+            <td>S4</td>
+            <td><a href="https://developers.openai.com/codex/changelog">OpenAI Codex Changelog</a></td>
+            <td>OpenAI</td>
+            <td>2026-05-14</td>
+            <td>E4</td>
+            <td>Official Codex release log for agent availability, remote access, hooks, tokens, and enterprise controls.</td>
+          </tr>
+          <tr>
+            <td>S5</td>
+            <td><a href="https://openai.com/daybreak">OpenAI Daybreak</a></td>
+            <td>OpenAI</td>
+            <td>Undated</td>
+            <td>E4</td>
+            <td>Official cyber-defense product page relevant to GPT-5.5-Cyber, Trusted Access for Cyber, and Codex Security.</td>
+          </tr>
+          <tr>
+            <td>S6</td>
+            <td><a href="https://www.anthropic.com/news">Anthropic Newsroom</a></td>
+            <td>Anthropic</td>
+            <td>2026-05-14</td>
+            <td>E4</td>
+            <td>Official Anthropic index for model, product, agent, and cyber announcements.</td>
+          </tr>
+          <tr>
+            <td>S7</td>
+            <td><a href="https://platform.claude.com/docs/en/release-notes/overview">Claude Platform Release Notes</a></td>
+            <td>Anthropic</td>
+            <td>2026-05-12</td>
+            <td>E4</td>
+            <td>Official Claude Platform release notes for API models, Managed Agents, agent tools, and platform availability.</td>
+          </tr>
+          <tr>
+            <td>S8</td>
+            <td><a href="https://platform.claude.com/docs/en/about-claude/models/overview">Claude Models Overview</a></td>
+            <td>Anthropic</td>
+            <td>Undated</td>
+            <td>E4</td>
+            <td>Official current-state model catalog for Claude model availability and Mythos Preview status.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Checked Absences</h2>
+      <div class="grid">
+        <div class="item">
+          <h3>OpenAI Product Releases</h3>
+          <p>No visible OpenAI product item dated 2026-05-17 or 2026-05-18 at access time.</p>
+        </div>
+        <div class="item">
+          <h3>OpenAI API Changelog</h3>
+          <p>No visible API changelog entry after 2026-05-12 at access time.</p>
+        </div>
+        <div class="item">
+          <h3>OpenAI Codex Changelog</h3>
+          <p>No visible Codex changelog entry after 2026-05-14 at access time.</p>
+        </div>
+        <div class="item">
+          <h3>Anthropic Newsroom</h3>
+          <p>No visible model or agent launch dated 2026-05-17 or 2026-05-18 at access time.</p>
+        </div>
+        <div class="item">
+          <h3>Claude Platform Release Notes</h3>
+          <p>No visible Claude Platform release-note entry after 2026-05-12 at access time.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Forecast Edges</h2>
+      <div class="grid">
+        <div class="item">
+          <h3>Null Forecast Over Release-Cluster Extrapolation</h3>
+          <p>Recent launch cadence may make another near-term release feel likely, but without a dated commitment, staged docs, or fresh official changelog movement, no material release is still more likely.</p>
+        </div>
+        <div class="item">
+          <h3>Cyber Releases Are Important But Not Timed</h3>
+          <p>Daybreak, GPT-5.5-Cyber, Trusted Access for Cyber, and Mythos Preview create a visible cyber race, but the public timing evidence does not justify a positive 24-hour prediction.</p>
+        </div>
+        <div class="item">
+          <h3>Agent Stack Activity Without Fresh Trigger</h3>
+          <p>Codex, Claude Code, Claude Cowork, and Claude Managed Agents are active release surfaces, but checked official sources show no fresh 2026-05-17 or 2026-05-18 trigger.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Scenarios</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>Probability</th>
+            <th>Confirming Signal</th>
+            <th>Abandon If</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>No scoreable OpenAI or Anthropic model, agent, cyber-model, or cyber-agent release.</td>
+            <td>65%</td>
+            <td>Official sources remain unchanged or only show non-release posts through 2026-05-18T23:18:27Z.</td>
+            <td>A named model, agent, cyber-model access path, or cyber-agent release appears with timestamp evidence inside the window.</td>
+          </tr>
+          <tr>
+            <td>One lab ships a scoreable agent or model availability update.</td>
+            <td>25%</td>
+            <td>A new official product page, API changelog entry, Codex changelog entry, Claude Platform release note, or newsroom post appears.</td>
+            <td>No official release source changes by the end of the U.S. business day on 2026-05-18.</td>
+          </tr>
+          <tr>
+            <td>Ambiguous date-only or post-window near miss.</td>
+            <td>10%</td>
+            <td>A same-day source appears without timestamp evidence, or a release appears shortly after 2026-05-18T23:18:27Z.</td>
+            <td>Exact timestamp evidence cleanly places the event inside or outside the window.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="warning">
+      <h2>Timing Risks</h2>
+      <ul>
+        <li>Date-only sources could make same-day scoring ambiguous.</li>
+        <li>A release shortly after <code>2026-05-18T23:18:27Z</code> could look like a near miss.</li>
+        <li>Undated model catalog or product page edits could reflect availability changes without visible publication time.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Watchlist</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Watch</th>
+            <th>Where</th>
+            <th>Meaning</th>
+            <th>Timing Verification</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>New OpenAI product release entry</td>
+            <td><a href="https://openai.com/news/product-releases/">OpenAI Product Releases</a></td>
+            <td>A named ChatGPT, Codex, model, or cyber product release may falsify the null forecast.</td>
+            <td>Check page metadata, RSS, official social timestamp, and reputable timestamped reporting.</td>
+          </tr>
+          <tr>
+            <td>New OpenAI API changelog or model catalog entry</td>
+            <td><a href="https://developers.openai.com/api/docs/changelog">OpenAI API Changelog</a></td>
+            <td>A new model ID, availability change, retirement, or API release may falsify the null forecast.</td>
+            <td>Use official changelog date plus metadata, RSS, or docs deploy timestamp if the entry is date-only.</td>
+          </tr>
+          <tr>
+            <td>New OpenAI Codex changelog entry</td>
+            <td><a href="https://developers.openai.com/codex/changelog">OpenAI Codex Changelog</a></td>
+            <td>A Codex availability, remote access, hooks, token, sandbox, or enterprise-control release may falsify the null forecast.</td>
+            <td>Use official changelog date plus docs metadata or reputable timestamped reporting.</td>
+          </tr>
+          <tr>
+            <td>New Anthropic newsroom item</td>
+            <td><a href="https://www.anthropic.com/news">Anthropic Newsroom</a></td>
+            <td>A Claude model, agent, cyber, or availability launch may falsify the null forecast.</td>
+            <td>Check official page metadata, newsroom index, RSS if available, and timestamped secondary reporting.</td>
+          </tr>
+          <tr>
+            <td>New Claude Platform release note or model overview change</td>
+            <td><a href="https://platform.claude.com/docs/en/release-notes/overview">Claude Platform Release Notes</a></td>
+            <td>A Claude API model, Managed Agents, Mythos, or model retirement release may falsify the null forecast.</td>
+            <td>Use official docs metadata, Git/docs deploy timestamp, or reputable timestamped secondary reporting.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Key Takeaways</h2>
+      <div class="grid">
+        <div class="item">
+          <h3>Developers</h3>
+          <p>No new model or agent integration change is forecast as more likely than no release. Keep current model routing and agent integration plans unchanged during the window.</p>
+        </div>
+        <div class="item">
+          <h3>Businesses</h3>
+          <p>Procurement and deployment decisions should not move on release-cluster speculation alone. Monitor official release pages but do not rebaseline vendor plans unless a named release lands.</p>
+        </div>
+        <div class="item">
+          <h3>Safety or Security Researchers</h3>
+          <p>Cyber-model and cyber-agent access paths remain high-value watch items but lack a 24-hour timing signal. Keep eval and monitoring plans ready for Daybreak, GPT-5.5-Cyber, Mythos Preview, and Claude Security changes.</p>
+        </div>
+        <div class="item">
+          <h3>OpenAI Position</h3>
+          <p>OpenAI has visible recent Codex, Daybreak, and model-release activity, but no checked official signal for another exact-window release.</p>
+        </div>
+        <div class="item">
+          <h3>Anthropic Position</h3>
+          <p>Anthropic has active Claude Platform, Managed Agents, Claude Code, and Mythos surfaces, but no checked official signal for another exact-window release.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Conclusion</h2>
+      <p>The most likely outcome is no scoreable OpenAI or Anthropic model, agent, cyber-model access, or cyber-agent release by <code>2026-05-18T23:18:27Z</code>. The forecast is not high confidence because both labs have frequent recent release activity and the window includes a U.S. Monday, but the checked official evidence is absence-heavy and timing-fragile rather than launch-positive.</p>
+      <p>If wrong, the highest-value miss is likely an agent availability or cyber access release from Codex, Claude Managed Agents, Daybreak, GPT-5.5-Cyber, or Mythos. OpenAI has the more visible near-term cyber and Codex watch surface; Anthropic has the clearer Managed Agents and Claude model catalog watch surface.</p>
+      <p><strong>Decision priority:</strong> Monitor official release and changelog surfaces without changing deployment plans until a named release lands.</p>
+      <p><strong>Highest-value signal:</strong> A timestamped official changelog, model catalog update, product page, or official social post inside the window.</p>
+    </section>
+  </main>
+</body>
+</html>
