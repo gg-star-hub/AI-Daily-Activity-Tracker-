@@ -1,1693 +1,588 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Idea Whiteboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#050816" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>">
-  <link rel="manifest" href="data:application/manifest+json,{ &quot;name&quot;:&quot;Idea Whiteboard&quot;, &quot;short_name&quot;:&quot;Ideas&quot;, &quot;start_url&quot;:&quot;.&quot;, &quot;display&quot;:&quot;standalone&quot;, &quot;background_color&quot;:&quot;#050816&quot;, &quot;theme_color&quot;:&quot;#4b6bff&quot;, &quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%234b6bff'/><text x='90' y='115' font-size='72' text-anchor='middle' fill='white' font-family='-apple-system'>Ideas</text></svg>&quot;,&quot;sizes&quot;:&quot;any&quot;}] }">
-  <style>
-    :root {
-      --bg: #f4f5fb;
-      --bg-alt: #e7ebff;
-      --card: #ffffff;
-      --accent: #4b6bff;
-      --accent-soft: rgba(75, 107, 255, 0.12);
-      --danger: #ff4b6b;
-      --text-main: #161827;
-      --text-muted: #6b718c;
-      --border-subtle: rgba(19, 31, 71, 0.08);
-      --radius-lg: 20px;
-      --shadow-soft: 0 12px 30px rgba(15, 27, 71, 0.18);
-    }
-
-    :root[data-theme="dark"] {
-      --bg: #050816;
-      --bg-alt: #101426;
-      --card: #0f1424;
-      --accent: #4b9dff;
-      --accent-soft: rgba(75, 157, 255, 0.18);
-      --danger: #ff6b8a;
-      --text-main: #f9fafb;
-      --text-muted: #a2a9d0;
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.55);
-    }
-
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, var(--bg-alt) 0, var(--bg) 48%, #02030a 100%);
-      color: var(--text-main);
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .app {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 16px 14px 24px;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .title {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .title h1 {
-      margin: 0;
-      font-size: 1.4rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .title span {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .badge {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.5);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.3));
-      color: #28304a;
-      box-shadow: 0 8px 22px rgba(9, 13, 40, 0.18);
-      white-space: nowrap;
-    }
-
-    [data-theme="dark"] .badge {
-      border-color: rgba(255, 255, 255, 0.3);
-      background: linear-gradient(135deg, rgba(15, 24, 61, 0.9), rgba(75, 107, 255, 0.9));
-      color: #f5f5ff;
-    }
-
-    .composer {
-      border-radius: var(--radius-lg);
-      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
-      padding: 10px 11px 8px;
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      box-shadow: var(--shadow-soft);
-    }
-
-    [data-theme="dark"] .composer {
-      background: radial-gradient(circle at top left, rgba(75, 107, 255, 0.2), rgba(7, 11, 36, 0.98));
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .composer-top {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .idea-input {
-      flex: 1;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      background: rgba(255, 255, 255, 0.96);
-      padding: 8px 10px;
-      min-height: 60px;
-      max-height: 160px;
-      resize: none;
-      font-size: 0.92rem;
-      color: var(--text-main);
-      outline: none;
-      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
-      overflow-y: auto;
-    }
-
-    .idea-input::placeholder {
-      color: rgba(107, 114, 142, 0.9);
-    }
-
-    .idea-input:focus {
-      border-color: var(--accent);
-      box-shadow:
-        0 0 0 1px var(--accent-soft),
-        0 0 0 1px var(--accent),
-        0 10px 25px rgba(22, 35, 89, 0.3);
-      background: #ffffff;
-    }
-
-    [data-theme="dark"] .idea-input {
-      background: rgba(6, 10, 30, 0.98);
-      color: var(--text-main);
-    }
-
-    [data-theme="dark"] .idea-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .composer-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 8px;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .tag-input-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .tag-input-wrap span {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      white-space: nowrap;
-    }
-
-    .tag-input {
-      flex: 1;
-      min-width: 0;
-      border-radius: 999px;
-      border: 1px solid rgba(22, 35, 89, 0.12);
-      padding: 5px 9px;
-      font-size: 0.8rem;
-      background: rgba(255, 255, 255, 0.96);
-      outline: none;
-      color: var(--text-main);
-    }
-
-    [data-theme="dark"] .tag-input {
-      background: rgba(6, 10, 30, 0.98);
-      border-color: rgba(255, 255, 255, 0.12);
-      color: var(--text-main);
-    }
-
-    [data-theme="dark"] .tag-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .btn-primary {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 16px;
-      font-size: 0.86rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      background: linear-gradient(135deg, var(--accent), #7b5bff);
-      color: #ffffff;
-      box-shadow: 0 10px 26px rgba(11, 22, 68, 0.7);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-
-    .btn-primary:disabled {
-      opacity: 0.45;
-      box-shadow: none;
-      cursor: default;
-    }
-
-    .btn-primary span {
-      font-size: 1rem;
-      line-height: 1;
-    }
-
-    .toolbar {
-      display: flex;
-      align-items: center;
-      margin-top: 12px;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-    }
-
-    .chip {
-      border-radius: 999px;
-      border: 1px solid rgba(22, 35, 89, 0.16);
-      padding: 4px 10px;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      background: rgba(255, 255, 255, 0.94);
-      white-space: nowrap;
-      cursor: pointer;
-    }
-
-    .chip.active {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-
-    [data-theme="dark"] .chip {
-      background: rgba(12, 17, 39, 0.96);
-      border-color: rgba(255, 255, 255, 0.14);
-    }
-
-    .search-row {
-      margin-top: 10px;
-      display: flex;
-      justify-content: flex-start;
-    }
-
-    .search-input {
-      width: 100%;
-      max-width: 420px;
-      border-radius: 999px;
-      border: 1px solid rgba(22, 35, 89, 0.16);
-      padding: 6px 11px;
-      font-size: 0.82rem;
-      background: rgba(255, 255, 255, 0.96);
-      outline: none;
-      color: var(--text-main);
-    }
-
-    .search-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    [data-theme="dark"] .search-input {
-      background: rgba(6, 10, 30, 0.98);
-      border-color: rgba(255, 255, 255, 0.12);
-      color: var(--text-main);
-    }
-
-    [data-theme="dark"] .search-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .board {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 10px;
-    }
-
-    @media (min-width: 640px) {
-      .board {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    .card-idea {
-      border-radius: 16px;
-      background: var(--card);
-      padding: 10px 11px 8px;
-      border: 1px solid var(--border-subtle);
-      box-shadow: 0 9px 22px rgba(9, 16, 46, 0.17);
-      display: flex;
-      flex-direction: column;
-      min-height: 80px;
-      position: relative;
-      user-select: none;
-      outline: none;
-      transition: transform 0.09s ease, box-shadow 0.09s ease, background 0.12s ease;
-    }
-
-    .card-idea.pinned {
-      box-shadow:
-        0 0 0 1px var(--accent-soft),
-        0 14px 32px rgba(14, 26, 78, 0.38);
-    }
-
-    .card-idea.dragging {
-      opacity: 0.9;
-      transform: scale(0.98);
-    }
-
-    .card-idea.drop-target {
-      outline: 2px dashed var(--accent);
-      outline-offset: 2px;
-    }
-
-    .card-idea.card-focused {
-      box-shadow:
-        0 0 0 1px var(--accent-soft),
-        0 0 0 1px var(--accent);
-    }
-
-    .idea-text {
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      color: var(--text-main);
-    }
-
-    .idea-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-top: auto;
-    }
-
-    .pill-tag {
-      font-size: 0.74rem;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: rgba(238, 240, 255, 0.96);
-      color: #3a4470;
-      border: 1px solid rgba(76, 88, 160, 0.22);
-    }
-
-    [data-theme="dark"] .pill-tag {
-      background: rgba(11, 18, 55, 0.96);
-      color: #c8cff8;
-      border-color: rgba(196, 200, 255, 0.3);
-    }
-
-    .meta-right {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-    }
-
-    .meta-dot {
-      width: 4px;
-      height: 4px;
-      border-radius: 999px;
-      background: rgba(99, 108, 169, 0.7);
-    }
-
-    .card-actions {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      display: flex;
-      gap: 4px;
-    }
-
-    .icon-btn {
-      border: none;
-      border-radius: 999px;
-      width: 26px;
-      height: 26px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      color: var(--text-muted);
-      padding: 0;
-      cursor: pointer;
-    }
-
-    .icon-btn span {
-      font-size: 0.98rem;
-      line-height: 1;
-    }
-
-    .icon-btn.pin-active {
-      color: var(--accent);
-      background: var(--accent-soft);
-    }
-
-    .icon-btn.danger {
-      color: var(--danger);
-    }
-
-    .icon-btn.round {
-      border-radius: 999px;
-      width: 28px;
-      height: 28px;
-      background: rgba(255, 255, 255, 0.95);
-      box-shadow: 0 6px 18px rgba(11, 18, 53, 0.26);
-    }
-
-    [data-theme="dark"] .icon-btn.round {
-      background: rgba(10, 14, 33, 0.98);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
-    }
-
-    .empty {
-      margin-top: 24px;
-      text-align: center;
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      padding: 2rem 1rem;
-    }
-
-    .edit-input {
-      border-radius: 12px;
-      border: 1px solid rgba(22, 35, 89, 0.16);
-      padding: 6px 8px;
-      font-size: 0.88rem;
-      width: 100%;
-      resize: none;
-      min-height: 60px;
-      max-height: 160px;
-      outline: none;
-      background: rgba(255, 255, 255, 0.98);
-      overflow-y: auto;
-      color: var(--text-main);
-    }
-
-    [data-theme="dark"] .edit-input {
-      background: rgba(6, 10, 30, 0.98);
-      border-color: rgba(255, 255, 255, 0.12);
-      color: var(--text-main);
-    }
-
-    .edit-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 6px;
-      margin-top: 6px;
-    }
-
-    .btn-small {
-      border-radius: 999px;
-      border: 1px solid rgba(22, 35, 89, 0.16);
-      background: rgba(245, 247, 255, 0.98);
-      font-size: 0.74rem;
-      padding: 4px 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      cursor: pointer;
-    }
-
-    .btn-small.primary {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-
-    [data-theme="dark"] .btn-small {
-      background: rgba(11, 16, 42, 0.98);
-      border-color: rgba(255, 255, 255, 0.14);
-      color: var(--text-main);
-    }
-
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border-width: 0;
-    }
-  </style>
-</head>
-<body>
-  <div class="app" id="app">
-    <header class="header">
-      <div class="title">
-        <h1>Idea Whiteboard</h1>
-        <span>Pin, edit, search, and drag your thinking stream.</span>
-      </div>
-      <div class="header-actions">
-        <button class="icon-btn round" id="exportBtn" title="Export ideas">
-          <span>↓</span>
-        </button>
-        <button class="icon-btn round" id="importBtn" title="Import ideas">
-          <span>↑</span>
-        </button>
-        <button class="icon-btn round" id="themeToggle" title="Toggle theme">
-          ☀️
-        </button>
-        <div class="badge">Mobile-first</div>
-      </div>
-    </header>
-
-    <main role="main">
-      <section class="composer" aria-label="New idea">
-        <div class="composer-top">
-          <textarea
-            id="ideaInput"
-            class="idea-input"
-            rows="3"
-            placeholder="Drop your idea here… (one clear thought per card)"
-          ></textarea>
-        </div>
-        <div class="composer-bottom">
-          <div class="tag-input-wrap">
-            <span>#</span>
-            <input
-              id="tagInput"
-              class="tag-input"
-              type="text"
-              inputmode="text"
-              autocomplete="off"
-              placeholder="Tag (optional: focus, product, life, etc.)"
-            />
-          </div>
-          <button id="addBtn" class="btn-primary" disabled>
-            <span>＋</span> Add
-          </button>
-        </div>
-      </section>
-
-      <nav class="toolbar" aria-label="Filter ideas">
-        <button class="chip active" data-filter="all">All</button>
-        <button class="chip" data-filter="pinned">Pinned</button>
-        <button class="chip" data-filter="recent">Last 24h</button>
-        <button class="chip" id="clearAllBtn" title="Delete all ideas">Clear All</button>
-      </nav>
-
-      <div class="search-row">
-        <input
-          id="searchInput"
-          class="search-input"
-          type="search"
-          placeholder="Search ideas… (text or #tag)"
-          autocomplete="off"
-        />
-      </div>
-
-      <section class="board" id="board" aria-label="Idea board" role="list"></section>
-      <div class="empty" id="emptyState" style="display:none;">
-        No ideas yet. Type above and hit “Add” to pin your first thought.
-      </div>
-    </main>
-  </div>
-
-  <script>
-    (function () {
-      "use strict";
-
-      const STORAGE_KEY = "ideaWhiteboard_v3";
-      const ANALYTICS_KEY = "ideaWhiteboard_events_v1";
-      const THEME_KEY = "ideaWhiteboard_theme_v1";
-
-      const ideaInput = document.getElementById("ideaInput");
-      const tagInput = document.getElementById("tagInput");
-      const addBtn = document.getElementById("addBtn");
-      const board = document.getElementById("board");
-      const emptyState = document.getElementById("emptyState");
-      const filterChips = document.querySelectorAll(".chip[data-filter]");
-      const clearAllBtn = document.getElementById("clearAllBtn");
-      const searchInput = document.getElementById("searchInput");
-      const exportBtn = document.getElementById("exportBtn");
-      const importBtn = document.getElementById("importBtn");
-      const themeToggle = document.getElementById("themeToggle");
-
-      let ideas = [];
-      let filter = "all";
-      let draggingId = null;
-      let suppressClick = false;
-      let searchTerm = "";
-
-      // --- Utilities ---
-
-      function haptic(ms = 30) {
-        try {
-          if (navigator.vibrate) {
-            navigator.vibrate(ms);
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      function trackEvent(event, data) {
-        try {
-          const raw = localStorage.getItem(ANALYTICS_KEY);
-          let events = raw ? JSON.parse(raw) : [];
-          if (!Array.isArray(events)) events = [];
-          events.push({
-            event,
-            ts: Date.now(),
-            ...(data || {})
-          });
-          if (events.length > 1000) {
-            events.splice(0, events.length - 1000);
-          }
-          localStorage.setItem(ANALYTICS_KEY, JSON.stringify(events));
-        } catch (e) {
-          // best-effort, ignore failures
-        }
-      }
-
-      function debounce(fn, wait) {
-        let timeout;
-        return function (...args) {
-          const later = () => {
-            clearTimeout(timeout);
-            fn.apply(null, args);
-          };
-          clearTimeout(timeout);
-          timeout = setTimeout(later, wait);
-        };
-      }
-
-      function createId() {
-        return (
-          "idea_" +
-          Date.now().toString(36) +
-          "_" +
-          Math.random().toString(36).slice(2, 7)
-        );
-      }
-
-      function showToast(message) {
-        try {
-          const existing = document.getElementById("ideaToast");
-          if (existing) {
-            existing.remove();
-          }
-          const toast = document.createElement("div");
-          toast.id = "ideaToast";
-          toast.textContent = message;
-          toast.style.position = "fixed";
-          toast.style.bottom = "24px";
-          toast.style.left = "50%";
-          toast.style.transform = "translateX(-50%)";
-          toast.style.padding = "8px 16px";
-          toast.style.borderRadius = "999px";
-          toast.style.fontSize = "0.9rem";
-          toast.style.zIndex = "9999";
-          toast.style.boxShadow = "0 12px 30px rgba(0, 0, 0, 0.35)";
-          toast.style.maxWidth = "90vw";
-          toast.style.textAlign = "center";
-          toast.style.whiteSpace = "nowrap";
-          toast.style.overflow = "hidden";
-          toast.style.textOverflow = "ellipsis";
-          toast.style.opacity = "0";
-          toast.style.transition = "opacity 0.2s ease, transform 0.2s ease";
-          toast.style.backdropFilter = "blur(12px)";
-          toast.style.webkitBackdropFilter = "blur(12px)";
-          const isDark =
-            (document.documentElement.getAttribute("data-theme") || "light") === "dark";
-          toast.style.background = isDark
-            ? "rgba(15, 23, 42, 0.95)"
-            : "rgba(31, 41, 55, 0.95)";
-          toast.style.color = "#f9fafb";
-          document.body.appendChild(toast);
-          requestAnimationFrame(() => {
-            toast.style.opacity = "1";
-          });
-          setTimeout(() => {
-            toast.style.opacity = "0";
-            toast.style.transform = "translateX(-50%) translateY(4px)";
-            setTimeout(() => {
-              const el = document.getElementById("ideaToast");
-              if (el) el.remove();
-            }, 220);
-          }, 1200);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      function renderMarkdown(text) {
-        if (!text) return "";
-        let safe = String(text)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-
-        // Normalize newlines
-        safe = safe.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
-        // Basic markdown
-        safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-        safe = safe.replace(/\*(.+?)\*/g, "<em>$1</em>");
-        safe = safe.replace(
-          /`(.+?)`/g,
-          "<code style='background:var(--accent-soft);padding:2px 5px;border-radius:4px;font-size:0.85em;'>$1</code>"
-        );
-
-        // Line breaks
-        safe = safe.replace(/\n/g, "<br>");
-        return safe;
-      }
-
-      function applyTheme(theme) {
-        const t = theme === "dark" ? "dark" : "light";
-        document.documentElement.setAttribute("data-theme", t);
-        if (themeToggle) {
-          themeToggle.textContent = t === "dark" ? "🌙" : "☀️";
-        }
-      }
-
-      function initTheme() {
-        let stored = null;
-        try {
-          stored = localStorage.getItem(THEME_KEY);
-        } catch (e) {
-          stored = null;
-        }
-        let theme;
-        if (stored === "light" || stored === "dark") {
-          theme = stored;
-        } else {
-          const prefersDark =
-            window.matchMedia &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches;
-          theme = prefersDark ? "dark" : "light";
-        }
-        applyTheme(theme);
-
-        if (!stored && window.matchMedia) {
-          try {
-            const mql = window.matchMedia("(prefers-color-scheme: dark)");
-            const handler = function (e) {
-              let manual = null;
-              try {
-                manual = localStorage.getItem(THEME_KEY);
-              } catch (err) {
-                manual = null;
-              }
-              if (manual === "light" || manual === "dark") return;
-              applyTheme(e.matches ? "dark" : "light");
-            };
-            if (mql.addEventListener) {
-              mql.addEventListener("change", handler);
-            } else if (mql.addListener) {
-              mql.addListener(handler);
-            }
-          } catch (e) {
-            // ignore
-          }
-        }
-      }
-
-      // --- Data Logic ---
-
-      function normalizeIdeasArray(list) {
-        const now = Date.now();
-        const result = [];
-        list.forEach((item, index) => {
-          if (!item) return;
-          const text =
-            typeof item.text === "string" ? item.text.trim() : "";
-          if (!text) return;
-          const tag =
-            typeof item.tag === "string"
-              ? item.tag.trim().replace(/^#+/, "")
-              : "";
-          const id =
-            typeof item.id === "string" && item.id
-              ? item.id
-              : createId();
-          const createdAt =
-            typeof item.createdAt === "number" && item.createdAt > 0
-              ? item.createdAt
-              : now;
-          const pinned = !!item.pinned;
-          const order =
-            typeof item.order === "number" ? item.order : index;
-          result.push({
-            id,
-            text,
-            tag,
-            pinned,
-            createdAt,
-            order
-          });
-        });
-        result.sort((a, b) => {
-          const ao = typeof a.order === "number" ? a.order : 0;
-          const bo = typeof b.order === "number" ? b.order : 0;
-          return ao - bo;
-        });
-        result.forEach((idea, index) => {
-          idea.order = index;
-        });
-        return result;
-      }
-
-      function loadIdeas() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) return [];
-          const parsed = JSON.parse(raw);
-          let list;
-          if (Array.isArray(parsed)) {
-            list = parsed;
-          } else if (parsed && Array.isArray(parsed.ideas)) {
-            list = parsed.ideas;
-          } else {
-            return [];
-          }
-          return normalizeIdeasArray(list);
-        } catch (e) {
-          console.warn("Failed to parse stored ideas", e);
-          return [];
-        }
-      }
-
-      function saveIdeas() {
-        try {
-          const payload = {
-            version: 3,
-            ideas: ideas
-          };
-          const data = JSON.stringify(payload);
-          if (data.length > 5000000) {
-            alert(
-              "Storage limit reached. Please export and clear some ideas."
-            );
-            return false;
-          }
-          localStorage.setItem(STORAGE_KEY, data);
-          return true;
-        } catch (e) {
-          if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
-            alert("Storage full! Please export and clear ideas.");
-          } else {
-            console.warn("Failed to save ideas", e);
-          }
-          return false;
-        }
-      }
-
-      function formatTime(ts) {
-        const date = new Date(ts);
-        if (Number.isNaN(date.getTime())) return "";
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMin = Math.floor(diffMs / 60000);
-        if (diffMin < 1) return "just now";
-        if (diffMin < 60) return diffMin + " min ago";
-        const diffH = Math.floor(diffMin / 60);
-        if (diffH < 24) return diffH + " h ago";
-        const diffD = Math.floor(diffH / 24);
-        if (diffD < 7) return diffD + " d ago";
-        return date.toLocaleDateString();
-      }
-
-      // --- Rendering ---
-
-      function getFilteredIdeas() {
-        const now = Date.now();
-        let base = ideas;
-        if (filter === "pinned") {
-          base = ideas.filter((i) => i.pinned);
-        } else if (filter === "recent") {
-          const cutoff = now - 24 * 60 * 60 * 1000;
-          base = ideas.filter((i) => i.createdAt >= cutoff);
-        }
-        if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          base = base.filter((idea) => {
-            const text = idea.text.toLowerCase();
-            const tag = (idea.tag || "").toLowerCase();
-            return (
-              text.includes(term) ||
-              tag.includes(term) ||
-              ("#" + tag).includes(term)
-            );
-          });
-        }
-        return base;
-      }
-
-      function sortIdeas(list) {
-        return list
-          .slice()
-          .sort((a, b) => {
-            const ao = typeof a.order === "number" ? a.order : 0;
-            const bo = typeof b.order === "number" ? b.order : 0;
-            return ao - bo;
-          });
-      }
-
-      function copyCardText(text) {
-        const value = String(text || "");
-        if (!value) return;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard
-            .writeText(value)
-            .then(
-              () => {
-                haptic(30);
-                showToast("Copied");
-                trackEvent("copy_card", { length: value.length });
-              },
-              () => {
-                showToast("Copy failed");
-              }
-            );
-        } else {
-          try {
-            const helper = document.createElement("textarea");
-            helper.style.position = "fixed";
-            helper.style.opacity = "0";
-            helper.value = value;
-            document.body.appendChild(helper);
-            helper.select();
-            const ok = document.execCommand("copy");
-            document.body.removeChild(helper);
-            if (ok) {
-              haptic(30);
-              showToast("Copied");
-              trackEvent("copy_card", { length: value.length });
-            } else {
-              prompt("Copy this text:", value);
-            }
-          } catch (err) {
-            prompt("Copy this text:", value);
-          }
-        }
-      }
-
-      function render() {
-        const filtered = sortIdeas(getFilteredIdeas());
-        board.innerHTML = "";
-        if (!filtered.length) {
-          emptyState.style.display = "block";
-          return;
-        }
-        emptyState.style.display = "none";
-
-        const allowDrag = filter === "all";
-
-        filtered.forEach((idea) => {
-          const card = document.createElement("article");
-          card.className =
-            "card-idea" + (idea.pinned ? " pinned" : "");
-          card.dataset.id = idea.id;
-          card.setAttribute("role", "listitem");
-          card.tabIndex = 0;
-          card.draggable = allowDrag;
-
-          const actions = document.createElement("div");
-          actions.className = "card-actions";
-
-          const pinBtn = document.createElement("button");
-          pinBtn.className =
-            "icon-btn" + (idea.pinned ? " pin-active" : "");
-          pinBtn.type = "button";
-          pinBtn.title = idea.pinned ? "Unpin" : "Pin";
-          pinBtn.innerHTML = "<span>★</span>";
-          pinBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            togglePin(idea.id);
-          });
-
-          const delBtn = document.createElement("button");
-          delBtn.className = "icon-btn danger";
-          delBtn.type = "button";
-          delBtn.title = "Delete";
-          delBtn.innerHTML = "<span>✕</span>";
-          delBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            deleteIdea(idea.id);
-          });
-
-          actions.appendChild(pinBtn);
-          actions.appendChild(delBtn);
-
-          const textEl = document.createElement("div");
-          textEl.className = "idea-text";
-          textEl.innerHTML = renderMarkdown(idea.text);
-
-          const meta = document.createElement("div");
-          meta.className = "idea-meta";
-
-          const leftMeta = document.createElement("div");
-          if (idea.tag) {
-            const tag = document.createElement("span");
-            tag.className = "pill-tag";
-            tag.textContent = "#" + idea.tag;
-            leftMeta.appendChild(tag);
-          }
-
-          const rightMeta = document.createElement("div");
-          rightMeta.className = "meta-right";
-          const dot = document.createElement("span");
-          dot.className = "meta-dot";
-          const time = document.createElement("span");
-          time.textContent = formatTime(idea.createdAt);
-          rightMeta.appendChild(dot);
-          rightMeta.appendChild(time);
-
-          meta.appendChild(leftMeta);
-          meta.appendChild(rightMeta);
-
-          // Interaction: Edit with single-click
-          let clickTimeout = null;
-          card.addEventListener("click", () => {
-            if (suppressClick) return;
-            if (clickTimeout) {
-              clearTimeout(clickTimeout);
-              clickTimeout = null;
-            }
-            clickTimeout = setTimeout(() => {
-              enterEditMode(card, idea);
-              clickTimeout = null;
-            }, 220);
-          });
-
-          // Copy on double-click
-          card.addEventListener("dblclick", (e) => {
-            e.preventDefault();
-            if (clickTimeout) {
-              clearTimeout(clickTimeout);
-              clickTimeout = null;
-            }
-            copyCardText(idea.text);
-          });
-
-          // Focus style
-          card.addEventListener("focus", () => {
-            card.classList.add("card-focused");
-          });
-          card.addEventListener("blur", () => {
-            card.classList.remove("card-focused");
-          });
-
-          // Drag and drop
-          if (allowDrag) {
-            card.addEventListener("dragstart", (e) =>
-              handleDragStart(e, idea.id)
-            );
-            card.addEventListener("dragover", (e) =>
-              handleDragOver(e, idea.id)
-            );
-            card.addEventListener("drop", (e) =>
-              handleDrop(e, idea.id)
-            );
-            card.addEventListener("dragend", handleDragEnd);
-          }
-
-          card.appendChild(actions);
-          card.appendChild(textEl);
-          card.appendChild(meta);
-          board.appendChild(card);
-        });
-      }
-
-      // --- Actions ---
-
-      function addIdea() {
-        const text = (ideaInput.value || "").trim();
-        const tag = (tagInput.value || "").trim().replace(/^#+/, "");
-        if (!text) return;
-        const idea = {
-          id: createId(),
-          text,
-          tag: tag || "",
-          pinned: false,
-          createdAt: Date.now(),
-          order: ideas.length
-        };
-        ideas.push(idea);
-        haptic(25);
-        trackEvent("add", { tag: idea.tag || null });
-        saveIdeas();
-        ideaInput.value = "";
-        ideaInput.style.height = "auto";
-        tagInput.value = "";
-        updateAddButtonState();
-        render();
-        ideaInput.focus();
-      }
-
-      function togglePin(id) {
-        const idx = ideas.findIndex((i) => i.id === id);
-        if (idx === -1) return;
-        ideas[idx].pinned = !ideas[idx].pinned;
-        haptic(15);
-        trackEvent("pin_toggle", { pinned: ideas[idx].pinned });
-        saveIdeas();
-        render();
-      }
-
-      function deleteIdea(id) {
-        const before = ideas.length;
-        ideas = ideas.filter((i) => i.id !== id);
-        ideas.forEach((idea, index) => {
-          idea.order = index;
-        });
-        haptic(40);
-        trackEvent("delete", { before, after: ideas.length });
-        saveIdeas();
-        render();
-      }
-
-      function moveIdea(sourceId, targetId) {
-        if (!sourceId || !targetId || sourceId === targetId) return;
-        const fromIndex = ideas.findIndex((i) => i.id === sourceId);
-        const toIndex = ideas.findIndex((i) => i.id === targetId);
-        if (fromIndex === -1 || toIndex === -1) return;
-        const [moved] = ideas.splice(fromIndex, 1);
-        ideas.splice(toIndex, 0, moved);
-        ideas.forEach((idea, index) => {
-          idea.order = index;
-        });
-        trackEvent("reorder", {});
-        saveIdeas();
-        render();
-      }
-
-      // --- DnD ---
-
-      function handleDragStart(e, id) {
-        if (filter !== "all") {
-          e.preventDefault();
-          return;
-        }
-        draggingId = id;
-        suppressClick = true;
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", id);
-        }
-        const el = e.currentTarget;
-        el.classList.add("dragging");
-      }
-
-      function handleDragOver(e, targetId) {
-        if (!draggingId || draggingId === targetId) return;
-        e.preventDefault();
-        if (e.dataTransfer) {
-          e.dataTransfer.dropEffect = "move";
-        }
-        const cards = board.querySelectorAll(".card-idea");
-        cards.forEach((c) => {
-          c.classList.toggle("drop-target", c.dataset.id === targetId);
-        });
-      }
-
-      function handleDrop(e, targetId) {
-        e.preventDefault();
-        const sourceId =
-          draggingId ||
-          (e.dataTransfer && e.dataTransfer.getData("text/plain"));
-        moveIdea(sourceId, targetId);
-      }
-
-      function handleDragEnd() {
-        const cards = board.querySelectorAll(".card-idea");
-        cards.forEach((c) =>
-          c.classList.remove("dragging", "drop-target")
-        );
-        draggingId = null;
-        setTimeout(() => {
-          suppressClick = false;
-        }, 0);
-      }
-
-      // --- Inline Edit ---
-
-      function autoGrowTextArea(el) {
-        if (!el) return;
-        el.style.height = "auto";
-        el.style.height = el.scrollHeight + "px";
-      }
-
-      function enterEditMode(card, idea) {
-        if (card.dataset.editing === "1") return;
-        card.dataset.editing = "1";
-        const originalText = idea.text;
-
-        const textArea = document.createElement("textarea");
-        textArea.className = "edit-input";
-        textArea.value = originalText;
-
-        const existingTextEl = card.querySelector(".idea-text");
-        const existingMeta = card.querySelector(".idea-meta");
-        existingTextEl.style.display = "none";
-        existingMeta.style.display = "none";
-
-        const editWrap = document.createElement("div");
-        editWrap.appendChild(textArea);
-
-        const actions = document.createElement("div");
-        actions.className = "edit-actions";
-
-        const cancelBtn = document.createElement("button");
-        cancelBtn.type = "button";
-        cancelBtn.className = "btn-small";
-        cancelBtn.textContent = "Cancel";
-
-        const saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "btn-small primary";
-        saveBtn.textContent = "Save";
-
-        actions.appendChild(cancelBtn);
-        actions.appendChild(saveBtn);
-        editWrap.appendChild(actions);
-        card.appendChild(editWrap);
-
-        autoGrowTextArea(textArea);
-        textArea.focus();
-        textArea.setSelectionRange(
-          textArea.value.length,
-          textArea.value.length
-        );
-
-        function cleanup() {
-          card.dataset.editing = "0";
-          card.removeChild(editWrap);
-          existingTextEl.style.display = "";
-          existingMeta.style.display = "";
-        }
-
-        cancelBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          cleanup();
-        });
-
-        saveBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const newText = textArea.value.trim();
-          if (!newText) {
-            cleanup();
-            return;
-          }
-          const idx = ideas.findIndex((i) => i.id === idea.id);
-          if (idx !== -1) {
-            ideas[idx].text = newText;
-            trackEvent("edit", {});
-            saveIdeas();
-            render();
-          } else {
-            cleanup();
-          }
-        });
-
-        textArea.addEventListener("input", () =>
-          autoGrowTextArea(textArea)
-        );
-
-        textArea.addEventListener("keydown", (e) => {
-          if (e.key === "Escape") {
-            e.stopPropagation();
-            cancelBtn.click();
-          } else if (
-            (e.key === "Enter" || e.key === "NumpadEnter") &&
-            (e.metaKey || e.ctrlKey)
-          ) {
-            e.preventDefault();
-            saveBtn.click();
-          }
-        });
-      }
-
-      // --- Export / Import ---
-
-      async function handleExport() {
-        try {
-          const payload = {
-            version: 3,
-            ideas: ideas,
-            exportedAt: new Date().toISOString()
-          };
-          const json = JSON.stringify(payload, null, 2);
-          const encoded = btoa(unescape(encodeURIComponent(json)));
-
-          let clipboardOk = false;
-          let fileDownloaded = false;
-
-          // 1) Try to copy backup string to clipboard
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            try {
-              await navigator.clipboard.writeText(encoded);
-              clipboardOk = true;
-            } catch (err) {
-              clipboardOk = false;
-            }
-          }
-
-          if (clipboardOk) {
-            // 2) Ask if user also wants JSON file
-            const alsoFile = confirm(
-              "Backup string copied to clipboard.\n\nDo you also want to download a .json file?"
-            );
-
-            if (
-              alsoFile &&
-              typeof Blob !== "undefined" &&
-              typeof URL !== "undefined" &&
-              URL.createObjectURL
-            ) {
-              const blob = new Blob([json], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download =
-                "idea-whiteboard-" +
-                new Date().toISOString().slice(0, 10) +
-                ".json";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-              fileDownloaded = true;
-            }
-          } else {
-            // Clipboard not available → fallback to file download
-            if (
-              typeof Blob !== "undefined" &&
-              typeof URL !== "undefined" &&
-              URL.createObjectURL
-            ) {
-              const blob = new Blob([json], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download =
-                "idea-whiteboard-" +
-                new Date().toISOString().slice(0, 10) +
-                ".json";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-              fileDownloaded = true;
-
-              alert(
-                "Clipboard export is not supported in this browser. A JSON file has been downloaded instead."
-              );
-            } else {
-              // Last-resort: manual copy of backup string
-              prompt(
-                "Clipboard and file download are not available. You can still copy this backup string manually:",
-                encoded
-              );
-            }
-          }
-
-          trackEvent("export", {
-            count: ideas.length,
-            clipboard: clipboardOk,
-            file: fileDownloaded
-          });
-        } catch (e) {
-          console.warn("Export failed", e);
-          try {
-            const fallbackPayload = {
-              version: 3,
-              ideas: ideas
-            };
-            const fallbackJson = JSON.stringify(fallbackPayload);
-            const encoded = btoa(unescape(encodeURIComponent(fallbackJson)));
-            prompt(
-              "Export failed. You can still copy this backup string manually:",
-              encoded
-            );
-          } catch (e2) {
-            alert("Export failed and no fallback is available in this browser.");
-          }
-        }
-      }
-
-      async function handleImport() {
-        const text = prompt("Paste your exported data (backup string):");
-        if (!text) return;
-        try {
-          const trimmed = text.trim();
-          let decodedJson;
-          try {
-            decodedJson = decodeURIComponent(escape(atob(trimmed)));
-          } catch (e) {
-            decodedJson = trimmed;
-          }
-          const parsed = JSON.parse(decodedJson);
-          let list;
-          if (Array.isArray(parsed)) {
-            list = parsed;
-          } else if (parsed && Array.isArray(parsed.ideas)) {
-            list = parsed.ideas;
-          } else {
-            throw new Error("Invalid structure");
-          }
-          const normalized = normalizeIdeasArray(list);
-          if (!normalized.length) {
-            alert("No ideas found in the imported data.");
-            return;
-          }
-          if (
-            !confirm(
-              "Import " +
-                normalized.length +
-                " ideas? This will replace your current board."
-            )
-          ) {
-            return;
-          }
-          ideas = normalized;
-          saveIdeas();
-          render();
-          haptic(60);
-          trackEvent("import", { count: ideas.length });
-        } catch (e) {
-          console.warn("Import failed", e);
-          alert("Could not import: invalid or corrupted data.");
-        }
-      }
-
-      // --- Keyboard & global ---
-
-      function isTypingInInput() {
-        const el = document.activeElement;
-        if (!el) return false;
-        const tag = el.tagName;
-        if (tag === "TEXTAREA") return true;
-        if (tag === "INPUT") {
-          const type = (el.getAttribute("type") || "").toLowerCase();
-          return type !== "button" && type !== "submit";
-        }
-        return false;
-      }
-
-      function handleGlobalKeydown(e) {
-        if (e.defaultPrevented) return;
-
-        // Quick focus to idea input
-        if (
-          e.key === "/" &&
-          !e.ctrlKey &&
-          !e.metaKey &&
-          !e.altKey &&
-          !isTypingInInput()
-        ) {
-          e.preventDefault();
-          ideaInput.focus();
-          return;
-        }
-
-        // Shortcut help
-        if (
-          e.key === "?" &&
-          !e.ctrlKey &&
-          !e.metaKey &&
-          !e.altKey &&
-          !isTypingInInput()
-        ) {
-          e.preventDefault();
-          alert(
-            "Shortcuts:\n" +
-              "Ctrl/Cmd + Enter → Add idea\n" +
-              "/ → Focus idea input\n" +
-              "n → Focus idea input\n" +
-              "Esc → Cancel edit / blur\n" +
-              "Delete/Backspace → Delete focused card\n" +
-              "p → Pin/unpin focused card\n" +
-              "Drag (All view) → Reorder cards\n" +
-              "Double-click card → Copy text"
-          );
-          return;
-        }
-
-        if (
-          (e.key === "n" || e.key === "N") &&
-          !e.ctrlKey &&
-          !e.metaKey &&
-          !e.altKey &&
-          !isTypingInInput()
-        ) {
-          e.preventDefault();
-          ideaInput.focus();
-          return;
-        }
-
-        if (e.key === "Escape") {
-          if (
-            document.activeElement &&
-            document.activeElement !== document.body
-          ) {
-            document.activeElement.blur();
-          }
-          return;
-        }
-
-        // Delete focused card
-        if (
-          (e.key === "Delete" || e.key === "Backspace") &&
-          !isTypingInInput()
-        ) {
-          const focused = document.querySelector(
-            ".card-idea.card-focused"
-          );
-          if (focused && focused.dataset.id) {
-            e.preventDefault();
-            deleteIdea(focused.dataset.id);
-          }
-          return;
-        }
-
-        // Toggle pin on focused card
-        if (
-          (e.key === "p" || e.key === "P") &&
-          !isTypingInInput()
-        ) {
-          const focused = document.querySelector(
-            ".card-idea.card-focused"
-          );
-          if (focused && focused.dataset.id) {
-            e.preventDefault();
-            togglePin(focused.dataset.id);
-          }
-        }
-      }
-
-      // --- Clear all ---
-
-      function handleClearAll() {
-        if (!ideas.length) return;
-        if (
-          !confirm(
-            "Delete every idea permanently from this device? This cannot be undone."
-          )
-        ) {
-          return;
-        }
-        const count = ideas.length;
-        ideas = [];
-        saveIdeas();
-        render();
-        haptic(100);
-        trackEvent("clear_all", { count });
-      }
-
-      // --- Initialization ---
-
-      initTheme();
-
-      ideaInput.addEventListener("input", () => {
-        updateAddButtonState();
-        autoGrowTextArea(ideaInput);
-      });
-
-      ideaInput.addEventListener("keydown", (e) => {
-        if (
-          (e.key === "Enter" || e.key === "NumpadEnter") &&
-          (e.ctrlKey || e.metaKey)
-        ) {
-          e.preventDefault();
-          if (!addBtn.disabled) addIdea();
-        }
-      });
-
-      function updateAddButtonState() {
-        const hasText = (ideaInput.value || "").trim().length > 0;
-        addBtn.disabled = !hasText;
-      }
-
-      addBtn.addEventListener("click", () => {
-        addIdea();
-      });
-
-      filterChips.forEach((chip) => {
-        chip.addEventListener("click", () => {
-          const next = chip.dataset.filter;
-          if (!next) return;
-          filter = next;
-          filterChips.forEach((c) => {
-            c.classList.toggle("active", c.dataset.filter === filter);
-          });
-          trackEvent("filter", { filter });
-          render();
-        });
-      });
-
-      if (clearAllBtn) {
-        clearAllBtn.addEventListener("click", handleClearAll);
-      }
-
-      if (searchInput) {
-        const debouncedSearch = debounce((value) => {
-          searchTerm = value.trim();
-          trackEvent("search", {
-            length: searchTerm.length > 0 ? searchTerm.length : 0
-          });
-          render();
-        }, 120);
-        searchInput.addEventListener("input", (e) => {
-          debouncedSearch(e.target.value || "");
-        });
-      }
-
-      if (exportBtn) {
-        exportBtn.addEventListener("click", () => {
-          handleExport();
-        });
-      }
-
-      if (importBtn) {
-        importBtn.addEventListener("click", () => {
-          handleImport();
-        });
-      }
-
-      if (themeToggle) {
-        themeToggle.addEventListener("click", () => {
-          const current =
-            document.documentElement.getAttribute("data-theme") || "light";
-          const next = current === "dark" ? "light" : "dark";
-          try {
-            localStorage.setItem(THEME_KEY, next);
-          } catch (e) {
-            // ignore
-          }
-          applyTheme(next);
-          haptic(20);
-          trackEvent("theme_toggle", { theme: next });
-        });
-      }
-
-      document.addEventListener("keydown", handleGlobalKeydown);
-
-      ideas = loadIdeas();
-      saveIdeas();
-      render();
-      updateAddButtonState();
-      autoGrowTextArea(ideaInput);
-
-      if (window.matchMedia && window.matchMedia("(min-width: 800px)").matches) {
-        ideaInput.focus();
-      }
-    })();
-  </script>
-</body>
-</html>
+report:
+  title: "OpenAI vs Anthropic: 24-Hour Model & Agent Release Forecast"
+  report_version: "v4.6-24H-NULL-AWARE-YAML"
+  prepared_at: "2026-05-17T23:18:27Z"
+  forecast_window:
+    start: "2026-05-17T23:18:27Z"
+    end: "2026-05-18T23:18:27Z"
+    timezone: "UTC"
+  sources_checked_through: "2026-05-17T23:18:27Z"
+  source_access_limitations:
+    current_source_access_available: true
+    limitations:
+      - "Official OpenAI and Anthropic pages often expose calendar dates without exact UTC publication times."
+      - "Some product and model catalog pages are undated in the crawled HTML, so they are stronger for current-state evidence than exact launch timing."
+    probability_cap_applied: false
+    cap_reason: ""
+
+  strict_scoring_policy:
+    exact_window_required: true
+    deadline_inclusive: true
+    near_misses_count_as_true: false
+    date_only_deadline_sources_require_timestamp: true
+    allowed_timing_evidence:
+      - "official_metadata"
+      - "official_rss_or_atom"
+      - "official_changelog_timestamp"
+      - "official_git_or_docs_deploy_timestamp"
+      - "official_social_timestamp"
+      - "reputable_timestamped_secondary_reporting"
+    date_only_policy: >
+      If a source only shows a calendar date and that date overlaps the forecast boundary,
+      do not assume the event occurred inside the window. Use timestamp evidence, otherwise
+      apply false or unresolved according to the resolution rules.
+
+  bottom_line: >
+    The highest-probability forecast is no scoreable OpenAI or Anthropic model, agent,
+    cyber-model access, or cyber-agent release between 2026-05-17T23:18:27Z and
+    2026-05-18T23:18:27Z. Recent official releases are real, including OpenAI personal
+    finance, Codex remote access, Realtime 2, Daybreak, and Anthropic Claude for Small
+    Business, finance agents, Opus 4.7, and Claude Platform agent updates, but the checked
+    official sources show no concrete dated signal for another release in this exact
+    window. Evidence rating: E4 for source checks S1 through S8.
+
+  source_ledger:
+    sources:
+      - id: "S1"
+        name: "OpenAI Product Releases"
+        lab: "OpenAI"
+        source_type: "official_news"
+        source_date: "2026-05-15"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "date_only"
+        timing_confidence: "medium"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://openai.com/news/product-releases/"
+        evidence_rating: "E4"
+        release_relevance: "Official index for OpenAI product releases, including recent ChatGPT, Codex, and model-related launches."
+        key_claims:
+          - claim: "The latest visible OpenAI product item checked was dated 2026-05-15, with Codex dated 2026-05-14 and Realtime model news dated 2026-05-07."
+            evidence_rating: "E4"
+      - id: "S2"
+        name: "OpenAI API Changelog"
+        lab: "OpenAI"
+        source_type: "official_changelog"
+        source_date: "2026-05-12"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "date_only"
+        timing_confidence: "medium"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://developers.openai.com/api/docs/changelog"
+        evidence_rating: "E4"
+        release_relevance: "Official API release log for model availability, model retirements, tools, and agent platform changes."
+        key_claims:
+          - claim: "The latest checked May 2026 API changelog entries were dated 2026-05-12, 2026-05-11, and 2026-05-07; no 2026-05-17 or 2026-05-18 entry was visible."
+            evidence_rating: "E4"
+      - id: "S3"
+        name: "OpenAI API Model Catalog"
+        lab: "OpenAI"
+        source_type: "official_docs"
+        source_date: "undated"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "undated"
+        timing_confidence: "low"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://developers.openai.com/api/docs/models/all"
+        evidence_rating: "E4"
+        release_relevance: "Official current-state model catalog for OpenAI API availability."
+        key_claims:
+          - claim: "The checked catalog listed GPT-5.5, GPT-5.4, GPT-5.3-Codex, GPT Image 2, and Realtime 2 families, with no checked future-dated release marker."
+            evidence_rating: "E4"
+      - id: "S4"
+        name: "OpenAI Codex Changelog"
+        lab: "OpenAI"
+        source_type: "official_changelog"
+        source_date: "2026-05-14"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "date_only"
+        timing_confidence: "medium"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://developers.openai.com/codex/changelog"
+        evidence_rating: "E4"
+        release_relevance: "Official Codex release log for agent availability, remote access, hooks, tokens, and enterprise controls."
+        key_claims:
+          - claim: "The latest visible Codex changelog entry checked was dated 2026-05-14 and covered mobile remote access, Hooks general availability, access tokens, and enterprise setup guidance."
+            evidence_rating: "E4"
+      - id: "S5"
+        name: "OpenAI Daybreak"
+        lab: "OpenAI"
+        source_type: "official_product_page"
+        source_date: "undated"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "undated"
+        timing_confidence: "low"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://openai.com/daybreak"
+        evidence_rating: "E4"
+        release_relevance: "Official cyber-defense product page relevant to GPT-5.5-Cyber, Trusted Access for Cyber, and Codex Security."
+        key_claims:
+          - claim: "The page describes Daybreak, GPT-5.5 Trusted Access for Cyber, and GPT-5.5-Cyber, and uses coming-weeks language rather than a dated release commitment inside this window."
+            evidence_rating: "E4"
+      - id: "S6"
+        name: "Anthropic Newsroom"
+        lab: "Anthropic"
+        source_type: "official_news"
+        source_date: "2026-05-14"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "date_only"
+        timing_confidence: "medium"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://www.anthropic.com/news"
+        evidence_rating: "E4"
+        release_relevance: "Official Anthropic index for model, product, agent, and cyber announcements."
+        key_claims:
+          - claim: "The latest visible Anthropic newsroom entries checked were dated 2026-05-14 and were announcements, not new model or agent launches inside the forecast window."
+            evidence_rating: "E4"
+      - id: "S7"
+        name: "Claude Platform Release Notes"
+        lab: "Anthropic"
+        source_type: "official_changelog"
+        source_date: "2026-05-12"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "date_only"
+        timing_confidence: "medium"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://platform.claude.com/docs/en/release-notes/overview"
+        evidence_rating: "E4"
+        release_relevance: "Official Claude Platform release notes for API models, Managed Agents, agent tools, and platform availability."
+        key_claims:
+          - claim: "The latest visible Claude Platform release-note entry checked was dated 2026-05-12 and concerned Fast mode support for Claude Opus 4.7."
+            evidence_rating: "E4"
+      - id: "S8"
+        name: "Claude Models Overview"
+        lab: "Anthropic"
+        source_type: "official_docs"
+        source_date: "undated"
+        source_timestamp_utc: "unknown"
+        timestamp_type: "undated"
+        timing_confidence: "low"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://platform.claude.com/docs/en/about-claude/models/overview"
+        evidence_rating: "E4"
+        release_relevance: "Official current-state model catalog for Claude model availability and Mythos Preview status."
+        key_claims:
+          - claim: "The checked model overview lists Claude Opus 4.7 as the most capable generally available model and states Claude Mythos Preview is invitation-only."
+            evidence_rating: "E4"
+    checked_no_material_update:
+      - id: "N1"
+        name: "OpenAI Product Releases"
+        lab: "OpenAI"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://openai.com/news/product-releases/"
+        evidence_rating: "E4"
+        reason_it_matters: "No visible OpenAI product item dated 2026-05-17 or 2026-05-18 reduces the probability of an already-staged official release."
+      - id: "N2"
+        name: "OpenAI API Changelog"
+        lab: "OpenAI"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://developers.openai.com/api/docs/changelog"
+        evidence_rating: "E4"
+        reason_it_matters: "No visible API changelog entry after 2026-05-12 reduces near-term model availability and retirement risk."
+      - id: "N3"
+        name: "OpenAI Codex Changelog"
+        lab: "OpenAI"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://developers.openai.com/codex/changelog"
+        evidence_rating: "E4"
+        reason_it_matters: "No visible Codex changelog entry after 2026-05-14 reduces near-term agent availability expansion risk."
+      - id: "N4"
+        name: "Anthropic Newsroom"
+        lab: "Anthropic"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://www.anthropic.com/news"
+        evidence_rating: "E4"
+        reason_it_matters: "No visible Anthropic newsroom item dated 2026-05-17 or 2026-05-18 reduces imminent model or agent release risk."
+      - id: "N5"
+        name: "Claude Platform Release Notes"
+        lab: "Anthropic"
+        accessed_at: "2026-05-17T23:18:27Z"
+        url: "https://platform.claude.com/docs/en/release-notes/overview"
+        evidence_rating: "E4"
+        reason_it_matters: "No visible Claude Platform release-note entry after 2026-05-12 reduces imminent Claude API or Managed Agents release risk."
+    timing_sources:
+      - id: "T1"
+        source_id: "S4"
+        timing_source_name: "OpenAI Codex Changelog"
+        url: "https://developers.openai.com/codex/changelog"
+        timing_claim: "The Codex mobile and remote-access release is shown as 2026-05-14 with no exact UTC timestamp in the checked page."
+        timing_evidence_rating: "E4"
+      - id: "T2"
+        source_id: "S4"
+        timing_source_name: "Axios"
+        url: "https://www.axios.com/2026/05/14/openai-brings-codex-to-your-phone"
+        timing_claim: "Secondary reporting timestamped the Codex mobile story at 2026-05-14T20:00:06Z."
+        timing_evidence_rating: "E3"
+      - id: "T3"
+        source_id: "S2"
+        timing_source_name: "OpenAI API Changelog"
+        url: "https://developers.openai.com/api/docs/changelog"
+        timing_claim: "The latest checked OpenAI API changelog entries are date-only, so same-day scoring would require additional timestamp evidence."
+        timing_evidence_rating: "E4"
+      - id: "T4"
+        source_id: "S7"
+        timing_source_name: "Claude Platform Release Notes"
+        url: "https://platform.claude.com/docs/en/release-notes/overview"
+        timing_claim: "The latest checked Claude Platform entries are date-only, so same-day scoring would require additional timestamp evidence."
+        timing_evidence_rating: "E4"
+
+  pre_release_signals:
+    - id: "PRS1"
+      signal: "Checked official OpenAI release indexes showed no visible product, API, or Codex release dated 2026-05-17 or 2026-05-18."
+      lab: "OpenAI"
+      source_id: "S1"
+      source_url: "https://openai.com/news/product-releases/"
+      observed_at: "2026-05-17T23:18:27Z"
+      signal_type: "checked_absence"
+      why_it_may_precede_news: "A lack of official dated entries close to the window supports the no-release forecast."
+      false_positive_risk: "OpenAI can publish new release pages without prior public staging, and date-only pages may appear after publication."
+      affected_prediction_ids: []
+      evidence_rating: "E4"
+    - id: "PRS2"
+      signal: "Checked official Anthropic newsroom and Claude Platform release notes showed no visible model or agent release dated 2026-05-17 or 2026-05-18."
+      lab: "Anthropic"
+      source_id: "S6"
+      source_url: "https://www.anthropic.com/news"
+      observed_at: "2026-05-17T23:18:27Z"
+      signal_type: "checked_absence"
+      why_it_may_precede_news: "A lack of official dated entries close to the window supports the no-release forecast."
+      false_positive_risk: "Anthropic can publish new release notes or newsroom entries without public pre-release artifacts."
+      affected_prediction_ids: []
+      evidence_rating: "E4"
+    - id: "PRS3"
+      signal: "OpenAI Daybreak uses coming-weeks language for increasingly cyber-capable models, without a date inside this exact window."
+      lab: "OpenAI"
+      source_id: "S5"
+      source_url: "https://openai.com/daybreak"
+      observed_at: "2026-05-17T23:18:27Z"
+      signal_type: "official_docs"
+      why_it_may_precede_news: "Roadmap language can precede cyber-model access or cyber-agent availability changes."
+      false_positive_risk: "Coming-weeks language is weak timing evidence and should not be treated as a 24-hour launch signal."
+      affected_prediction_ids: []
+      evidence_rating: "E4"
+    - id: "PRS4"
+      signal: "Claude Platform release notes show active Managed Agents and Opus 4.7 platform work, but the latest checked date is 2026-05-12."
+      lab: "Anthropic"
+      source_id: "S7"
+      source_url: "https://platform.claude.com/docs/en/release-notes/overview"
+      observed_at: "2026-05-17T23:18:27Z"
+      signal_type: "official_changelog"
+      why_it_may_precede_news: "Recent platform activity can precede additional agent or model availability updates."
+      false_positive_risk: "A release cluster without a dated commitment is weak evidence for the next exact 24 hours."
+      affected_prediction_ids: []
+      evidence_rating: "E4"
+
+  forecast_edges:
+    - id: "E1"
+      edge: "Null forecast over release-cluster extrapolation"
+      consensus_or_expected_view: "Recent OpenAI and Anthropic launch cadence may make another near-term release feel likely."
+      forecast_view: "Without a dated commitment, staged docs, or fresh official changelog movement, no material release is still more likely."
+      evidence_rating: "E4"
+      source_ids: ["S1", "S2", "S6", "S7"]
+    - id: "E2"
+      edge: "Cyber releases are important but not timed"
+      consensus_or_expected_view: "Daybreak, GPT-5.5-Cyber, Trusted Access for Cyber, and Mythos Preview create a visible cyber race."
+      forecast_view: "The cyber race matters strategically, but the public timing evidence does not justify a positive 24-hour prediction."
+      evidence_rating: "E4"
+      source_ids: ["S5", "S8"]
+    - id: "E3"
+      edge: "Agent stack activity without fresh trigger"
+      consensus_or_expected_view: "Codex, Claude Code, Claude Cowork, and Claude Managed Agents are active release surfaces."
+      forecast_view: "The agent surface is the most plausible surprise area, but checked official sources show no fresh 2026-05-17 or 2026-05-18 trigger."
+      evidence_rating: "E4"
+      source_ids: ["S4", "S7"]
+
+  why_this_window_matters:
+    - id: "W1"
+      point: "The window includes a full U.S. Monday workday, which is a plausible launch period, but the checked official pages lack a concrete dated launch signal. Evidence rating: E4."
+      evidence_rating: "E4"
+      source_ids: ["S1", "S2", "S6", "S7"]
+    - id: "W2"
+      point: "Recent Codex and Claude agent releases make developer and enterprise monitoring decision-relevant, even if no new release is most likely. Evidence rating: E4."
+      evidence_rating: "E4"
+      source_ids: ["S4", "S7"]
+    - id: "W3"
+      point: "Cyber-model access changes would be high-impact for security teams, but the checked sources provide roadmap language rather than a 24-hour launch commitment. Evidence rating: E4."
+      evidence_rating: "E4"
+      source_ids: ["S5", "S8"]
+
+  big_picture:
+    paragraphs:
+      - >
+        OpenAI and Anthropic are both actively shipping models, agent products, and cyber-defense access paths, but the evidence checked here is backward-looking rather than launch-triggering for this exact 24-hour window. OpenAI has the more visible recent Codex and cyber-defense release surface, while Anthropic has the more explicit Managed Agents and Claude model catalog surface. Evidence rating: E4 from S1 through S8.
+      - >
+        The competitive dynamic raises the value of watching Codex, Claude Managed Agents, Daybreak, and Mythos, but it does not overcome the absence of concrete public timing evidence. Evidence rating: E4 from S4, S5, S7, and S8.
+
+  no_material_release_forecast:
+    title: "No material model, agent, cyber-model, or cyber-agent release"
+    claim: >
+      No scoreable OpenAI or Anthropic model release, model availability release,
+      model retirement, model card tied to a release, agent release, agent availability
+      release, agent platform release, cyber-model access release, or cyber-agent release
+      will occur inside the exact forecast window.
+    window_start: "2026-05-17T23:18:27Z"
+    deadline: "2026-05-18T23:18:27Z"
+    probability: 0.65
+    probability_percent: 65
+    probability_band: "plausible_but_fragile"
+    resolution:
+      true_if: "No official or reputable timestamped source confirms a scoreable OpenAI or Anthropic release inside the exact window."
+      false_if: "Any scoreable OpenAI or Anthropic model, agent, cyber-model access, or cyber-agent release occurs inside the exact window."
+      partial_if: "A release appears just after the deadline or a date-only deadline source cannot be timestamped; audit-only, not true."
+      unresolved_if: "Official sources are inaccessible after good-faith checking and no reliable secondary timing source exists."
+      date_only_source_policy: "Deadline-day date-only sources require exact timestamp evidence before overturning the no-release forecast."
+      post_window_near_miss_policy: "A release after the deadline does not falsify this forecast; record it as a near miss."
+      scoring_sources:
+        - name: "OpenAI API Changelog"
+          url: "https://developers.openai.com/api/docs/changelog"
+        - name: "OpenAI Product Releases"
+          url: "https://openai.com/news/product-releases/"
+        - name: "OpenAI Codex Changelog"
+          url: "https://developers.openai.com/codex/changelog"
+        - name: "Claude Platform Release Notes"
+          url: "https://platform.claude.com/docs/en/release-notes/overview"
+        - name: "Anthropic Newsroom"
+          url: "https://www.anthropic.com/news"
+      scorer: "Any reviewer checking the named sources after the forecast window closes."
+    evidence:
+      - source_id: "S1"
+        claim: "OpenAI Product Releases showed no visible item dated 2026-05-17 or 2026-05-18 at access time."
+        evidence_rating: "E4"
+      - source_id: "S2"
+        claim: "OpenAI API Changelog showed no visible entry after 2026-05-12 at access time."
+        evidence_rating: "E4"
+      - source_id: "S6"
+        claim: "Anthropic Newsroom showed no visible model or agent launch dated 2026-05-17 or 2026-05-18 at access time."
+        evidence_rating: "E4"
+      - source_id: "S7"
+        claim: "Claude Platform release notes showed no visible entry after 2026-05-12 at access time."
+        evidence_rating: "E4"
+    reasoning: >
+      No material release is more likely than any individual positive release because the checked official pages show no dated event, no fresh changelog movement, no visible model catalog surprise, and no official today or tomorrow language for this window. The main counterweight is that both labs have shipped frequently in May 2026 and the window includes a U.S. Monday workday. That counterweight keeps the probability at 0.65 rather than high confidence.
+    what_would_falsify: "A timestamped official release or reputable timestamped report inside the window."
+    what_would_change_my_mind: "A fresh official RSS item, changelog entry, docs deployment, model ID, launch page, or official social post with a timestamp inside the window."
+    decision_implications:
+      developers: "Do not change model routing or agent integration plans unless a new official release appears."
+      businesses: "Do not adjust procurement, vendor-risk, or rollout decisions based only on release-cluster speculation."
+      safety_researchers: "Keep monitoring Daybreak, GPT-5.5-Cyber, Mythos Preview, Codex, and Claude Managed Agents, but do not start new eval work until a named release lands."
+
+  predictions_meta:
+    total_positive_predictions: 0
+    model_release_predictions: 0
+    agent_release_predictions: 0
+    cyber_release_predictions: 0
+    no_material_release_forecast_included: true
+    null_forecast_allowed: true
+    competitive_response_quantified: false
+    min_positive_prediction_probability: 0.00
+    max_positive_prediction_probability: 0.00
+    no_release_probability: 0.65
+    weak_positive_predictions_omitted: true
+    timing_ambiguity_penalized: true
+
+  predictions: []
+
+  high_value_surprises: []
+
+  how_the_pieces_connect:
+    - id: "A"
+      openai_release: "A Daybreak or GPT-5.5-Cyber access expansion would raise pressure on Anthropic cyber releases."
+      anthropic_release: "A Mythos Preview or Claude Security access expansion would raise pressure on OpenAI cyber releases."
+      competitive_outcome: "Cyber-model access is the highest-impact competitive axis, but current timing evidence is weak."
+    - id: "B"
+      openai_release: "A Codex availability or deployment-control release would affect developer workflows."
+      anthropic_release: "A Claude Code, Claude Cowork, or Managed Agents release would affect the same developer and enterprise workflow market."
+      competitive_outcome: "Agent availability is the most plausible surprise category if the null forecast fails."
+    - id: "C"
+      release_timing_or_availability_change: "A date-only page appearing on 2026-05-18 would create timing ambiguity unless exact metadata is found."
+      response: "Use official metadata, RSS, docs deploy times, Git timestamps, official social posts, or timestamped reputable reporting."
+      deployment_implication: "Do not score a same-day date-only source as inside the window without timestamp evidence."
+
+  scenarios:
+    most_likely:
+      probability: 0.65
+      probability_percent: 65
+      label: "No scoreable OpenAI or Anthropic model, agent, cyber-model, or cyber-agent release."
+      signal: "Official sources remain unchanged or only show non-release posts through 2026-05-18T23:18:27Z."
+      abandon_if: "A named model, agent, cyber-model access path, or cyber-agent release appears with timestamp evidence inside the window."
+    upside_acceleration:
+      probability: 0.25
+      probability_percent: 25
+      label: "One lab ships a scoreable agent or model availability update."
+      signal: "A new official product page, API changelog entry, Codex changelog entry, Claude Platform release note, or newsroom post appears."
+      abandon_if: "No official release source changes by the end of the U.S. business day on 2026-05-18."
+    downside_stall:
+      probability: 0.10
+      probability_percent: 10
+      label: "Ambiguous date-only or post-window near miss."
+      signal: "A same-day source appears without timestamp evidence, or a release appears shortly after 2026-05-18T23:18:27Z."
+      abandon_if: "Exact timestamp evidence cleanly places the event inside or outside the window."
+    probabilities_sum_to_1_00: true
+
+  industry_expectations:
+    - id: "I1"
+      expected: "Recent release density keeps attention high on OpenAI Codex, Daybreak, Anthropic Managed Agents, Claude Code, and Claude cyber access."
+      surprise: "A timestamped release of a named model, agent, cyber-model access tier, or cyber-agent product inside this exact window."
+      non_event: "Partnership, funding, policy, capacity, generic security, or documentation-only news without a named model or agent release."
+
+  knowledge_gaps:
+    - id: "G1"
+      unknown: "Exact publication timestamps for several official date-only pages."
+      why_it_matters: "Same-day scoring depends on whether an event landed inside the 24-hour window."
+      resolving_evidence: "Official metadata, RSS, changelog timestamps, docs deploy timestamps, Git commit timestamps, or timestamped reputable reporting."
+    - id: "G2"
+      unknown: "Whether OpenAI or Anthropic has unpublished launch pages, staged model IDs, or embargoed briefings for 2026-05-18."
+      why_it_matters: "Hidden launch preparation can make a no-release forecast wrong despite clean public source checks."
+      resolving_evidence: "New official source entries, model catalog diffs, package releases, app-store updates, or reputable timestamped reporting."
+    - id: "G3"
+      unknown: "Whether minor Claude Code or Codex CLI releases should be classified as material agent releases."
+      why_it_matters: "Small CLI changes can be frequent but not always decision-relevant or scoreable under the prompt."
+      resolving_evidence: "A changelog entry that changes availability, controls, permissions, deployment, or agent capability materially."
+
+  timing_risk_register:
+    - id: "TR1"
+      risk: "Date-only source could make same-day scoring ambiguous."
+      affected_prediction_ids: []
+      mitigation: "Use official metadata, RSS, docs commit timestamps, social timestamps, or reputable timestamped reporting."
+    - id: "TR2"
+      risk: "A release shortly after 2026-05-18T23:18:27Z could look like a near miss."
+      affected_prediction_ids: []
+      mitigation: "Score it false for the exact window and record it only as an audit near miss."
+    - id: "TR3"
+      risk: "Undated model catalog or product page edits could reflect availability changes without visible publication time."
+      affected_prediction_ids: []
+      mitigation: "Require corroborating changelog, RSS, Git, official social, or reputable timestamped reporting before scoring."
+
+  pre_mortem:
+    paragraph_1: >
+      It is 2026-05-19, and the forecast was wrong because one lab shipped from a staged but publicly invisible surface: a model catalog update, Codex or Claude Code changelog, or cyber access page that did not show up in the checked indexes before publication.
+    paragraph_2: >
+      The timing failure is a date-only official page on 2026-05-18 that later proves to have been published before 2026-05-18T23:18:27Z through metadata or reputable reporting. The null forecast explicitly depends on finding that timing evidence after the window.
+
+  adversarial_review:
+    most_overconfident_prediction_id: "no_material_release_forecast"
+    most_overconfident_reason: "The null forecast may overweight checked absence because both labs have frequent recent release activity and the window includes a U.S. Monday."
+    most_underconfident_prediction_id: "none"
+    most_underconfident_reason: "A low-probability OpenAI cyber-access or Anthropic agent-platform release may be underweighted because official pre-release surfaces are sparse."
+    most_fragile_evidence: "Checked absence on official indexes can be misleading when launch pages are published only at release time."
+    most_fragile_timing_evidence: "Date-only official sources are the main timing weakness."
+    biggest_omitted_model_or_agent_release_risk: "A named Codex, Claude Code, Managed Agents, Daybreak, GPT-5.5-Cyber, or Mythos access change with no public pre-release signal."
+    weakest_decision_value_prediction_cut_or_retained: "All positive predictions were cut because none cleared the concrete-signal threshold for the exact 24-hour window."
+    source_media_bias_check: "OpenAI has more visible current product surfaces in the checked results, but Anthropic official docs and newsroom were checked symmetrically enough for the null forecast."
+    date_only_source_bias_check: "Date-only timing ambiguity was penalized and is included in the scoring policy."
+    probability_revised_after_review:
+      revised: true
+      changes: "No-release probability was kept at 0.65 rather than raised because Monday launch risk and recent release cadence remain meaningful."
+
+  watchlist:
+    - id: "WL1"
+      what_to_watch: "New OpenAI product release entry."
+      where: "OpenAI Product Releases"
+      how_often: "every 6 hours"
+      release_signal_meaning: "A named ChatGPT, Codex, model, or cyber product release may falsify the null forecast."
+      who_or_what_to_follow: "https://openai.com/news/product-releases/"
+      timing_verification_method: "Check page metadata, RSS, official social timestamp, and reputable timestamped reporting."
+    - id: "WL2"
+      what_to_watch: "New OpenAI API changelog or model catalog entry."
+      where: "OpenAI API Changelog and model catalog"
+      how_often: "every 6 hours"
+      release_signal_meaning: "A new model ID, availability change, retirement, or API release may falsify the null forecast."
+      who_or_what_to_follow: "https://developers.openai.com/api/docs/changelog"
+      timing_verification_method: "Use official changelog date plus metadata, RSS, or docs deploy timestamp if the entry is date-only."
+    - id: "WL3"
+      what_to_watch: "New OpenAI Codex changelog entry."
+      where: "OpenAI Codex Changelog"
+      how_often: "every 6 hours"
+      release_signal_meaning: "A Codex availability, remote access, hooks, token, sandbox, or enterprise-control release may falsify the null forecast."
+      who_or_what_to_follow: "https://developers.openai.com/codex/changelog"
+      timing_verification_method: "Use official changelog date plus docs metadata or reputable timestamped reporting."
+    - id: "WL4"
+      what_to_watch: "New Anthropic newsroom item."
+      where: "Anthropic Newsroom"
+      how_often: "every 6 hours"
+      release_signal_meaning: "A Claude model, agent, cyber, or availability launch may falsify the null forecast."
+      who_or_what_to_follow: "https://www.anthropic.com/news"
+      timing_verification_method: "Check official page metadata, newsroom index, RSS if available, and timestamped secondary reporting."
+    - id: "WL5"
+      what_to_watch: "New Claude Platform release note or model overview change."
+      where: "Claude Platform Release Notes and Models Overview"
+      how_often: "every 6 hours"
+      release_signal_meaning: "A Claude API model, Managed Agents, Mythos, or model retirement release may falsify the null forecast."
+      who_or_what_to_follow: "https://platform.claude.com/docs/en/release-notes/overview"
+      timing_verification_method: "Use official docs metadata, Git/docs deploy timestamp, or reputable timestamped secondary reporting."
+
+  self_audit:
+    positive_predictions_included: 0
+    no_material_release_forecast_included: true
+    predictions_list_may_be_empty: true
+    every_positive_prediction_is_model_agent_or_cyber_release: true
+    every_positive_prediction_about_openai_or_anthropic: true
+    every_positive_prediction_names_lab: true
+    every_positive_prediction_scoreable_inside_window: true
+    every_positive_prediction_has_scoring_source: true
+    every_positive_prediction_has_timing_resolution_policy: true
+    every_positive_prediction_handles_date_only_sources: true
+    every_positive_prediction_supported_by_pre_release_signal_or_clearly_labeled_low_probability: true
+    near_misses_not_counted_as_true: true
+    every_key_factual_claim_has_evidence_rating: true
+    every_positive_prediction_has_evidence_quality_sentence: true
+    every_positive_prediction_has_base_rate: true
+    every_positive_prediction_has_competitive_link_when_competitive_response_is_relevant: true
+    no_material_release_probability_estimated_before_positive_predictions: true
+    no_weak_positive_predictions_forced: true
+    model_agent_mix_not_forced_without_evidence: true
+    cyber_releases_considered_when_supported_by_e4_or_e3: true
+    competitive_responses_quantified_when_positive_predictions_included: true
+    no_unrelated_pricing_capacity_security_enterprise_partnership_funding_leadership_or_policy_predictions: true
+    generic_security_updates_excluded_unless_named_cyber_model_access_or_agent_release: true
+    engineering_posts_excluded_unless_they_change_agent_availability_controls_or_implementation: true
+    model_card_predictions_tied_to_named_model_releases: true
+    agent_documentation_predictions_materially_enable_named_agent_release: true
+    positive_predictions_are_differentiated: true
+    probabilities_rounded_to_nearest_5_percent: true
+    no_release_probability_calibrated: true
+    roadmap_language_probabilities_penalized: true
+    release_cluster_timing_not_overweighted: true
+    weak_signal_claims_not_overconfident: true
+    predictions_above_70_percent_include_counterarguments: true
+    high_value_surprises_included_count: 0
+    high_value_surprises_below_35_percent_if_any: true
+    scenario_probabilities_sum_to_100_percent: true
+    no_stock_price_or_market_cap_framing: true
+    no_hype_language: true
+    source_limitations_and_conflicts_disclosed: true
+    knowledge_gaps_pre_mortem_adversarial_review_watchlist_and_bottom_line_included: true
+    key_takeaways_included: true
+    key_takeaways_introduce_no_new_claims: true
+    conclusion_included: true
+    conclusion_introduces_no_new_claims: true
+    conclusion_names_decision_priority: true
+
+  key_takeaways:
+    - audience: "developers"
+      takeaway: "No new model or agent integration change is forecast as more likely than no release. Evidence rating: E4."
+      action_now: "Keep current model routing and agent integration plans unchanged during the window."
+      trigger_to_revise: "A new OpenAI API changelog, Codex changelog, Claude Platform release note, or model catalog update."
+    - audience: "businesses"
+      takeaway: "Procurement and deployment decisions should not move on release-cluster speculation alone. Evidence rating: E4."
+      action_now: "Monitor official release pages but do not rebaseline vendor plans unless a named release lands."
+      trigger_to_revise: "A timestamped official launch for Codex, Claude Code, Claude Managed Agents, Daybreak, or a named model."
+    - audience: "safety_or_security_researchers"
+      takeaway: "Cyber-model and cyber-agent access paths remain high-value watch items but lack a 24-hour timing signal. Evidence rating: E4."
+      action_now: "Keep eval and monitoring plans ready for Daybreak, GPT-5.5-Cyber, Mythos Preview, and Claude Security changes."
+      trigger_to_revise: "A new official cyber access, model card, system card, or agent release with timestamp evidence."
+    - audience: "openai_position"
+      takeaway: "OpenAI has visible recent Codex, Daybreak, and model-release activity, but no checked official signal for another exact-window release. Evidence rating: E4."
+      action_now: "Watch OpenAI Product Releases, API Changelog, Codex Changelog, and Daybreak."
+      trigger_to_revise: "A new dated OpenAI release page, model ID, or Codex release note."
+    - audience: "anthropic_position"
+      takeaway: "Anthropic has active Claude Platform, Managed Agents, Claude Code, and Mythos surfaces, but no checked official signal for another exact-window release. Evidence rating: E4."
+      action_now: "Watch Anthropic Newsroom, Claude Platform release notes, Models Overview, and Claude Code changelog."
+      trigger_to_revise: "A new dated Anthropic release note, newsroom item, model page update, or Managed Agents change."
+
+  conclusion:
+    synthesis: >
+      The most likely outcome is no scoreable OpenAI or Anthropic model, agent, cyber-model access, or cyber-agent release by 2026-05-18T23:18:27Z. The forecast is not high confidence because both labs have frequent recent release activity and the window includes a U.S. Monday, but the checked official evidence is absence-heavy and timing-fragile rather than launch-positive. If wrong, the highest-value miss is likely an agent availability or cyber access release from Codex, Claude Managed Agents, Daybreak, GPT-5.5-Cyber, or Mythos. OpenAI has the more visible near-term cyber and Codex watch surface; Anthropic has the clearer Managed Agents and Claude model catalog watch surface.
+    decision_priority: "Monitor official release and changelog surfaces without changing deployment plans until a named release lands."
+    highest_value_signal: "A timestamped official changelog, model catalog update, product page, or official social post inside the window."
+    ignore_unless: "Ignore partnerships, funding, policy, generic safety, capacity, or documentation-only updates unless tied to a named model, agent, cyber-model access path, or cyber-agent release."
+    confidence_statement: "Confidence is moderate because official source access was available, but date-only pages and hidden launch preparation remain the main limitation."
